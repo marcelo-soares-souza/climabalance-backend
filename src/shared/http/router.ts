@@ -53,6 +53,14 @@ export class Router {
     const method = request.method.toUpperCase();
     const requestId = uuidv7();
     const clientIp = getClientIp(request);
+    const corsHeaders = buildCorsHeaders(request);
+
+    if (method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders
+      });
+    }
 
     for (const route of this.routes) {
       if (route.method !== method) continue;
@@ -88,7 +96,7 @@ export class Router {
         return new Response(response.body, {
           status: response.status,
           statusText: response.statusText,
-          headers
+          headers: mergeHeaders(headers, corsHeaders)
         });
       } catch (error) {
         logger.error('request.unhandled_error', {
@@ -96,11 +104,11 @@ export class Router {
           path: url.pathname,
           error: error instanceof Error ? error.message : 'unknown'
         });
-        return errorResponse(500, 'server.error');
+        return withCors(errorResponse(500, 'server.error'), corsHeaders);
       }
     }
 
-    return new Response('Not Found', { status: 404 });
+    return new Response('Not Found', { status: 404, headers: corsHeaders });
   }
 }
 
@@ -115,4 +123,37 @@ function getClientIp(request: Request): string | undefined {
   const cfIp = request.headers.get('cf-connecting-ip');
   if (cfIp) return cfIp;
   return undefined;
+}
+
+function buildCorsHeaders(request: Request): Headers {
+  const headers = new Headers();
+  const origin = request.headers.get('origin') ?? '*';
+  const requestHeaders = request.headers.get('access-control-request-headers');
+  const requestMethod = request.headers.get('access-control-request-method');
+
+  headers.set('access-control-allow-origin', origin);
+  headers.set(
+    'access-control-allow-methods',
+    requestMethod ?? 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
+  );
+  headers.set('access-control-allow-headers', requestHeaders ?? 'authorization, content-type');
+  headers.set('access-control-max-age', '86400');
+  if (origin !== '*') {
+    headers.set('vary', 'origin');
+  }
+  return headers;
+}
+
+function mergeHeaders(base: Headers, extra: Headers): Headers {
+  const merged = new Headers(base);
+  extra.forEach((value, key) => merged.set(key, value));
+  return merged;
+}
+
+function withCors(response: Response, corsHeaders: Headers): Response {
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: mergeHeaders(response.headers, corsHeaders)
+  });
 }
