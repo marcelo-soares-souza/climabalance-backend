@@ -1,0 +1,28 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Bun
+.bun/
+bun.lockb
+
+# Build output
+dist/
+build/
+out/
+
+# Logs and coverage
+logs/
+*.log
+coverage/
+
+# Test artifacts
+test-results/
+.nyc_output/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

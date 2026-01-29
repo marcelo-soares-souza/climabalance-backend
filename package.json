@@ -1,0 +1,17 @@
+{
+  "name": "centrobrasilnoclima-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/main.ts",
+    "start": "bun src/main.ts",
+    "typecheck": "bun x tsc --noEmit",
+    "db:create": "bun src/scripts/create-db.ts",
+    "seed:admin": "bun src/scripts/seed-admin.ts",
+    "migrate": "bun src/scripts/migrate.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "pg": "^8.11.5"
+  }
+}
