@@ -5,7 +5,9 @@ export class ConsoleEmailSender implements EmailSender {
   async send(message: EmailMessage): Promise<void> {
     logger.info('email.sent', {
       to: message.to,
-      subject: message.subject
+      subject: message.subject,
+      text: message.text,
+      html: message.html
     });
   }
 }

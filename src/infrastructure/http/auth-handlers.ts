@@ -11,6 +11,7 @@ import { requireEmail, requireString } from '../../shared/validation/validators'
 import { authenticateUser } from '../../application/auth/authenticate-user';
 import { confirmEmail } from '../../application/auth/confirm-email';
 import { registerUser } from '../../application/auth/register-user';
+import { resendConfirmationEmail } from '../../application/auth/resend-confirmation-email';
 import { requestPasswordReset } from '../../application/auth/request-password-reset';
 import { resetPassword } from '../../application/auth/reset-password';
 import { getLogger } from '../../shared/utils/logger';
@@ -131,6 +132,36 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         const result = await confirmEmail(token, { confirmations: deps.confirmations, users: deps.users });
         log.info('auth.confirm.success', { user_id: result.userId });
         return jsonResponse(200, { message_key: 'auth.email_confirmed' });
+      } catch (error) {
+        return handleError(error, log);
+      }
+    },
+
+    resendConfirmationEmail: async (ctx: HttpContext) => {
+      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      try {
+        const body = await parseJson(ctx.request);
+        if (typeof body !== 'object' || body === null) {
+          return errorResponse(400, 'request.invalid_body');
+        }
+
+        const email = requireEmail((body as Record<string, unknown>).email, 'email');
+        if (typeof email !== 'string') {
+          log.warn('auth.resend_confirmation.validation_failed', { errors: [email] });
+          return errorResponse(400, 'request.validation_failed', [email]);
+        }
+
+        await resendConfirmationEmail(
+          { email },
+          {
+            users: deps.users,
+            confirmations: deps.confirmations,
+            emailSender: deps.emailSender
+          }
+        );
+
+        log.info('auth.resend_confirmation.accepted', { email });
+        return jsonResponse(200, { message_key: 'auth.confirmation_email_resent' });
       } catch (error) {
         return handleError(error, log);
       }

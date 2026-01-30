@@ -60,11 +60,19 @@ function maskValue(value: unknown): unknown {
   return '***';
 }
 
+function shouldMaskSensitiveData(): boolean {
+  const env = (process.env.APP_ENV ?? 'local').toLowerCase();
+  return env !== 'local' && env !== 'development' && env !== 'test';
+}
+
 function sanitizeValue(value: unknown, depth = 0): unknown {
   if (depth > 4) return '[REDACTED]';
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
-    return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
+    if (shouldMaskSensitiveData()) {
+      return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
+    }
+    return value;
   }
   if (typeof value !== 'object') return value;
   if (Array.isArray(value)) {
@@ -74,10 +82,19 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
   const sanitized: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(value)) {
     const normalized = key.toLowerCase();
-    if (sensitiveKeys.has(normalized) || normalized.includes('password') || normalized.includes('token')) {
+    const isPassword = normalized.includes('password') || normalized.includes('pepper') || normalized.includes('secret');
+    const isToken = normalized.includes('token');
+
+    if (isPassword) {
       sanitized[key] = maskValue(entry);
       continue;
     }
+
+    if (shouldMaskSensitiveData() && (sensitiveKeys.has(normalized) || isToken)) {
+      sanitized[key] = maskValue(entry);
+      continue;
+    }
+
     sanitized[key] = sanitizeValue(entry, depth + 1);
   }
   return sanitized;
