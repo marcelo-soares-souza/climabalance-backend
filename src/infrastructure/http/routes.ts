@@ -25,6 +25,8 @@ export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps): Router {
   router.add('POST', '/api/v1/auth/register', (ctx) => authHandlers.register(ctx));
   router.add('POST', '/api/v1/auth/login', (ctx) => authHandlers.login(ctx));
   router.add('POST', '/api/v1/auth/confirm-email', (ctx) => authHandlers.confirmEmail(ctx));
+  router.add('POST', '/api/v1/auth/password-reset/request', (ctx) => authHandlers.requestPasswordReset(ctx));
+  router.add('POST', '/api/v1/auth/password-reset/confirm', (ctx) => authHandlers.resetPassword(ctx));
 
   router.add('GET', '/api/v1/users', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
   router.add('GET', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));

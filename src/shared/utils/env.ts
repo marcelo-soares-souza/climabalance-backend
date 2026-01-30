@@ -10,6 +10,7 @@ export type Env = {
   passwordPepper: string;
   emailFrom: string;
   emailConfirmTtlMinutes: number;
+  passwordResetTtlMinutes: number;
 };
 
 function required(name: string): string {
@@ -41,5 +42,6 @@ export const env: Env = {
   jwtTtlSeconds: numberValue('JWT_TTL_SECONDS', 900),
   passwordPepper: required('PASSWORD_PEPPER'),
   emailFrom: required('EMAIL_FROM'),
-  emailConfirmTtlMinutes: numberValue('EMAIL_CONFIRM_TTL_MINUTES', 60)
+  emailConfirmTtlMinutes: numberValue('EMAIL_CONFIRM_TTL_MINUTES', 60),
+  passwordResetTtlMinutes: numberValue('PASSWORD_RESET_TTL_MINUTES', 60)
 };

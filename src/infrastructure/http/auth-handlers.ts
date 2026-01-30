@@ -1,4 +1,5 @@
 import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
+import type { PasswordResetRepository } from '../../domain/user/password-reset-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { PasswordHasher } from '../crypto/password';
 import type { EmailSender } from '../email/email-sender';
@@ -10,11 +11,14 @@ import { requireEmail, requireString } from '../../shared/validation/validators'
 import { authenticateUser } from '../../application/auth/authenticate-user';
 import { confirmEmail } from '../../application/auth/confirm-email';
 import { registerUser } from '../../application/auth/register-user';
+import { requestPasswordReset } from '../../application/auth/request-password-reset';
+import { resetPassword } from '../../application/auth/reset-password';
 import { getLogger } from '../../shared/utils/logger';
 
 export type AuthHandlersDeps = {
   users: UserRepository;
   confirmations: EmailConfirmationRepository;
+  passwordResets: PasswordResetRepository;
   passwordHasher: PasswordHasher;
   emailSender: EmailSender;
 };
@@ -127,6 +131,80 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         const result = await confirmEmail(token, { confirmations: deps.confirmations, users: deps.users });
         log.info('auth.confirm.success', { user_id: result.userId });
         return jsonResponse(200, { message_key: 'auth.email_confirmed' });
+      } catch (error) {
+        return handleError(error, log);
+      }
+    },
+
+    requestPasswordReset: async (ctx: HttpContext) => {
+      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      try {
+        const body = await parseJson(ctx.request);
+        if (typeof body !== 'object' || body === null) {
+          return errorResponse(400, 'request.invalid_body');
+        }
+
+        const email = requireEmail((body as Record<string, unknown>).email, 'email');
+        const locale = (body as Record<string, unknown>).locale;
+        if (typeof email !== 'string') {
+          log.warn('auth.password_reset_request.validation_failed', { errors: [email] });
+          return errorResponse(400, 'request.validation_failed', [email]);
+        }
+
+        await requestPasswordReset(
+          { email, locale: typeof locale === 'string' ? locale : undefined },
+          {
+            users: deps.users,
+            passwordResets: deps.passwordResets,
+            emailSender: deps.emailSender
+          }
+        );
+
+        log.info('auth.password_reset_request.accepted', { email });
+        return jsonResponse(200, { message_key: 'auth.password_reset_requested' });
+      } catch (error) {
+        return handleError(error, log);
+      }
+    },
+
+    resetPassword: async (ctx: HttpContext) => {
+      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      try {
+        const body = await parseJson(ctx.request);
+        if (typeof body !== 'object' || body === null) {
+          return errorResponse(400, 'request.invalid_body');
+        }
+
+        const token = requireString((body as Record<string, unknown>).token, 'token', 500);
+        const password = requireString((body as Record<string, unknown>).password, 'password', 200);
+        const passwordConfirm = requireString((body as Record<string, unknown>).password_confirm, 'password_confirm', 200);
+
+        const errors = [token, password, passwordConfirm].filter((value) => typeof value !== 'string');
+        if (errors.length > 0) {
+          log.warn('auth.password_reset.validation_failed', { errors });
+          return errorResponse(400, 'request.validation_failed', errors);
+        }
+
+        if (typeof password === 'string' && password.length < 8) {
+          log.warn('auth.password_reset.validation_failed', { field: 'password', reason: 'too_short' });
+          return errorResponse(400, 'request.validation_failed', [{ field: 'password', message: 'too_short' }]);
+        }
+        if (password !== passwordConfirm) {
+          log.warn('auth.password_reset.validation_failed', { field: 'password_confirm', reason: 'mismatch' });
+          return errorResponse(400, 'request.validation_failed', [{ field: 'password_confirm', message: 'mismatch' }]);
+        }
+
+        await resetPassword(
+          { token: token as string, password: password as string },
+          {
+            passwordResets: deps.passwordResets,
+            users: deps.users,
+            passwordHasher: deps.passwordHasher
+          }
+        );
+
+        log.info('auth.password_reset.success');
+        return jsonResponse(200, { message_key: 'auth.password_reset_success' });
       } catch (error) {
         return handleError(error, log);
       }
