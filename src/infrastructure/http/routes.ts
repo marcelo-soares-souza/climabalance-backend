@@ -30,8 +30,9 @@ export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps): Router {
 
   router.add('GET', '/api/v1/users', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
   router.add('GET', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));
+  router.add('GET', '/api/v1/users/:id/profile', withAuthOrSelf((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
   router.add('PATCH', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
-  router.add('DELETE', '/api/v1/users/:id', withAuth(async (ctx) => userHandlers.remove(ctx, ctx.params.id), { roles: ['administrator'] }));
+  router.add('DELETE', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
   router.add('PUT', '/api/v1/users/:id/profile', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
 
   return router;
