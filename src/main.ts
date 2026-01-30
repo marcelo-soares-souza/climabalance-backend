@@ -5,12 +5,33 @@ import { PostgresEmailConfirmationRepository } from './infrastructure/persistenc
 import { PostgresPasswordResetRepository } from './infrastructure/persistence/postgres/password-reset-repository';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
+import { SMTPEmailSender } from './infrastructure/email/smtp-email-sender';
+import type { EmailSender } from './infrastructure/email/email-sender';
 import { logger } from './shared/utils/logger';
 
 const userRepository = new PostgresUserRepository();
 const emailConfirmationRepository = new PostgresEmailConfirmationRepository();
 const passwordResetRepository = new PostgresPasswordResetRepository();
-const emailSender = new ConsoleEmailSender();
+
+let emailSender: EmailSender;
+if (['production', 'staging'].includes(env.appEnv)) {
+  if (!env.smtpServer || !env.smtpPort || !env.smtpUsername || !env.smtpPassword) {
+    throw new Error('SMTP configuration required for production/staging environments');
+  }
+  emailSender = new SMTPEmailSender({
+    host: env.smtpServer,
+    port: env.smtpPort,
+    auth: {
+      user: env.smtpUsername,
+      pass: env.smtpPassword
+    },
+    from: env.emailFrom
+  });
+  logger.info('email.configured', { provider: 'smtp', host: env.smtpServer });
+} else {
+  emailSender = new ConsoleEmailSender();
+  logger.info('email.configured', { provider: 'console' });
+}
 
 const router = buildRouter({
   users: userRepository,

@@ -11,6 +11,10 @@ export type Env = {
   emailFrom: string;
   emailConfirmTtlMinutes: number;
   passwordResetTtlMinutes: number;
+  smtpServer?: string;
+  smtpPort?: number;
+  smtpUsername?: string;
+  smtpPassword?: string;
 };
 
 function required(name: string): string {
@@ -43,5 +47,9 @@ export const env: Env = {
   passwordPepper: required('PASSWORD_PEPPER'),
   emailFrom: required('EMAIL_FROM'),
   emailConfirmTtlMinutes: numberValue('EMAIL_CONFIRM_TTL_MINUTES', 60),
-  passwordResetTtlMinutes: numberValue('PASSWORD_RESET_TTL_MINUTES', 60)
+  passwordResetTtlMinutes: numberValue('PASSWORD_RESET_TTL_MINUTES', 60),
+  ...(process.env.SMTP_SERVER && { smtpServer: process.env.SMTP_SERVER }),
+  ...(process.env.SMTP_PORT && { smtpPort: numberValue('SMTP_PORT', 587) }),
+  ...(process.env.SMTP_USERNAME && { smtpUsername: process.env.SMTP_USERNAME }),
+  ...(process.env.SMTP_PASSWORD && { smtpPassword: process.env.SMTP_PASSWORD })
 };

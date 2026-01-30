@@ -12,6 +12,10 @@
     "test": "bun test"
   },
   "dependencies": {
+    "nodemailer": "^7.0.13",
     "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.9"
   }
 }
