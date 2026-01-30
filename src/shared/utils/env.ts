@@ -2,6 +2,7 @@ export type Env = {
   appEnv: string;
   appPort: number;
   appUrl: string;
+  frontendUrl: string;
   databaseUrl: string;
   jwtSecret: string;
   jwtIssuer: string;
@@ -39,6 +40,7 @@ export const env: Env = {
   appEnv: process.env.APP_ENV ?? 'local',
   appPort: numberValue('APP_PORT', 3000),
   appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   jwtIssuer: process.env.JWT_ISSUER ?? 'centrobrasilnoclima',

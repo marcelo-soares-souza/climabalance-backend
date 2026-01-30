@@ -63,7 +63,7 @@ export async function registerUser(
     deletedAt: null
   });
 
-  const confirmUrl = `${env.appUrl}/confirm-email?token=${rawToken}`;
+  const confirmUrl = `${env.frontendUrl}/confirm-email?token=${rawToken}`;
   await deps.emailSender.send({
     to: user.email,
     subject: 'Confirm your email',

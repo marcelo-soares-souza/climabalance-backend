@@ -44,7 +44,7 @@ export async function requestPasswordReset(
     deletedAt: null
   });
 
-  const resetUrl = `${env.appUrl}/reset-password?token=${rawToken}`;
+  const resetUrl = `${env.frontendUrl}/password-reset/confirm?token=${rawToken}`;
   await deps.emailSender.send({
     to: user.email,
     subject: 'Reset your password',
