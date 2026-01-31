@@ -1,3 +1,4 @@
+import type { Pool, PoolClient } from 'pg';
 import type { User, UserProfile } from '../../../domain/user/user';
 import type { CreateUserInput, UpdateUserInput, UserFilters, UserRepository } from '../../../domain/user/user-repository';
 import { pgPool } from './pg-client';
@@ -41,9 +42,11 @@ function mapProfile(row: Record<string, unknown>): UserProfile {
 }
 
 export class PostgresUserRepository implements UserRepository {
+  constructor(private db: Pool | PoolClient = pgPool) {}
+
   async create(input: CreateUserInput): Promise<User> {
     const now = new Date();
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `INSERT INTO users (id, email, password_hash, status, locale, email_confirmed_at, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
        RETURNING *`,
@@ -91,7 +94,7 @@ export class PostgresUserRepository implements UserRepository {
 
     values.push(input.id);
 
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `UPDATE users SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`,
       values
     );
@@ -100,13 +103,13 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    const result = await pgPool.query(`SELECT * FROM users WHERE id = $1`, [id]);
+    const result = await this.db.query(`SELECT * FROM users WHERE id = $1`, [id]);
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const result = await pgPool.query(`SELECT * FROM users WHERE email = $1`, [email]);
+    const result = await this.db.query(`SELECT * FROM users WHERE email = $1`, [email]);
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
@@ -129,7 +132,7 @@ export class PostgresUserRepository implements UserRepository {
     const offset = filters.offset ?? 0;
     values.push(limit, offset);
 
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `SELECT * FROM users WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT $${index++} OFFSET $${index++}`,
       values
     );
@@ -138,7 +141,7 @@ export class PostgresUserRepository implements UserRepository {
 
   async softDelete(id: string): Promise<User | null> {
     const now = new Date();
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `UPDATE users SET deleted_at = $1, updated_at = $1 WHERE id = $2 RETURNING *`,
       [now, id]
     );
@@ -151,7 +154,7 @@ export class PostgresUserRepository implements UserRepository {
     const now = new Date();
 
     if (!existing) {
-      const result = await pgPool.query(
+      const result = await this.db.query(
         `INSERT INTO user_profiles (
             id, user_id, display_name, document_type, document_number, birth_date, phone,
             country_code, address_line1, address_line2, address_city, address_state,
@@ -209,7 +212,7 @@ export class PostgresUserRepository implements UserRepository {
     values.push(now);
     values.push(existing.id);
 
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `UPDATE user_profiles SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`,
       values
     );
@@ -217,13 +220,13 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async getProfile(userId: string): Promise<UserProfile | null> {
-    const result = await pgPool.query(`SELECT * FROM user_profiles WHERE user_id = $1`, [userId]);
+    const result = await this.db.query(`SELECT * FROM user_profiles WHERE user_id = $1`, [userId]);
     if (result.rowCount === 0) return null;
     return mapProfile(result.rows[0]);
   }
 
   async getRoles(userId: string): Promise<string[]> {
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `SELECT roles.role_key FROM user_roles
        JOIN roles ON roles.id = user_roles.role_id
        WHERE user_roles.user_id = $1 AND user_roles.deleted_at IS NULL AND roles.deleted_at IS NULL`,
@@ -234,7 +237,7 @@ export class PostgresUserRepository implements UserRepository {
 
   async assignRole(userId: string, roleKey: string): Promise<void> {
     const now = new Date();
-    await pgPool.query(
+    await this.db.query(
       `INSERT INTO user_roles (id, user_id, role_id, created_at, updated_at)
        SELECT $1, $2, roles.id, $3, $3
        FROM roles

@@ -1,5 +1,6 @@
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { PasswordHasher } from '../../infrastructure/crypto/password';
+import { UserNotFoundError } from '../../domain/errors';
 
 export type UpdateUserInput = {
   id: string;
@@ -33,7 +34,7 @@ export async function updateUser(
 
   const user = await deps.users.update(update);
   if (!user) {
-    throw new Error('user_not_found');
+    throw new UserNotFoundError(input.id);
   }
   return user;
 }

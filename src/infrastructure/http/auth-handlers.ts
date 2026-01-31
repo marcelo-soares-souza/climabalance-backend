@@ -3,11 +3,17 @@ import type { PasswordResetRepository } from '../../domain/user/password-reset-r
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { PasswordHasher } from '../crypto/password';
 import type { EmailSender } from '../email/email-sender';
+import type { UnitOfWork } from '../persistence/unit-of-work';
+import type { TokenGenerator } from '../../domain/services/token-generator';
+import type { JwtService } from '../../domain/services/jwt-service';
+import type { HashService } from '../../domain/services/hash-service';
+import type { IdGenerator } from '../../domain/services/id-generator';
+import type { Clock } from '../../domain/services/clock';
+import type { Config } from '../../domain/services/config';
 import type { HttpContext } from '../../shared/http/router';
 import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
-import { requireEmail, requireString } from '../../shared/validation/validators';
 import { authenticateUser } from '../../application/auth/authenticate-user';
 import { confirmEmail } from '../../application/auth/confirm-email';
 import { registerUser } from '../../application/auth/register-user';
@@ -15,6 +21,15 @@ import { resendConfirmationEmail } from '../../application/auth/resend-confirmat
 import { requestPasswordReset } from '../../application/auth/request-password-reset';
 import { resetPassword } from '../../application/auth/reset-password';
 import { getLogger } from '../../shared/utils/logger';
+import {
+  registerSchema,
+  loginSchema,
+  confirmEmailSchema,
+  resendConfirmationSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+  parseWithSchema
+} from './schemas';
 
 export type AuthHandlersDeps = {
   users: UserRepository;
@@ -22,6 +37,13 @@ export type AuthHandlersDeps = {
   passwordResets: PasswordResetRepository;
   passwordHasher: PasswordHasher;
   emailSender: EmailSender;
+  unitOfWork: UnitOfWork;
+  tokenGenerator: TokenGenerator;
+  jwtService: JwtService;
+  hashService: HashService;
+  idGenerator: IdGenerator;
+  clock: Clock;
+  config: Config;
 };
 
 export function createAuthHandlers(deps: AuthHandlersDeps) {
@@ -34,45 +56,26 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body');
         }
 
-        const email = requireEmail((body as Record<string, unknown>).email, 'email');
-        const password = requireString((body as Record<string, unknown>).password, 'password', 200);
-        const passwordConfirm = requireString((body as Record<string, unknown>).password_confirm, 'password_confirm', 200);
-        const locale = (body as Record<string, unknown>).locale;
-        const roleKey = (body as Record<string, unknown>).role_key;
-
-        const errors = [email, password, passwordConfirm].filter((value) => typeof value !== 'string');
-        if (errors.length > 0) {
-          log.warn('auth.register.validation_failed', { errors });
-          return errorResponse(400, 'request.validation_failed', errors);
-        }
-
-        if (typeof password === 'string' && password.length < 8) {
-          log.warn('auth.register.validation_failed', { field: 'password', reason: 'too_short' });
-          return errorResponse(400, 'request.validation_failed', [{ field: 'password', message: 'too_short' }]);
-        }
-        if (password !== passwordConfirm) {
-          log.warn('auth.register.validation_failed', { field: 'password_confirm', reason: 'mismatch' });
-          return errorResponse(400, 'request.validation_failed', [{ field: 'password_confirm', message: 'mismatch' }]);
-        }
-
-        const allowedRoles = ['individual', 'producer', 'legal_entity'];
-        if (typeof roleKey === 'string' && !allowedRoles.includes(roleKey)) {
-          log.warn('auth.register.validation_failed', { field: 'role_key', reason: 'invalid' });
-          return errorResponse(400, 'request.validation_failed', [{ field: 'role_key', message: 'invalid' }]);
-        }
+        const validated = parseWithSchema(registerSchema, body);
 
         const result = await registerUser(
           {
-            email: email as string,
-            password: password as string,
-            locale: typeof locale === 'string' ? locale : undefined,
-            roleKey: typeof roleKey === 'string' ? roleKey : undefined
+            email: validated.email,
+            password: validated.password,
+            locale: validated.locale,
+            roleKey: validated.role_key
           },
           {
             users: deps.users,
             confirmations: deps.confirmations,
             passwordHasher: deps.passwordHasher,
-            emailSender: deps.emailSender
+            emailSender: deps.emailSender,
+            unitOfWork: deps.unitOfWork,
+            tokenGenerator: deps.tokenGenerator,
+            hashService: deps.hashService,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+            config: deps.config
           }
         );
 
@@ -94,21 +97,21 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body');
         }
 
-        const email = requireEmail((body as Record<string, unknown>).email, 'email');
-        const password = requireString((body as Record<string, unknown>).password, 'password', 200);
-        const errors = [email, password].filter((value) => typeof value !== 'string');
-        if (errors.length > 0) {
-          log.warn('auth.login.validation_failed', { errors });
-          return errorResponse(400, 'request.validation_failed', errors);
-        }
+        const validated = parseWithSchema(loginSchema, body);
 
-        log.debug('auth.login.attempt', { email });
+        log.debug('auth.login.attempt', { email: validated.email });
         const token = await authenticateUser(
-          { email: email as string, password: password as string },
-          { users: deps.users, passwordHasher: deps.passwordHasher }
+          { email: validated.email, password: validated.password },
+          {
+            users: deps.users,
+            passwordHasher: deps.passwordHasher,
+            jwtService: deps.jwtService,
+            clock: deps.clock,
+            config: deps.config
+          }
         );
 
-        log.info('auth.login.success', { email });
+        log.info('auth.login.success', { email: validated.email });
         return jsonResponse(200, { data: token });
       } catch (error) {
         return handleError(error, log);
@@ -123,13 +126,14 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body');
         }
 
-        const token = requireString((body as Record<string, unknown>).token, 'token', 500);
-        if (typeof token !== 'string') {
-          log.warn('auth.confirm.validation_failed', { errors: [token] });
-          return errorResponse(400, 'request.validation_failed', [token]);
-        }
+        const validated = parseWithSchema(confirmEmailSchema, body);
 
-        const result = await confirmEmail(token, { confirmations: deps.confirmations, users: deps.users });
+        const result = await confirmEmail(validated.token, {
+          confirmations: deps.confirmations,
+          users: deps.users,
+          hashService: deps.hashService,
+          clock: deps.clock
+        });
         log.info('auth.confirm.success', { user_id: result.userId });
         return jsonResponse(200, { message_key: 'auth.email_confirmed' });
       } catch (error) {
@@ -145,22 +149,23 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body');
         }
 
-        const email = requireEmail((body as Record<string, unknown>).email, 'email');
-        if (typeof email !== 'string') {
-          log.warn('auth.resend_confirmation.validation_failed', { errors: [email] });
-          return errorResponse(400, 'request.validation_failed', [email]);
-        }
+        const validated = parseWithSchema(resendConfirmationSchema, body);
 
         await resendConfirmationEmail(
-          { email },
+          { email: validated.email },
           {
             users: deps.users,
             confirmations: deps.confirmations,
-            emailSender: deps.emailSender
+            emailSender: deps.emailSender,
+            tokenGenerator: deps.tokenGenerator,
+            hashService: deps.hashService,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+            config: deps.config
           }
         );
 
-        log.info('auth.resend_confirmation.accepted', { email });
+        log.info('auth.resend_confirmation.accepted', { email: validated.email });
         return jsonResponse(200, { message_key: 'auth.confirmation_email_resent' });
       } catch (error) {
         return handleError(error, log);
@@ -175,23 +180,23 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body');
         }
 
-        const email = requireEmail((body as Record<string, unknown>).email, 'email');
-        const locale = (body as Record<string, unknown>).locale;
-        if (typeof email !== 'string') {
-          log.warn('auth.password_reset_request.validation_failed', { errors: [email] });
-          return errorResponse(400, 'request.validation_failed', [email]);
-        }
+        const validated = parseWithSchema(requestPasswordResetSchema, body);
 
         await requestPasswordReset(
-          { email, locale: typeof locale === 'string' ? locale : undefined },
+          { email: validated.email, locale: validated.locale },
           {
             users: deps.users,
             passwordResets: deps.passwordResets,
-            emailSender: deps.emailSender
+            emailSender: deps.emailSender,
+            tokenGenerator: deps.tokenGenerator,
+            hashService: deps.hashService,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+            config: deps.config
           }
         );
 
-        log.info('auth.password_reset_request.accepted', { email });
+        log.info('auth.password_reset_request.accepted', { email: validated.email });
         return jsonResponse(200, { message_key: 'auth.password_reset_requested' });
       } catch (error) {
         return handleError(error, log);
@@ -206,31 +211,16 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body');
         }
 
-        const token = requireString((body as Record<string, unknown>).token, 'token', 500);
-        const password = requireString((body as Record<string, unknown>).password, 'password', 200);
-        const passwordConfirm = requireString((body as Record<string, unknown>).password_confirm, 'password_confirm', 200);
-
-        const errors = [token, password, passwordConfirm].filter((value) => typeof value !== 'string');
-        if (errors.length > 0) {
-          log.warn('auth.password_reset.validation_failed', { errors });
-          return errorResponse(400, 'request.validation_failed', errors);
-        }
-
-        if (typeof password === 'string' && password.length < 8) {
-          log.warn('auth.password_reset.validation_failed', { field: 'password', reason: 'too_short' });
-          return errorResponse(400, 'request.validation_failed', [{ field: 'password', message: 'too_short' }]);
-        }
-        if (password !== passwordConfirm) {
-          log.warn('auth.password_reset.validation_failed', { field: 'password_confirm', reason: 'mismatch' });
-          return errorResponse(400, 'request.validation_failed', [{ field: 'password_confirm', message: 'mismatch' }]);
-        }
+        const validated = parseWithSchema(resetPasswordSchema, body);
 
         await resetPassword(
-          { token: token as string, password: password as string },
+          { token: validated.token, password: validated.password },
           {
             passwordResets: deps.passwordResets,
             users: deps.users,
-            passwordHasher: deps.passwordHasher
+            passwordHasher: deps.passwordHasher,
+            hashService: deps.hashService,
+            clock: deps.clock
           }
         );
 

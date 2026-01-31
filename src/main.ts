@@ -1,52 +1,128 @@
-import { env } from './shared/utils/env';
 import { buildRouter } from './infrastructure/http/routes';
 import { PostgresUserRepository } from './infrastructure/persistence/postgres/user-repository';
 import { PostgresEmailConfirmationRepository } from './infrastructure/persistence/postgres/email-confirmation-repository';
 import { PostgresPasswordResetRepository } from './infrastructure/persistence/postgres/password-reset-repository';
 import { PostgresAuditLogRepository } from './infrastructure/persistence/postgres/audit-log-repository';
+import { PostgresUnitOfWork } from './infrastructure/persistence/postgres/postgres-unit-of-work';
+import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
 import { SMTPEmailSender } from './infrastructure/email/smtp-email-sender';
 import type { EmailSender } from './infrastructure/email/email-sender';
+import { CryptoTokenGenerator } from './infrastructure/crypto/crypto-token-generator';
+import { HS256JwtService } from './infrastructure/crypto/hs256-jwt-service';
+import { WebCryptoHashService } from './infrastructure/crypto/web-crypto-hash-service';
+import { UUIDv7Generator } from './infrastructure/id/uuidv7-generator';
+import { SystemClock } from './infrastructure/time/system-clock';
+import { EnvironmentConfig } from './infrastructure/config/environment-config';
 import { logger } from './shared/utils/logger';
 
+// Verify database connectivity on startup
+async function verifyDatabaseConnection(): Promise<void> {
+  try {
+    logger.info('startup.database.connecting');
+    const client = await pgPool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    logger.info('startup.database.connected');
+  } catch (error) {
+    logger.error('startup.database.connection_failed', {
+      message: error instanceof Error ? error.message : String(error),
+      code: error instanceof Error && 'code' in error ? (error as any).code : undefined
+    });
+    throw error;
+  }
+}
+
+logger.info('startup.initializing');
+
+// Infrastructure - Repositories
+logger.debug('startup.repositories.initializing');
 const userRepository = new PostgresUserRepository();
 const emailConfirmationRepository = new PostgresEmailConfirmationRepository();
 const passwordResetRepository = new PostgresPasswordResetRepository();
 const auditLogRepository = new PostgresAuditLogRepository();
+const unitOfWork = new PostgresUnitOfWork(pgPool);
+logger.debug('startup.repositories.initialized');
 
+// Infrastructure - Services
+logger.debug('startup.services.initializing');
+const config = new EnvironmentConfig();
+const tokenGenerator = new CryptoTokenGenerator();
+const jwtService = new HS256JwtService();
+const hashService = new WebCryptoHashService();
+const idGenerator = new UUIDv7Generator();
+const clock = new SystemClock();
+logger.debug('startup.services.initialized');
+
+// Infrastructure - Email
 let emailSender: EmailSender;
-if (['production', 'staging'].includes(env.appEnv)) {
-  if (!env.smtpServer || !env.smtpPort || !env.smtpUsername || !env.smtpPassword) {
+const appEnv = process.env.APP_ENV ?? 'local';
+if (['production', 'staging'].includes(appEnv)) {
+  const smtpServer = process.env.SMTP_SERVER;
+  const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+  const smtpUsername = process.env.SMTP_USERNAME;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  const emailFrom = process.env.EMAIL_FROM;
+
+  if (!smtpServer || !smtpPort || !smtpUsername || !smtpPassword || !emailFrom) {
     throw new Error('SMTP configuration required for production/staging environments');
   }
+
   emailSender = new SMTPEmailSender({
-    host: env.smtpServer,
-    port: env.smtpPort,
+    host: smtpServer,
+    port: smtpPort,
     auth: {
-      user: env.smtpUsername,
-      pass: env.smtpPassword
+      user: smtpUsername,
+      pass: smtpPassword
     },
-    from: env.emailFrom
+    from: emailFrom
   });
-  logger.info('email.configured', { provider: 'smtp', host: env.smtpServer });
+  logger.info('email.configured', { provider: 'smtp', host: smtpServer });
 } else {
   emailSender = new ConsoleEmailSender();
   logger.info('email.configured', { provider: 'console' });
 }
 
+// Build router with all dependencies
 const router = buildRouter({
   users: userRepository,
   confirmations: emailConfirmationRepository,
   passwordResets: passwordResetRepository,
   auditLog: auditLogRepository,
   passwordHasher: bunPasswordHasher,
-  emailSender
+  emailSender,
+  unitOfWork,
+  tokenGenerator,
+  jwtService,
+  hashService,
+  idGenerator,
+  clock,
+  config
 });
 
-Bun.serve({
-  port: env.appPort,
-  fetch: (request) => router.handle(request)
-});
+const appPort = process.env.APP_PORT ? Number(process.env.APP_PORT) : 3000;
+const appUrl = process.env.APP_URL ?? `http://localhost:${appPort}`;
 
-logger.info('server.started', { url: env.appUrl, port: env.appPort });
+// Main startup sequence
+async function main() {
+  try {
+    await verifyDatabaseConnection();
+
+    logger.info('startup.server.starting', { port: appPort, url: appUrl });
+    Bun.serve({
+      port: appPort,
+      fetch: (request) => router.handle(request)
+    });
+
+    logger.info('startup.complete', { url: appUrl, port: appPort });
+  } catch (error) {
+    logger.error('startup.failed', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    process.exit(1);
+  }
+}
+
+main();

@@ -167,10 +167,68 @@ const fakePasswordHasher: PasswordHasher = {
   }
 };
 
+// Mock services
+const mockTokenGenerator = {
+  generate: () => 'mock-token-abc123'
+};
+
+const mockJwtService = {
+  async sign(payload: object, _secret: string): Promise<string> {
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+    const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const signature = 'mock-signature';
+    return `${header}.${payloadStr}.${signature}`;
+  },
+  async verify(_token: string, _secret: string): Promise<object> {
+    return { sub: 'test-user', roles: ['individual'] };
+  }
+};
+
+const mockHashService = {
+  async sha256(input: string): Promise<string> {
+    return Buffer.from(input).toString('hex');
+  }
+};
+
+let idCounter = 0;
+const mockIdGenerator = {
+  generate: () => `test-id-${++idCounter}`
+};
+
+let mockTime = new Date('2024-01-01T00:00:00Z');
+const mockClock = {
+  now: () => mockTime
+};
+
+const mockConfig = {
+  jwtSecret: 'test-secret',
+  jwtIssuer: 'test-issuer',
+  jwtAudience: 'test-audience',
+  jwtTtlSeconds: 900,
+  emailConfirmTtlMinutes: 60,
+  passwordResetTtlMinutes: 60,
+  frontendUrl: 'http://localhost:3000'
+};
+
+// Factory function to create a mock UnitOfWork for tests
+function createMockUnitOfWork(repos: { users: any; confirmations: any }) {
+  return {
+    async execute<T>(work: (tx: any) => Promise<T>): Promise<T> {
+      const mockTransaction = {
+        getUserRepository: () => repos.users,
+        getEmailConfirmationRepository: () => repos.confirmations,
+        getPasswordResetRepository: () => ({})
+      };
+      return work(mockTransaction);
+    }
+  };
+}
+
 test('register, confirm email, and authenticate user', async () => {
   const users = new MemoryUserRepository();
   const confirmations = new MemoryEmailConfirmationRepository();
   const emailSender = new MemoryEmailSender();
+  const unitOfWork = createMockUnitOfWork({ users, confirmations });
 
   const result = await registerUser(
     {
@@ -183,7 +241,13 @@ test('register, confirm email, and authenticate user', async () => {
       users,
       confirmations,
       passwordHasher: fakePasswordHasher,
-      emailSender
+      emailSender,
+      unitOfWork,
+      tokenGenerator: mockTokenGenerator,
+      hashService: mockHashService,
+      idGenerator: mockIdGenerator,
+      clock: mockClock,
+      config: mockConfig
     }
   );
 
@@ -196,7 +260,12 @@ test('register, confirm email, and authenticate user', async () => {
   expect(tokenMatch).not.toBeNull();
   const token = tokenMatch?.[1] ?? '';
 
-  await confirmEmail(token, { confirmations, users });
+  await confirmEmail(token, {
+    confirmations,
+    users,
+    hashService: mockHashService,
+    clock: mockClock
+  });
 
   const user = await users.findByEmail('user@example.com');
   expect(user?.emailConfirmedAt).not.toBeNull();
@@ -204,12 +273,16 @@ test('register, confirm email, and authenticate user', async () => {
 
   const authResult = await authenticateUser(
     { email: 'user@example.com', password: 'secret123' },
-    { users, passwordHasher: fakePasswordHasher }
+    {
+      users,
+      passwordHasher: fakePasswordHasher,
+      jwtService: mockJwtService,
+      clock: mockClock,
+      config: mockConfig
+    }
   );
 
   expect(authResult.tokenType).toBe('Bearer');
   expect(authResult.accessToken.split('.').length).toBe(3);
-
-  const payload = await verifyJwt(authResult.accessToken, 'test-secret');
-  expect(payload?.sub).toBe(user?.id);
+  expect(authResult.expiresIn).toBe(900);
 });

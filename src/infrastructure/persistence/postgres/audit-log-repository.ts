@@ -1,3 +1,4 @@
+import type { Pool, PoolClient } from 'pg';
 import type { AuditLogEntry, AuditLogFilters, AuditLogRepository } from '../../../domain/audit/audit-log-repository';
 import { pgPool } from './pg-client';
 
@@ -14,6 +15,8 @@ function mapAuditLog(row: Record<string, unknown>): AuditLogEntry {
 }
 
 export class PostgresAuditLogRepository implements AuditLogRepository {
+  constructor(private db: Pool | PoolClient = pgPool) {}
+
   async list(filters: AuditLogFilters): Promise<AuditLogEntry[]> {
     const conditions: string[] = ['deleted_at IS NULL'];
     const values: unknown[] = [];
@@ -36,7 +39,7 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
     const offset = filters.offset ?? 0;
     values.push(limit, offset);
 
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `SELECT * FROM audit_log
        WHERE ${conditions.join(' AND ')}
        ORDER BY created_at DESC

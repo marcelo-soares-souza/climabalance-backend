@@ -1,3 +1,4 @@
+import type { Pool, PoolClient } from 'pg';
 import type { EmailConfirmation, EmailConfirmationRepository } from '../../../domain/user/email-confirmation-repository';
 import { pgPool } from './pg-client';
 
@@ -16,8 +17,10 @@ function mapConfirmation(row: Record<string, unknown>): EmailConfirmation {
 }
 
 export class PostgresEmailConfirmationRepository implements EmailConfirmationRepository {
+  constructor(private db: Pool | PoolClient = pgPool) {}
+
   async create(input: EmailConfirmation): Promise<EmailConfirmation> {
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `INSERT INTO email_confirmations (
         id, user_id, token_hash, sent_at, expires_at, confirmed_at, created_at, updated_at, deleted_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
@@ -37,7 +40,7 @@ export class PostgresEmailConfirmationRepository implements EmailConfirmationRep
   }
 
   async findByTokenHash(tokenHash: string): Promise<EmailConfirmation | null> {
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `SELECT * FROM email_confirmations WHERE token_hash = $1 AND deleted_at IS NULL`,
       [tokenHash]
     );
@@ -46,7 +49,7 @@ export class PostgresEmailConfirmationRepository implements EmailConfirmationRep
   }
 
   async markConfirmed(id: string, confirmedAt: Date): Promise<EmailConfirmation | null> {
-    const result = await pgPool.query(
+    const result = await this.db.query(
       `UPDATE email_confirmations SET confirmed_at = $1, updated_at = $1 WHERE id = $2 RETURNING *`,
       [confirmedAt, id]
     );

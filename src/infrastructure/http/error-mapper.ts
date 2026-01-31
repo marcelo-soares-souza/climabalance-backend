@@ -1,12 +1,63 @@
 import { errorResponse } from '../../shared/http/response';
 import type { ReturnTypeLogger } from '../../shared/utils/logger';
 import { getLogger } from '../../shared/utils/logger';
+import { DomainError } from '../../domain/errors';
 
 function resolveLogger(logger?: ReturnTypeLogger) {
   return logger ?? getLogger();
 }
 
 export function handleError(error: unknown, logger?: ReturnTypeLogger): Response {
+  const log = resolveLogger(logger);
+
+  // Handle DomainError instances (new pattern)
+  if (error instanceof DomainError) {
+    const status = error.httpStatus;
+    const response = errorResponse(status, error.i18nKey, error.metadata);
+
+    if (status >= 500) {
+      log.error('request.failed', { error: error.code, message: error.message, metadata: error.metadata });
+    } else {
+      log.warn('request.rejected', { error: error.code, status, metadata: error.metadata });
+    }
+
+    return response;
+  }
+
+  // Handle database errors specifically
+  if (error instanceof Error && 'code' in error) {
+    const dbError = error as Error & { code?: string; detail?: string; constraint?: string };
+    const dbCode = dbError.code;
+
+    // PostgreSQL error codes
+    if (dbCode) {
+      log.error('database.error', {
+        code: dbCode,
+        message: dbError.message,
+        detail: dbError.detail,
+        constraint: dbError.constraint,
+        stack: dbError.stack
+      });
+
+      // Connection errors
+      if (dbCode.startsWith('08') || dbCode === 'ECONNREFUSED' || dbCode === 'ENOTFOUND') {
+        return errorResponse(503, 'database.connection_error');
+      }
+
+      // Constraint violations
+      if (dbCode === '23505') {
+        return errorResponse(409, 'database.unique_violation');
+      }
+      if (dbCode === '23503') {
+        return errorResponse(409, 'database.foreign_key_violation');
+      }
+
+      // Generic database error
+      return errorResponse(500, 'database.error');
+    }
+  }
+
+  // Handle legacy string-based errors (backward compatibility)
   const message = error instanceof Error ? error.message : 'unexpected_error';
   let status = 500;
   let response: Response;
@@ -62,7 +113,6 @@ export function handleError(error: unknown, logger?: ReturnTypeLogger): Response
       break;
   }
 
-  const log = resolveLogger(logger);
   if (status >= 500) {
     log.error('request.failed', { error: message });
   } else {

@@ -180,9 +180,33 @@ test('request and reset password flow', async () => {
     emailConfirmedAt: new Date()
   });
 
+  const mockTokenGenerator = { generate: () => 'mock-token' };
+  const mockHashService = { async sha256(input: string) { return Buffer.from(input).toString('hex'); } };
+  let idCounter = 0;
+  const mockIdGenerator = { generate: () => `test-id-${++idCounter}` };
+  const mockClock = { now: () => new Date() };
+  const mockConfig = {
+    jwtSecret: 'test',
+    jwtIssuer: 'test',
+    jwtAudience: 'test',
+    jwtTtlSeconds: 900,
+    emailConfirmTtlMinutes: 60,
+    passwordResetTtlMinutes: 60,
+    frontendUrl: 'http://localhost:3000'
+  };
+
   const requestResult = await requestPasswordReset(
     { email: 'user@example.com' },
-    { users, passwordResets, emailSender }
+    {
+      users,
+      passwordResets,
+      emailSender,
+      tokenGenerator: mockTokenGenerator,
+      hashService: mockHashService,
+      idGenerator: mockIdGenerator,
+      clock: mockClock,
+      config: mockConfig
+    }
   );
 
   expect(requestResult.delivered).toBe(true);
@@ -195,7 +219,13 @@ test('request and reset password flow', async () => {
 
   await resetPassword(
     { token, password: 'new-password' },
-    { passwordResets, users, passwordHasher: fakePasswordHasher }
+    {
+      passwordResets,
+      users,
+      passwordHasher: fakePasswordHasher,
+      hashService: mockHashService,
+      clock: mockClock
+    }
   );
 
   const user = await users.findByEmail('user@example.com');
@@ -204,7 +234,13 @@ test('request and reset password flow', async () => {
   await expect(
     resetPassword(
       { token, password: 'other-password' },
-      { passwordResets, users, passwordHasher: fakePasswordHasher }
+      {
+        passwordResets,
+        users,
+        passwordHasher: fakePasswordHasher,
+        hashService: mockHashService,
+        clock: mockClock
+      }
     )
-  ).rejects.toThrow('token_already_used');
+  ).rejects.toThrow('Token already used');
 });

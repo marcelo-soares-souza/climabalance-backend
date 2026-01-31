@@ -1,10 +1,11 @@
 import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { EmailSender } from '../../infrastructure/email/email-sender';
-import { env } from '../../shared/utils/env';
-import { uuidv7 } from '../../shared/utils/id';
-import { sha256Hex } from '../../shared/utils/crypto';
-import { generateToken } from '../../infrastructure/crypto/token';
+import type { TokenGenerator } from '../../domain/services/token-generator';
+import type { HashService } from '../../domain/services/hash-service';
+import type { IdGenerator } from '../../domain/services/id-generator';
+import type { Clock } from '../../domain/services/clock';
+import type { Config } from '../../domain/services/config';
 
 export type ResendConfirmationEmailInput = {
   email: string;
@@ -20,6 +21,11 @@ export async function resendConfirmationEmail(
     users: UserRepository;
     confirmations: EmailConfirmationRepository;
     emailSender: EmailSender;
+    tokenGenerator: TokenGenerator;
+    hashService: HashService;
+    idGenerator: IdGenerator;
+    clock: Clock;
+    config: Config;
   }
 ): Promise<ResendConfirmationEmailResult> {
   const user = await deps.users.findByEmail(input.email);
@@ -27,12 +33,12 @@ export async function resendConfirmationEmail(
     return { delivered: false };
   }
 
-  const rawToken = generateToken();
-  const tokenHash = await sha256Hex(rawToken);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + env.emailConfirmTtlMinutes * 60 * 1000);
+  const rawToken = deps.tokenGenerator.generate();
+  const tokenHash = await deps.hashService.sha256(rawToken);
+  const now = deps.clock.now();
+  const expiresAt = new Date(now.getTime() + deps.config.emailConfirmTtlMinutes * 60 * 1000);
   await deps.confirmations.create({
-    id: uuidv7(),
+    id: deps.idGenerator.generate(),
     userId: user.id,
     tokenHash,
     sentAt: now,
@@ -43,7 +49,7 @@ export async function resendConfirmationEmail(
     deletedAt: null
   });
 
-  const confirmUrl = `${env.frontendUrl}/confirm-email?token=${rawToken}`;
+  const confirmUrl = `${deps.config.frontendUrl}/confirm-email?token=${rawToken}`;
   await deps.emailSender.send({
     to: user.email,
     subject: 'Confirm your email',

@@ -40,6 +40,7 @@ test('logger filters by LOG_LEVEL', () => {
 test('logger formats text with required fields and redacts', () => {
   process.env.LOG_LEVEL = 'debug';
   process.env.LOG_FORMAT = 'text';
+  process.env.APP_ENV = 'production';
 
   const { logs, restore } = captureConsole();
   const logger = getLogger({ requestId: 'req-2', userId: 'user-2', clientIp: '10.0.0.1' });
@@ -57,6 +58,7 @@ test('logger formats text with required fields and redacts', () => {
 test('logger formats json with required fields', () => {
   process.env.LOG_LEVEL = 'debug';
   process.env.LOG_FORMAT = 'json';
+  process.env.APP_ENV = 'production';
 
   const { logs, restore } = captureConsole();
   const logger = getLogger({ requestId: 'req-3', userId: 'user-3', clientIp: '192.168.1.10' });
