@@ -4,6 +4,7 @@ import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import { listAuditLog } from '../../application/audit/list-audit-log';
 import { getLogger } from '../../shared/utils/logger';
+import { buildLogContext } from '../../shared/http/log-context';
 
 export type AuditHandlersDeps = {
   auditLog: AuditLogRepository;
@@ -12,7 +13,8 @@ export type AuditHandlersDeps = {
 export function createAuditHandlers(deps: AuditHandlersDeps) {
   return {
     list: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
         const url = new URL(ctx.request.url);
         const actorUserId = url.searchParams.get('actor_user_id') ?? undefined;
@@ -33,7 +35,7 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
 
         if (errors.length > 0) {
           log.warn('audit.list.validation_failed', { errors });
-          return errorResponse(400, 'request.validation_failed', errors);
+          return errorResponse(400, 'request.validation_failed', errors, logContext);
         }
 
         const entries = await listAuditLog(
@@ -48,19 +50,23 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
         );
 
         log.info('audit.list', { count: entries.length });
-        return jsonResponse(200, {
-          data: entries.map((entry) => ({
-            id: entry.id,
-            actor_user_id: entry.actorUserId ?? null,
-            action: entry.action,
-            entity_type: entry.entityType,
-            entity_id: entry.entityId ?? null,
-            reason: entry.reason ?? null,
-            created_at: entry.createdAt
-          }))
-        });
+        return jsonResponse(
+          200,
+          {
+            data: entries.map((entry) => ({
+              id: entry.id,
+              actor_user_id: entry.actorUserId ?? null,
+              action: entry.action,
+              entity_type: entry.entityType,
+              entity_id: entry.entityId ?? null,
+              reason: entry.reason ?? null,
+              created_at: entry.createdAt
+            }))
+          },
+          logContext
+        );
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     }
   };

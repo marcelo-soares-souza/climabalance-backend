@@ -4,6 +4,12 @@ import { PostgresEmailConfirmationRepository } from './infrastructure/persistenc
 import { PostgresPasswordResetRepository } from './infrastructure/persistence/postgres/password-reset-repository';
 import { PostgresAuditLogRepository } from './infrastructure/persistence/postgres/audit-log-repository';
 import { PostgresUnitOfWork } from './infrastructure/persistence/postgres/postgres-unit-of-work';
+import { PostgresFootprintCalculationRepository } from './infrastructure/persistence/postgres/footprint-calculation-repository';
+import { PostgresEmissionFactorRepository } from './infrastructure/persistence/postgres/emission-factor-repository';
+import { PostgresFootprintInputRepository } from './infrastructure/persistence/postgres/footprint-input-repository';
+import { PostgresFootprintBreakdownRepository } from './infrastructure/persistence/postgres/footprint-breakdown-repository';
+import { PostgresCompensationProjectionRepository } from './infrastructure/persistence/postgres/compensation-projection-repository';
+import { PostgresAreaRepository } from './infrastructure/persistence/postgres/area-repository';
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
@@ -42,6 +48,12 @@ const userRepository = new PostgresUserRepository();
 const emailConfirmationRepository = new PostgresEmailConfirmationRepository();
 const passwordResetRepository = new PostgresPasswordResetRepository();
 const auditLogRepository = new PostgresAuditLogRepository();
+const footprintCalculationRepository = new PostgresFootprintCalculationRepository();
+const emissionFactorRepository = new PostgresEmissionFactorRepository();
+const footprintInputRepository = new PostgresFootprintInputRepository();
+const footprintBreakdownRepository = new PostgresFootprintBreakdownRepository();
+const compensationProjectionRepository = new PostgresCompensationProjectionRepository();
+const areaRepository = new PostgresAreaRepository();
 const unitOfWork = new PostgresUnitOfWork(pgPool);
 logger.debug('startup.repositories.initialized');
 
@@ -90,6 +102,12 @@ const router = buildRouter({
   confirmations: emailConfirmationRepository,
   passwordResets: passwordResetRepository,
   auditLog: auditLogRepository,
+  calculationRepository: footprintCalculationRepository,
+  emissionFactorRepository: emissionFactorRepository,
+  inputRepository: footprintInputRepository,
+  breakdownRepository: footprintBreakdownRepository,
+  projectionRepository: compensationProjectionRepository,
+  areaRepository: areaRepository,
   passwordHasher: bunPasswordHasher,
   emailSender,
   unitOfWork,

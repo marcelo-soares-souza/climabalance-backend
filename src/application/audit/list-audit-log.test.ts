@@ -7,6 +7,10 @@ class SpyAuditLogRepository implements AuditLogRepository {
 
   lastFilters: AuditLogFilters | null = null;
 
+  async create(_entry: AuditLogEntry): Promise<void> {
+    // no-op for list tests
+  }
+
   async list(filters: AuditLogFilters): Promise<AuditLogEntry[]> {
     this.lastFilters = filters;
     return this.entries;

@@ -2,7 +2,9 @@ export { DomainError } from './base-error';
 export {
   EmailAlreadyExistsError,
   UserNotFoundError,
-  UserNotActiveError
+  UserNotActiveError,
+  NotFoundError,
+  ForbiddenError
 } from './domain-errors';
 export {
   InvalidCredentialsError,

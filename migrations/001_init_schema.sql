@@ -6,7 +6,7 @@
 -- Identity and Access
 -- =========================
 
-CREATE TABLE roles (
+CREATE TABLE IF NOT EXISTS roles (
   id VARCHAR(36) PRIMARY KEY,
   role_key VARCHAR(50) NOT NULL UNIQUE,
   name VARCHAR(100) NOT NULL,
@@ -16,7 +16,7 @@ CREATE TABLE roles (
   deleted_at TIMESTAMP
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id VARCHAR(36) PRIMARY KEY,
   email VARCHAR(320) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE users (
   CHECK (status IN ('active', 'pending', 'suspended'))
 );
 
-CREATE TABLE email_confirmations (
+CREATE TABLE IF NOT EXISTS email_confirmations (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL,
   token_hash VARCHAR(128) NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE email_confirmations (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE user_roles (
+CREATE TABLE IF NOT EXISTS user_roles (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL,
   role_id VARCHAR(36) NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE user_roles (
   FOREIGN KEY (role_id) REFERENCES roles(id)
 );
 
-CREATE TABLE user_profiles (
+CREATE TABLE IF NOT EXISTS user_profiles (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL UNIQUE,
   display_name VARCHAR(200),
@@ -77,7 +77,7 @@ CREATE TABLE user_profiles (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE organizations (
+CREATE TABLE IF NOT EXISTS organizations (
   id VARCHAR(36) PRIMARY KEY,
   legal_name VARCHAR(200) NOT NULL,
   trade_name VARCHAR(200),
@@ -97,7 +97,7 @@ CREATE TABLE organizations (
   deleted_at TIMESTAMP
 );
 
-CREATE TABLE organization_members (
+CREATE TABLE IF NOT EXISTS organization_members (
   id VARCHAR(36) PRIMARY KEY,
   organization_id VARCHAR(36) NOT NULL,
   user_id VARCHAR(36) NOT NULL,
@@ -110,7 +110,7 @@ CREATE TABLE organization_members (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE producer_profiles (
+CREATE TABLE IF NOT EXISTS producer_profiles (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL UNIQUE,
   farm_name VARCHAR(200),
@@ -126,7 +126,7 @@ CREATE TABLE producer_profiles (
 -- Files and Evidence
 -- =========================
 
-CREATE TABLE files (
+CREATE TABLE IF NOT EXISTS files (
   id VARCHAR(36) PRIMARY KEY,
   owner_user_id VARCHAR(36),
   file_type VARCHAR(50),
@@ -145,7 +145,7 @@ CREATE TABLE files (
 -- Areas (Projects)
 -- =========================
 
-CREATE TABLE areas (
+CREATE TABLE IF NOT EXISTS areas (
   id VARCHAR(36) PRIMARY KEY,
   producer_id VARCHAR(36) NOT NULL,
   area_name VARCHAR(200),
@@ -167,7 +167,7 @@ CREATE TABLE areas (
   FOREIGN KEY (producer_id) REFERENCES users(id)
 );
 
-CREATE TABLE area_status_history (
+CREATE TABLE IF NOT EXISTS area_status_history (
   id VARCHAR(36) PRIMARY KEY,
   area_id VARCHAR(36) NOT NULL,
   from_status VARCHAR(30),
@@ -181,7 +181,7 @@ CREATE TABLE area_status_history (
   FOREIGN KEY (changed_by_user_id) REFERENCES users(id)
 );
 
-CREATE TABLE area_documents (
+CREATE TABLE IF NOT EXISTS area_documents (
   id VARCHAR(36) PRIMARY KEY,
   area_id VARCHAR(36) NOT NULL,
   file_id VARCHAR(36) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE area_documents (
   FOREIGN KEY (verified_by_user_id) REFERENCES users(id)
 );
 
-CREATE TABLE area_evidence (
+CREATE TABLE IF NOT EXISTS area_evidence (
   id VARCHAR(36) PRIMARY KEY,
   area_id VARCHAR(36) NOT NULL,
   file_id VARCHAR(36) NOT NULL,
@@ -214,7 +214,7 @@ CREATE TABLE area_evidence (
   FOREIGN KEY (file_id) REFERENCES files(id)
 );
 
-CREATE TABLE area_reviews (
+CREATE TABLE IF NOT EXISTS area_reviews (
   id VARCHAR(36) PRIMARY KEY,
   area_id VARCHAR(36) NOT NULL,
   reviewer_user_id VARCHAR(36) NOT NULL,
@@ -232,7 +232,7 @@ CREATE TABLE area_reviews (
 -- Emission Factors and Calculations
 -- =========================
 
-CREATE TABLE emission_factors (
+CREATE TABLE IF NOT EXISTS emission_factors (
   id VARCHAR(36) PRIMARY KEY,
   activity_type VARCHAR(100) NOT NULL,
   unit VARCHAR(30) NOT NULL,
@@ -246,7 +246,7 @@ CREATE TABLE emission_factors (
   deleted_at TIMESTAMP
 );
 
-CREATE TABLE footprint_calculations (
+CREATE TABLE IF NOT EXISTS footprint_calculations (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL,
   total_co2_kg DECIMAL(18, 6) NOT NULL,
@@ -258,7 +258,7 @@ CREATE TABLE footprint_calculations (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE TABLE footprint_items (
+CREATE TABLE IF NOT EXISTS footprint_items (
   id VARCHAR(36) PRIMARY KEY,
   calculation_id VARCHAR(36) NOT NULL,
   activity_type VARCHAR(100) NOT NULL,
@@ -275,7 +275,7 @@ CREATE TABLE footprint_items (
 -- Carbon Units and Compensations
 -- =========================
 
-CREATE TABLE carbon_units (
+CREATE TABLE IF NOT EXISTS carbon_units (
   id VARCHAR(36) PRIMARY KEY,
   area_id VARCHAR(36) NOT NULL,
   unit_type VARCHAR(30) NOT NULL,
@@ -290,7 +290,7 @@ CREATE TABLE carbon_units (
   FOREIGN KEY (area_id) REFERENCES areas(id)
 );
 
-CREATE TABLE compensations (
+CREATE TABLE IF NOT EXISTS compensations (
   id VARCHAR(36) PRIMARY KEY,
   supporter_user_id VARCHAR(36) NOT NULL,
   area_id VARCHAR(36) NOT NULL,
@@ -308,7 +308,7 @@ CREATE TABLE compensations (
   FOREIGN KEY (calculation_id) REFERENCES footprint_calculations(id)
 );
 
-CREATE TABLE compensation_units (
+CREATE TABLE IF NOT EXISTS compensation_units (
   id VARCHAR(36) PRIMARY KEY,
   compensation_id VARCHAR(36) NOT NULL,
   carbon_unit_id VARCHAR(36) NOT NULL,
@@ -320,7 +320,7 @@ CREATE TABLE compensation_units (
   FOREIGN KEY (carbon_unit_id) REFERENCES carbon_units(id)
 );
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY,
   compensation_id VARCHAR(36) NOT NULL,
   provider VARCHAR(50) NOT NULL,
@@ -336,7 +336,7 @@ CREATE TABLE payments (
   FOREIGN KEY (compensation_id) REFERENCES compensations(id)
 );
 
-CREATE TABLE certificates (
+CREATE TABLE IF NOT EXISTS certificates (
   id VARCHAR(36) PRIMARY KEY,
   compensation_id VARCHAR(36) NOT NULL,
   certificate_number VARCHAR(100) NOT NULL,
@@ -355,7 +355,7 @@ CREATE TABLE certificates (
 -- Localization and Audit
 -- =========================
 
-CREATE TABLE localized_texts (
+CREATE TABLE IF NOT EXISTS localized_texts (
   id VARCHAR(36) PRIMARY KEY,
   entity_type VARCHAR(100) NOT NULL,
   entity_id VARCHAR(36) NOT NULL,
@@ -368,7 +368,7 @@ CREATE TABLE localized_texts (
   UNIQUE (entity_type, entity_id, field_key, locale)
 );
 
-CREATE TABLE audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
   id VARCHAR(36) PRIMARY KEY,
   actor_user_id VARCHAR(36),
   action VARCHAR(100) NOT NULL,
@@ -385,34 +385,34 @@ CREATE TABLE audit_log (
 -- Indexes (FK and lookup)
 -- =========================
 
-CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
-CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
-CREATE INDEX idx_user_profiles_user_id ON user_profiles(user_id);
-CREATE INDEX idx_email_confirmations_user_id ON email_confirmations(user_id);
-CREATE INDEX idx_email_confirmations_token_hash ON email_confirmations(token_hash);
-CREATE INDEX idx_organization_members_org_id ON organization_members(organization_id);
-CREATE INDEX idx_organization_members_user_id ON organization_members(user_id);
-CREATE INDEX idx_producer_profiles_user_id ON producer_profiles(user_id);
-CREATE INDEX idx_files_owner_user_id ON files(owner_user_id);
-CREATE INDEX idx_areas_producer_id ON areas(producer_id);
-CREATE INDEX idx_areas_status ON areas(status);
-CREATE INDEX idx_area_status_history_area_id ON area_status_history(area_id);
-CREATE INDEX idx_area_documents_area_id ON area_documents(area_id);
-CREATE INDEX idx_area_documents_file_id ON area_documents(file_id);
-CREATE INDEX idx_area_evidence_area_id ON area_evidence(area_id);
-CREATE INDEX idx_area_evidence_file_id ON area_evidence(file_id);
-CREATE INDEX idx_area_reviews_area_id ON area_reviews(area_id);
-CREATE INDEX idx_area_reviews_reviewer_id ON area_reviews(reviewer_user_id);
-CREATE INDEX idx_emission_factors_activity ON emission_factors(activity_type);
-CREATE INDEX idx_footprint_calculations_user_id ON footprint_calculations(user_id);
-CREATE INDEX idx_footprint_items_calc_id ON footprint_items(calculation_id);
-CREATE INDEX idx_carbon_units_area_id ON carbon_units(area_id);
-CREATE INDEX idx_carbon_units_status ON carbon_units(status);
-CREATE INDEX idx_compensations_supporter ON compensations(supporter_user_id);
-CREATE INDEX idx_compensations_area_id ON compensations(area_id);
-CREATE INDEX idx_compensation_units_comp_id ON compensation_units(compensation_id);
-CREATE INDEX idx_compensation_units_unit_id ON compensation_units(carbon_unit_id);
-CREATE INDEX idx_payments_comp_id ON payments(compensation_id);
-CREATE INDEX idx_certificates_comp_id ON certificates(compensation_id);
-CREATE INDEX idx_localized_texts_entity ON localized_texts(entity_type, entity_id);
-CREATE INDEX idx_audit_log_actor ON audit_log(actor_user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_roles_role_id ON user_roles(role_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_confirmations_user_id ON email_confirmations(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_confirmations_token_hash ON email_confirmations(token_hash);
+CREATE INDEX IF NOT EXISTS idx_organization_members_org_id ON organization_members(organization_id);
+CREATE INDEX IF NOT EXISTS idx_organization_members_user_id ON organization_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_producer_profiles_user_id ON producer_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_files_owner_user_id ON files(owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_areas_producer_id ON areas(producer_id);
+CREATE INDEX IF NOT EXISTS idx_areas_status ON areas(status);
+CREATE INDEX IF NOT EXISTS idx_area_status_history_area_id ON area_status_history(area_id);
+CREATE INDEX IF NOT EXISTS idx_area_documents_area_id ON area_documents(area_id);
+CREATE INDEX IF NOT EXISTS idx_area_documents_file_id ON area_documents(file_id);
+CREATE INDEX IF NOT EXISTS idx_area_evidence_area_id ON area_evidence(area_id);
+CREATE INDEX IF NOT EXISTS idx_area_evidence_file_id ON area_evidence(file_id);
+CREATE INDEX IF NOT EXISTS idx_area_reviews_area_id ON area_reviews(area_id);
+CREATE INDEX IF NOT EXISTS idx_area_reviews_reviewer_id ON area_reviews(reviewer_user_id);
+CREATE INDEX IF NOT EXISTS idx_emission_factors_activity ON emission_factors(activity_type);
+CREATE INDEX IF NOT EXISTS idx_footprint_calculations_user_id ON footprint_calculations(user_id);
+CREATE INDEX IF NOT EXISTS idx_footprint_items_calc_id ON footprint_items(calculation_id);
+CREATE INDEX IF NOT EXISTS idx_carbon_units_area_id ON carbon_units(area_id);
+CREATE INDEX IF NOT EXISTS idx_carbon_units_status ON carbon_units(status);
+CREATE INDEX IF NOT EXISTS idx_compensations_supporter ON compensations(supporter_user_id);
+CREATE INDEX IF NOT EXISTS idx_compensations_area_id ON compensations(area_id);
+CREATE INDEX IF NOT EXISTS idx_compensation_units_comp_id ON compensation_units(compensation_id);
+CREATE INDEX IF NOT EXISTS idx_compensation_units_unit_id ON compensation_units(carbon_unit_id);
+CREATE INDEX IF NOT EXISTS idx_payments_comp_id ON payments(compensation_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_comp_id ON certificates(compensation_id);
+CREATE INDEX IF NOT EXISTS idx_localized_texts_entity ON localized_texts(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_actor ON audit_log(actor_user_id);

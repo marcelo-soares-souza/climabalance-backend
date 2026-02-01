@@ -1,6 +1,7 @@
 import { getLogger } from '../utils/logger';
 import { uuidv7 } from '../utils/id';
 import { errorResponse } from './response';
+import { buildLogContext } from './log-context';
 
 export type HttpContext = {
   request: Request;
@@ -104,7 +105,10 @@ export class Router {
           path: url.pathname,
           error: error instanceof Error ? error.message : 'unknown'
         });
-        return withCors(errorResponse(500, 'server.error'), corsHeaders);
+        return withCors(
+          errorResponse(500, 'server.error', undefined, buildLogContext(ctx)),
+          corsHeaders
+        );
       }
     }
 

@@ -3,6 +3,11 @@ import type { UnitOfWork, Transaction } from '../unit-of-work';
 import { PostgresUserRepository } from './user-repository';
 import { PostgresEmailConfirmationRepository } from './email-confirmation-repository';
 import { PostgresPasswordResetRepository } from './password-reset-repository';
+import { PostgresAuditLogRepository } from './audit-log-repository';
+import { PostgresFootprintCalculationRepository } from './footprint-calculation-repository';
+import { PostgresFootprintInputRepository } from './footprint-input-repository';
+import { PostgresFootprintBreakdownRepository } from './footprint-breakdown-repository';
+import { PostgresCompensationProjectionRepository } from './compensation-projection-repository';
 import { logger } from '../../../shared/utils/logger';
 
 class PostgresTransaction implements Transaction {
@@ -18,6 +23,26 @@ class PostgresTransaction implements Transaction {
 
   getPasswordResetRepository() {
     return new PostgresPasswordResetRepository(this.client);
+  }
+
+  getAuditLogRepository() {
+    return new PostgresAuditLogRepository(this.client);
+  }
+
+  getFootprintCalculationRepository() {
+    return new PostgresFootprintCalculationRepository(this.client);
+  }
+
+  getFootprintInputRepository() {
+    return new PostgresFootprintInputRepository(this.client);
+  }
+
+  getFootprintBreakdownRepository() {
+    return new PostgresFootprintBreakdownRepository(this.client);
+  }
+
+  getCompensationProjectionRepository() {
+    return new PostgresCompensationProjectionRepository(this.client);
   }
 }
 
@@ -66,4 +91,3 @@ export class PostgresUnitOfWork implements UnitOfWork {
     }
   }
 }
-

@@ -17,5 +17,6 @@ export type AuditLogFilters = {
 };
 
 export interface AuditLogRepository {
+  create(entry: AuditLogEntry): Promise<void>;
   list(filters: AuditLogFilters): Promise<AuditLogEntry[]>;
 }

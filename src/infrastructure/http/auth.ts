@@ -3,6 +3,7 @@ import { env } from '../../shared/utils/env';
 import { verifyJwt } from '../crypto/jwt';
 import { errorResponse } from '../../shared/http/response';
 import { getLogger } from '../../shared/utils/logger';
+import { buildLogContext } from '../../shared/http/log-context';
 
 function getToken(request: Request): string | null {
   const header = request.headers.get('authorization');
@@ -14,17 +15,18 @@ function getToken(request: Request): string | null {
 
 export function withAuth(handler: Handler, options?: { roles?: string[] }): Handler {
   return async (ctx: HttpContext) => {
-    const log = getLogger({ requestId: ctx.requestId, clientIp: ctx.clientIp });
+    const logContext = buildLogContext(ctx);
+    const log = getLogger(logContext);
     const token = getToken(ctx.request);
     if (!token) {
       log.warn('auth.missing_token');
-      return errorResponse(401, 'auth.required');
+      return errorResponse(401, 'auth.required', undefined, logContext);
     }
 
     const payload = await verifyJwt(token, env.jwtSecret);
     if (!payload) {
       log.warn('auth.invalid_token');
-      return errorResponse(401, 'auth.invalid');
+      return errorResponse(401, 'auth.invalid', undefined, logContext);
     }
 
     ctx.auth = { userId: payload.sub, roles: payload.roles };
@@ -33,7 +35,7 @@ export function withAuth(handler: Handler, options?: { roles?: string[] }): Hand
       const hasRole = options.roles.some((role) => payload.roles.includes(role));
       if (!hasRole) {
         log.warn('auth.forbidden', { user_id: payload.sub });
-        return errorResponse(403, 'auth.forbidden');
+        return errorResponse(403, 'auth.forbidden', undefined, logContext);
       }
     }
 

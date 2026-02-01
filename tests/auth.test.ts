@@ -217,7 +217,12 @@ function createMockUnitOfWork(repos: { users: any; confirmations: any }) {
       const mockTransaction = {
         getUserRepository: () => repos.users,
         getEmailConfirmationRepository: () => repos.confirmations,
-        getPasswordResetRepository: () => ({})
+        getPasswordResetRepository: () => ({}),
+        getAuditLogRepository: () => ({}),
+        getFootprintCalculationRepository: () => ({}),
+        getFootprintInputRepository: () => ({}),
+        getFootprintBreakdownRepository: () => ({}),
+        getCompensationProjectionRepository: () => ({})
       };
       return work(mockTransaction);
     }

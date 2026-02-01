@@ -35,3 +35,27 @@ export class UserNotActiveError extends DomainError {
     );
   }
 }
+
+export class NotFoundError extends DomainError {
+  constructor(messageKey: string, details?: Record<string, any>) {
+    super(
+      'Resource not found',
+      'NOT_FOUND',
+      404,
+      messageKey,
+      details
+    );
+  }
+}
+
+export class ForbiddenError extends DomainError {
+  constructor(messageKey: string, details?: Record<string, any>) {
+    super(
+      'Forbidden',
+      'FORBIDDEN',
+      403,
+      messageKey,
+      details
+    );
+  }
+}

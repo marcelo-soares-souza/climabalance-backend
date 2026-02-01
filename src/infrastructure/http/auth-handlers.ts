@@ -30,6 +30,7 @@ import {
   resetPasswordSchema,
   parseWithSchema
 } from './schemas';
+import { buildLogContext } from '../../shared/http/log-context';
 
 export type AuthHandlersDeps = {
   users: UserRepository;
@@ -49,11 +50,12 @@ export type AuthHandlersDeps = {
 export function createAuthHandlers(deps: AuthHandlersDeps) {
   return {
     register: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
-        const body = await parseJson(ctx.request);
+        const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body');
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
         const validated = parseWithSchema(registerSchema, body);
@@ -80,21 +82,26 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.register.created', { user_id: result.id, email: result.email });
-        return jsonResponse(201, {
-          data: result,
-          message_key: 'auth.registration_pending_confirmation'
-        });
+        return jsonResponse(
+          201,
+          {
+            data: result,
+            message_key: 'auth.registration_pending_confirmation'
+          },
+          logContext
+        );
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     },
 
     login: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
-        const body = await parseJson(ctx.request);
+        const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body');
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
         const validated = parseWithSchema(loginSchema, body);
@@ -112,18 +119,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.login.success', { email: validated.email });
-        return jsonResponse(200, { data: token });
+        return jsonResponse(200, { data: token }, logContext);
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     },
 
     confirmEmail: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
-        const body = await parseJson(ctx.request);
+        const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body');
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
         const validated = parseWithSchema(confirmEmailSchema, body);
@@ -135,18 +143,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           clock: deps.clock
         });
         log.info('auth.confirm.success', { user_id: result.userId });
-        return jsonResponse(200, { message_key: 'auth.email_confirmed' });
+        return jsonResponse(200, { message_key: 'auth.email_confirmed' }, logContext);
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     },
 
     resendConfirmationEmail: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
-        const body = await parseJson(ctx.request);
+        const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body');
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
         const validated = parseWithSchema(resendConfirmationSchema, body);
@@ -166,18 +175,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.resend_confirmation.accepted', { email: validated.email });
-        return jsonResponse(200, { message_key: 'auth.confirmation_email_resent' });
+        return jsonResponse(200, { message_key: 'auth.confirmation_email_resent' }, logContext);
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     },
 
     requestPasswordReset: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
-        const body = await parseJson(ctx.request);
+        const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body');
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
         const validated = parseWithSchema(requestPasswordResetSchema, body);
@@ -197,18 +207,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.password_reset_request.accepted', { email: validated.email });
-        return jsonResponse(200, { message_key: 'auth.password_reset_requested' });
+        return jsonResponse(200, { message_key: 'auth.password_reset_requested' }, logContext);
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     },
 
     resetPassword: async (ctx: HttpContext) => {
-      const log = getLogger({ requestId: ctx.requestId, userId: ctx.auth?.userId, clientIp: ctx.clientIp });
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
       try {
-        const body = await parseJson(ctx.request);
+        const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body');
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
         const validated = parseWithSchema(resetPasswordSchema, body);
@@ -225,9 +236,9 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.password_reset.success');
-        return jsonResponse(200, { message_key: 'auth.password_reset_success' });
+        return jsonResponse(200, { message_key: 'auth.password_reset_success' }, logContext);
       } catch (error) {
-        return handleError(error, log);
+        return handleError(error, log, logContext);
       }
     }
   };

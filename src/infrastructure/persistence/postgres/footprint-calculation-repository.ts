@@ -1,0 +1,157 @@
+import type { Pool, PoolClient } from 'pg';
+import type { FootprintCalculation } from '../../../domain/footprint/entities/footprint-calculation';
+import type { FootprintCalculationRepository } from '../../../domain/footprint/repositories/footprint-calculation-repository';
+import type { ProfileType } from '../../../domain/footprint/value-objects/profile-type';
+import type { CalculationStatus } from '../../../domain/footprint/value-objects/calculation-status';
+import { pgPool } from './pg-client';
+
+export class PostgresFootprintCalculationRepository implements FootprintCalculationRepository {
+  constructor(private pool: Pool = pgPool) {}
+
+  async save(calculation: FootprintCalculation, client?: PoolClient): Promise<void> {
+    const executor = client || this.pool;
+
+    await executor.query(
+      `INSERT INTO footprint_calculations (
+        id, user_id, profile_type, period_start, period_end,
+        total_kg_co2e, total_t_co2e, unit, calculation_method,
+        data_quality, factors_version, status, finalized_at,
+        created_at, updated_at, deleted_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+      [
+        calculation.id,
+        calculation.user_id,
+        calculation.profile_type,
+        calculation.period_start,
+        calculation.period_end,
+        calculation.total_kg_co2e,
+        calculation.total_t_co2e,
+        calculation.unit,
+        calculation.calculation_method,
+        calculation.data_quality,
+        calculation.factors_version,
+        calculation.status,
+        calculation.finalized_at,
+        calculation.created_at,
+        calculation.updated_at,
+        calculation.deleted_at
+      ]
+    );
+  }
+
+  async update(calculation: FootprintCalculation, client?: PoolClient): Promise<void> {
+    const executor = client || this.pool;
+
+    await executor.query(
+      `UPDATE footprint_calculations
+       SET period_start = $2,
+           period_end = $3,
+           total_kg_co2e = $4,
+           total_t_co2e = $5,
+           data_quality = $6,
+           status = $7,
+           finalized_at = $8,
+           updated_at = $9
+       WHERE id = $1`,
+      [
+        calculation.id,
+        calculation.period_start,
+        calculation.period_end,
+        calculation.total_kg_co2e,
+        calculation.total_t_co2e,
+        calculation.data_quality,
+        calculation.status,
+        calculation.finalized_at,
+        calculation.updated_at
+      ]
+    );
+  }
+
+  async findById(id: string): Promise<FootprintCalculation | null> {
+    const result = await this.pool.query(
+      `SELECT * FROM footprint_calculations WHERE id = $1 AND deleted_at IS NULL`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return this.mapRow(result.rows[0]);
+  }
+
+  async findByUserId(
+    userId: string,
+    filters?: {
+      status?: CalculationStatus;
+      profile_type?: ProfileType;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<FootprintCalculation[]> {
+    const conditions: string[] = ['user_id = $1', 'deleted_at IS NULL'];
+    const params: any[] = [userId];
+    let paramIndex = 2;
+
+    if (filters?.status) {
+      conditions.push(`status = $${paramIndex}`);
+      params.push(filters.status);
+      paramIndex++;
+    }
+
+    if (filters?.profile_type) {
+      conditions.push(`profile_type = $${paramIndex}`);
+      params.push(filters.profile_type);
+      paramIndex++;
+    }
+
+    const limit = filters?.limit || 50;
+    const offset = filters?.offset || 0;
+
+    const query = `
+      SELECT *
+      FROM footprint_calculations
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex}
+      OFFSET $${paramIndex + 1}
+    `;
+
+    params.push(limit, offset);
+
+    const result = await this.pool.query(query, params);
+    return result.rows.map(this.mapRow);
+  }
+
+  async delete(id: string, client?: PoolClient): Promise<void> {
+    const executor = client || this.pool;
+
+    await executor.query(
+      `UPDATE footprint_calculations
+       SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [id]
+    );
+  }
+
+  private mapRow(row: any): FootprintCalculation {
+    return {
+      id: row.id,
+      user_id: row.user_id,
+      profile_type: row.profile_type,
+      period_start: new Date(row.period_start),
+      period_end: new Date(row.period_end),
+      total_kg_co2e: parseFloat(row.total_kg_co2e),
+      total_t_co2e: parseFloat(row.total_t_co2e),
+      unit: row.unit,
+      calculation_method: row.calculation_method,
+      data_quality: row.data_quality,
+      factors_version: row.factors_version,
+      status: row.status,
+      finalized_at: row.finalized_at ? new Date(row.finalized_at) : null,
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at),
+      deleted_at: row.deleted_at ? new Date(row.deleted_at) : null
+    };
+  }
+}

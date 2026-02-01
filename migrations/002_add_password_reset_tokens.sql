@@ -1,5 +1,5 @@
 -- Password reset tokens for account recovery.
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL,
   token_hash VARCHAR(128) NOT NULL,
@@ -12,5 +12,5 @@ CREATE TABLE password_reset_tokens (
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
-CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
-CREATE INDEX idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_token_hash ON password_reset_tokens(token_hash);
