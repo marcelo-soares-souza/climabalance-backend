@@ -4,7 +4,10 @@ import type { FootprintInput } from '../../domain/footprint/entities/footprint-i
 import type { FootprintBreakdown } from '../../domain/footprint/entities/footprint-breakdown';
 import type { EmissionFactor } from '../../domain/footprint/entities/emission-factor';
 import type { CompensationProjection } from '../../domain/footprint/entities/compensation-projection';
-import type { FootprintCalculationRepository } from '../../domain/footprint/repositories/footprint-calculation-repository';
+import type {
+  FootprintCalculationRepository,
+  FootprintCalculationWithUser
+} from '../../domain/footprint/repositories/footprint-calculation-repository';
 import type { FootprintInputRepository } from '../../domain/footprint/repositories/footprint-input-repository';
 import type { FootprintBreakdownRepository } from '../../domain/footprint/repositories/footprint-breakdown-repository';
 import type { EmissionFactorRepository } from '../../domain/footprint/repositories/emission-factor-repository';
@@ -14,9 +17,11 @@ import type { UnitOfWork } from '../../infrastructure/persistence/unit-of-work';
 import { ValidationError } from '../../domain/errors';
 import { createFootprintCalculation } from './create-footprint-calculation';
 import { finalizeFootprintCalculation } from './finalize-footprint-calculation';
+import { listFootprintCalculations } from './list-footprint-calculations';
+import { getFootprintCalculation } from './get-footprint-calculation';
 
 class MemoryFootprintCalculationRepository implements FootprintCalculationRepository {
-  items: FootprintCalculation[] = [];
+  items: FootprintCalculationWithUser[] = [];
 
   async save(calculation: FootprintCalculation): Promise<void> {
     this.items.push({ ...calculation });
@@ -36,12 +41,40 @@ class MemoryFootprintCalculationRepository implements FootprintCalculationReposi
   async findByUserId(
     userId: string,
     filters?: { status?: FootprintCalculation['status']; profile_type?: FootprintCalculation['profile_type']; limit?: number; offset?: number; }
-  ): Promise<FootprintCalculation[]> {
-    const results = this.items.filter((c) => c.user_id === userId && !c.deleted_at);
+  ): Promise<FootprintCalculationWithUser[]> {
+    let results = this.items.filter((c) => c.user_id === userId && !c.deleted_at);
     if (filters?.status) {
-      return results.filter((c) => c.status === filters.status);
+      results = results.filter((c) => c.status === filters.status);
+    }
+    if (filters?.profile_type) {
+      results = results.filter((c) => c.profile_type === filters.profile_type);
     }
     return results;
+  }
+
+  async findAll(filters?: {
+    status?: FootprintCalculation['status'];
+    profile_type?: FootprintCalculation['profile_type'];
+    user_email?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<FootprintCalculationWithUser[]> {
+    let results = this.items.filter((c) => !c.deleted_at);
+    if (filters?.status) {
+      results = results.filter((c) => c.status === filters.status);
+    }
+    if (filters?.profile_type) {
+      results = results.filter((c) => c.profile_type === filters.profile_type);
+    }
+    if (filters?.user_email) {
+      const needle = filters.user_email.toLowerCase();
+      results = results.filter((c) => (c.user_email ?? '').toLowerCase().includes(needle));
+    }
+    return results;
+  }
+
+  async findByIdWithUser(id: string): Promise<FootprintCalculationWithUser | null> {
+    return (await this.findById(id)) as FootprintCalculationWithUser | null;
   }
 
   async delete(id: string): Promise<void> {
@@ -395,5 +428,136 @@ describe('footprint calculations', () => {
     expect(updated?.status).toBe('finalized');
     expect(auditLogRepository.entries.length).toBe(1);
     expect(auditLogRepository.entries[0]?.action).toBe('footprint_calculation.finalized');
+  });
+
+  it('lists only own calculations when not admin', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+
+    const baseCalculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-1',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'draft',
+      finalized_at: null,
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-02T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(baseCalculation);
+    await calculationRepository.save({
+      ...baseCalculation,
+      id: 'calc-2',
+      user_id: 'user-2'
+    });
+
+    const result = await listFootprintCalculations(
+      { calculationRepository },
+      { user_id: 'user-1' }
+    );
+
+    expect(result.calculations.length).toBe(1);
+    expect(result.calculations[0]?.id).toBe('calc-1');
+  });
+
+  it('allows admin to list all calculations and filter by email', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+
+    const calc1: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-1',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'draft',
+      finalized_at: null,
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-02T00:00:00Z'),
+      deleted_at: null
+    };
+
+    const calc2: FootprintCalculation = {
+      ...calc1,
+      id: 'calc-2',
+      user_id: 'user-2'
+    };
+
+    await calculationRepository.save(calc1);
+    await calculationRepository.save(calc2);
+    calculationRepository.items[0]!.user_email = 'user1@example.com';
+    calculationRepository.items[1]!.user_email = 'user2@example.com';
+    calculationRepository.items[1]!.user_name = 'User Two';
+
+    const allResult = await listFootprintCalculations(
+      { calculationRepository },
+      { user_id: 'admin-1', is_admin: true }
+    );
+
+    expect(allResult.calculations.length).toBe(2);
+
+    const filteredResult = await listFootprintCalculations(
+      { calculationRepository },
+      { user_id: 'admin-1', is_admin: true, user_email: 'user2@example.com' }
+    );
+
+    expect(filteredResult.calculations.length).toBe(1);
+    expect(filteredResult.calculations[0]?.user_email).toBe('user2@example.com');
+    expect(filteredResult.calculations[0]?.user_name).toBe('User Two');
+  });
+
+  it('allows admin to view calculation detail for other users', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+    const inputRepository = new MemoryFootprintInputRepository();
+    const breakdownRepository = new MemoryFootprintBreakdownRepository();
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-2',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'draft',
+      finalized_at: null,
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-02T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+    calculationRepository.items[0]!.user_email = 'user2@example.com';
+
+    const result = await getFootprintCalculation(
+      {
+        calculationRepository,
+        inputRepository,
+        breakdownRepository
+      },
+      'calc-1',
+      'admin-1',
+      { is_admin: true }
+    );
+
+    expect(result.user_id).toBe('user-2');
+    expect(result.user_email).toBe('user2@example.com');
   });
 });

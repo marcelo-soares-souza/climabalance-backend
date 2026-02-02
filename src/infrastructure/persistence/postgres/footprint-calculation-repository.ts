@@ -1,6 +1,9 @@
 import type { Pool, PoolClient } from 'pg';
 import type { FootprintCalculation } from '../../../domain/footprint/entities/footprint-calculation';
-import type { FootprintCalculationRepository } from '../../../domain/footprint/repositories/footprint-calculation-repository';
+import type {
+  FootprintCalculationRepository,
+  FootprintCalculationWithUser
+} from '../../../domain/footprint/repositories/footprint-calculation-repository';
 import type { ProfileType } from '../../../domain/footprint/value-objects/profile-type';
 import type { CalculationStatus } from '../../../domain/footprint/value-objects/calculation-status';
 import { pgPool } from './pg-client';
@@ -88,19 +91,19 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       limit?: number;
       offset?: number;
     }
-  ): Promise<FootprintCalculation[]> {
-    const conditions: string[] = ['user_id = $1', 'deleted_at IS NULL'];
+  ): Promise<FootprintCalculationWithUser[]> {
+    const conditions: string[] = ['fc.user_id = $1', 'fc.deleted_at IS NULL'];
     const params: any[] = [userId];
     let paramIndex = 2;
 
     if (filters?.status) {
-      conditions.push(`status = $${paramIndex}`);
+      conditions.push(`fc.status = $${paramIndex}`);
       params.push(filters.status);
       paramIndex++;
     }
 
     if (filters?.profile_type) {
-      conditions.push(`profile_type = $${paramIndex}`);
+      conditions.push(`fc.profile_type = $${paramIndex}`);
       params.push(filters.profile_type);
       paramIndex++;
     }
@@ -109,10 +112,12 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
     const offset = filters?.offset || 0;
 
     const query = `
-      SELECT *
-      FROM footprint_calculations
+      SELECT fc.*, u.email AS user_email, up.display_name AS user_name
+      FROM footprint_calculations fc
+      JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
+      LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
       WHERE ${conditions.join(' AND ')}
-      ORDER BY created_at DESC
+      ORDER BY fc.created_at DESC
       LIMIT $${paramIndex}
       OFFSET $${paramIndex + 1}
     `;
@@ -121,6 +126,72 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
 
     const result = await this.pool.query(query, params);
     return result.rows.map(this.mapRow);
+  }
+
+  async findAll(filters?: {
+    status?: CalculationStatus;
+    profile_type?: ProfileType;
+    user_email?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<FootprintCalculationWithUser[]> {
+    const conditions: string[] = ['fc.deleted_at IS NULL', 'u.deleted_at IS NULL'];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    if (filters?.status) {
+      conditions.push(`fc.status = $${paramIndex}`);
+      params.push(filters.status);
+      paramIndex++;
+    }
+
+    if (filters?.profile_type) {
+      conditions.push(`fc.profile_type = $${paramIndex}`);
+      params.push(filters.profile_type);
+      paramIndex++;
+    }
+
+    if (filters?.user_email) {
+      conditions.push(`LOWER(u.email) LIKE LOWER($${paramIndex})`);
+      params.push(`%${filters.user_email}%`);
+      paramIndex++;
+    }
+
+    const limit = filters?.limit || 50;
+    const offset = filters?.offset || 0;
+
+    const query = `
+      SELECT fc.*, u.email AS user_email, up.display_name AS user_name
+      FROM footprint_calculations fc
+      JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
+      LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY fc.created_at DESC
+      LIMIT $${paramIndex}
+      OFFSET $${paramIndex + 1}
+    `;
+
+    params.push(limit, offset);
+
+    const result = await this.pool.query(query, params);
+    return result.rows.map(this.mapRow);
+  }
+
+  async findByIdWithUser(id: string): Promise<FootprintCalculationWithUser | null> {
+    const result = await this.pool.query(
+      `SELECT fc.*, u.email AS user_email, up.display_name AS user_name
+       FROM footprint_calculations fc
+       JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
+       LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
+       WHERE fc.id = $1 AND fc.deleted_at IS NULL`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return null;
+    }
+
+    return this.mapRow(result.rows[0]);
   }
 
   async delete(id: string, client?: PoolClient): Promise<void> {
@@ -134,7 +205,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
     );
   }
 
-  private mapRow(row: any): FootprintCalculation {
+  private mapRow(row: any): FootprintCalculationWithUser {
     return {
       id: row.id,
       user_id: row.user_id,
@@ -151,7 +222,9 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       finalized_at: row.finalized_at ? new Date(row.finalized_at) : null,
       created_at: new Date(row.created_at),
       updated_at: new Date(row.updated_at),
-      deleted_at: row.deleted_at ? new Date(row.deleted_at) : null
+      deleted_at: row.deleted_at ? new Date(row.deleted_at) : null,
+      user_email: row.user_email ?? null,
+      user_name: row.user_name ?? null
     };
   }
 }

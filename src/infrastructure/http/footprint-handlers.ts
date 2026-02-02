@@ -149,6 +149,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async get(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
         const result = await getFootprintCalculation(
           {
@@ -157,7 +158,8 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             breakdownRepository: deps.breakdownRepository
           },
           id,
-          ctx.auth!.userId
+          ctx.auth!.userId,
+          { is_admin: isAdmin }
         );
 
         return jsonResponse(200, { data: result }, logContext);
@@ -172,10 +174,12 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async list(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       const url = new URL(ctx.request.url);
       const query = {
         status: url.searchParams.get('status') || undefined,
         profile_type: url.searchParams.get('profile_type') || undefined,
+        user_email: isAdmin ? url.searchParams.get('user_email') || undefined : undefined,
         limit: url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined,
         offset: url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : undefined
       };
@@ -187,7 +191,8 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           },
           {
             user_id: ctx.auth!.userId,
-            ...query
+            ...query,
+            is_admin: isAdmin
           }
         );
 

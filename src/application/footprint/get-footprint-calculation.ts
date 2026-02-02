@@ -17,6 +17,8 @@ export interface GetFootprintCalculationResponse {
   finalized_at: string | null;
   created_at: string;
   updated_at: string;
+  user_email?: string | null;
+  user_name?: string | null;
   inputs: Array<{
     id: string;
     category: string;
@@ -42,15 +44,16 @@ export interface GetFootprintCalculationDeps {
 export async function getFootprintCalculation(
   deps: GetFootprintCalculationDeps,
   calculationId: string,
-  userId: string
+  userId: string,
+  options?: { is_admin?: boolean }
 ): Promise<GetFootprintCalculationResponse> {
-  const calculation = await deps.calculationRepository.findById(calculationId);
+  const calculation = await deps.calculationRepository.findByIdWithUser(calculationId);
 
   if (!calculation) {
     throw new NotFoundError('footprint.calculation.not_found');
   }
 
-  if (calculation.user_id !== userId) {
+  if (!options?.is_admin && calculation.user_id !== userId) {
     throw new ForbiddenError('footprint.calculation.not_owner');
   }
 
@@ -73,6 +76,8 @@ export async function getFootprintCalculation(
     finalized_at: calculation.finalized_at ? calculation.finalized_at.toISOString() : null,
     created_at: calculation.created_at.toISOString(),
     updated_at: calculation.updated_at.toISOString(),
+    user_email: calculation.user_email ?? null,
+    user_name: calculation.user_name ?? null,
     inputs: inputs.map((input) => ({
       id: input.id,
       category: input.category,

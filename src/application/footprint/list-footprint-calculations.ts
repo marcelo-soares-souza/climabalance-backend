@@ -6,8 +6,10 @@ export interface ListFootprintCalculationsRequest {
   user_id: string;
   status?: string;
   profile_type?: string;
+  user_email?: string;
   limit?: number;
   offset?: number;
+  is_admin?: boolean;
 }
 
 export interface ListFootprintCalculationsResponse {
@@ -25,6 +27,8 @@ export interface ListFootprintCalculationsResponse {
     finalized_at: string | null;
     created_at: string;
     updated_at: string;
+    user_email?: string | null;
+    user_name?: string | null;
     inputs: Array<{
       id: string;
       category: string;
@@ -53,6 +57,7 @@ export async function listFootprintCalculations(
   const filters: {
     status?: CalculationStatus;
     profile_type?: ProfileType;
+    user_email?: string;
     limit?: number;
     offset?: number;
   } = {};
@@ -63,10 +68,18 @@ export async function listFootprintCalculations(
   if (request.profile_type) {
     filters.profile_type = request.profile_type as ProfileType;
   }
+  if (request.is_admin && request.user_email) {
+    const trimmed = request.user_email.trim();
+    if (trimmed.length > 0) {
+      filters.user_email = trimmed;
+    }
+  }
   filters.limit = request.limit || 50;
   filters.offset = request.offset || 0;
 
-  const calculations = await deps.calculationRepository.findByUserId(request.user_id, filters);
+  const calculations = request.is_admin
+    ? await deps.calculationRepository.findAll(filters)
+    : await deps.calculationRepository.findByUserId(request.user_id, filters);
 
   return {
     calculations: calculations.map((c) => ({
@@ -83,6 +96,8 @@ export async function listFootprintCalculations(
       finalized_at: c.finalized_at ? c.finalized_at.toISOString() : null,
       created_at: c.created_at.toISOString(),
       updated_at: c.updated_at.toISOString(),
+      user_email: c.user_email ?? null,
+      user_name: c.user_name ?? null,
       inputs: [],
       breakdown: []
     }))

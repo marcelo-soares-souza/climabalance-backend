@@ -2,6 +2,11 @@ import type { FootprintCalculation } from '../entities/footprint-calculation';
 import type { ProfileType } from '../value-objects/profile-type';
 import type { CalculationStatus } from '../value-objects/calculation-status';
 
+export type FootprintCalculationWithUser = FootprintCalculation & {
+  user_email?: string | null;
+  user_name?: string | null;
+};
+
 /**
  * Footprint Calculation Repository interface
  */
@@ -32,7 +37,23 @@ export interface FootprintCalculationRepository {
       limit?: number;
       offset?: number;
     }
-  ): Promise<FootprintCalculation[]>;
+  ): Promise<FootprintCalculationWithUser[]>;
+
+  /**
+   * Find calculations with optional filters (admin)
+   */
+  findAll(filters?: {
+    status?: CalculationStatus;
+    profile_type?: ProfileType;
+    user_email?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<FootprintCalculationWithUser[]>;
+
+  /**
+   * Find calculation by ID including user identification
+   */
+  findByIdWithUser(id: string): Promise<FootprintCalculationWithUser | null>;
 
   /**
    * Soft delete a calculation
