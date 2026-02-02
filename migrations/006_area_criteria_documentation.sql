@@ -1,0 +1,161 @@
+-- =========================
+-- Migration 006: Area Criteria Documentation
+-- Created: 2026-02-02
+-- Description: Documents standard socio-environmental criteria (idempotent - documentation only)
+-- =========================
+
+-- =========================
+-- This migration is documentation-only and defines the standard
+-- criteria keys used when auditing reforestation areas.
+--
+-- Criteria are added dynamically during the audit process via the API.
+-- =========================
+
+-- =========================
+-- Standard Criterion Keys
+-- =========================
+
+-- LEGAL & REGULATORY
+-- -------------------
+-- legal_documentation
+--   Label: Documentação legal da propriedade completa e atualizada
+--   Description: Certidão de propriedade, matrícula do imóvel, contratos de arrendamento
+--
+-- environmental_license
+--   Label: Licenças ambientais válidas e em vigor
+--   Description: Licença de operação, autorização de supressão (se aplicável)
+--
+-- land_ownership
+--   Label: Comprovação de propriedade ou direito de uso da terra
+--   Description: Documentação que comprove posse legal ou direito de uso
+--
+-- regularization_car
+--   Label: Cadastro Ambiental Rural (CAR) regularizado
+--   Description: CAR ativo e validado pelos órgãos ambientais
+
+-- ENVIRONMENTAL
+-- -------------
+-- no_recent_deforestation
+--   Label: Sem desmatamento recente (últimos 5 anos)
+--   Description: Análise de imagens de satélite e documentação comprobatória
+--
+-- native_species
+--   Label: Uso exclusivo de espécies nativas do bioma
+--   Description: Lista de espécies plantadas compatível com o bioma local
+--
+-- biodiversity_plan
+--   Label: Plano de conservação da biodiversidade
+--   Description: Estratégias para proteção de fauna e flora nativa
+--
+-- water_conservation
+--   Label: Práticas de conservação de recursos hídricos
+--   Description: Proteção de nascentes, cursos d'água e áreas de preservação permanente
+--
+-- soil_conservation
+--   Label: Práticas de conservação do solo
+--   Description: Técnicas de manejo que evitam erosão e degradação
+--
+-- pest_management
+--   Label: Manejo integrado de pragas (sem agrotóxicos proibidos)
+--   Description: Uso responsável de defensivos, preferência por controle biológico
+
+-- SOCIAL
+-- ------
+-- social_impact
+--   Label: Impacto social positivo na comunidade local
+--   Description: Geração de empregos, capacitação, benefícios à comunidade
+--
+-- labor_compliance
+--   Label: Conformidade com legislação trabalhista
+--   Description: Carteira assinada, condições de trabalho adequadas, sem trabalho infantil
+--
+-- community_engagement
+--   Label: Engajamento com comunidade local
+--   Description: Diálogo, consultas, parcerias com comunidade do entorno
+--
+-- traditional_rights
+--   Label: Respeito a direitos de comunidades tradicionais
+--   Description: Respeito a terras indígenas, quilombolas e outras comunidades tradicionais
+
+-- MONITORING & GOVERNANCE
+-- ------------------------
+-- monitoring_plan
+--   Label: Plano de monitoramento técnico estabelecido
+--   Description: Protocolos de medição, frequência de avaliações, responsáveis
+--
+-- reporting_commitment
+--   Label: Compromisso de reportar dados periodicamente
+--   Description: Relatórios anuais de crescimento, sobrevivência de mudas, sequestro de carbono
+--
+-- technical_capacity
+--   Label: Capacidade técnica para execução do projeto
+--   Description: Equipe qualificada, consultoria técnica, experiência em reflorestamento
+--
+-- financial_viability
+--   Label: Viabilidade financeira demonstrada
+--   Description: Plano de negócio, fontes de financiamento, sustentabilidade econômica
+
+-- CARBON ACCOUNTING
+-- ------------------
+-- carbon_methodology
+--   Label: Metodologia de cálculo de sequestro validada
+--   Description: Uso de metodologia reconhecida (ex: IPCC, VCS, Gold Standard)
+--
+-- baseline_established
+--   Label: Linha de base de carbono estabelecida
+--   Description: Medição inicial do carbono no solo e vegetação antes do projeto
+--
+-- additionality
+--   Label: Demonstração de adicionalidade do projeto
+--   Description: Comprovação de que o sequestro não ocorreria sem o projeto
+--
+-- permanence_plan
+--   Label: Plano de permanência (mínimo 20 anos)
+--   Description: Compromisso de manutenção da floresta por período determinado
+
+-- =========================
+-- Example: How analysts use criteria
+-- =========================
+
+-- When approving an area, analysts POST to /api/v1/areas/:id/approve with:
+--
+-- {
+--   "criteria": [
+--     {
+--       "criterion_key": "legal_documentation",
+--       "criterion_label": "Documentação legal da propriedade",
+--       "met": true,
+--       "notes": "Documentação completa e verificada"
+--     },
+--     {
+--       "criterion_key": "native_species",
+--       "criterion_label": "Uso de espécies nativas do bioma",
+--       "met": true,
+--       "notes": "Lista de espécies compatível com Cerrado"
+--     },
+--     {
+--       "criterion_key": "monitoring_plan",
+--       "criterion_label": "Plano de monitoramento estabelecido",
+--       "met": true
+--     }
+--   ],
+--   "notes": "Área aprovada após análise completa. Todos critérios essenciais atendidos."
+-- }
+
+-- =========================
+-- Audit Approval Threshold
+-- =========================
+
+-- For MVP, we require ALL provided criteria to be met (met = TRUE) for approval.
+-- The system validates this in AreaAuditService.approveArea()
+--
+-- Future enhancements could include:
+-- - Weighted criteria (some more important than others)
+-- - Minimum score/percentage threshold
+-- - Required vs optional criteria
+-- - Conditional criteria based on biome or project type
+
+-- =========================
+-- This is a documentation-only migration
+-- No database changes are made
+-- =========================

@@ -1,0 +1,69 @@
+-- =========================
+-- Migration 006: Area Criteria Templates (Documentation)
+-- Created: 2026-02-01
+-- Description: Documents standard socio-environmental criteria used in area audits
+-- =========================
+
+-- =========================
+-- Standard Criteria Keys Used in the System
+-- =========================
+
+-- For now, criteria are added dynamically during the audit process.
+-- This migration serves as documentation for the standard criteria keys.
+
+-- Future enhancement: Create a criteria_templates table if needed for
+-- predefined criteria with descriptions and validation rules.
+
+-- =========================
+-- Common Criterion Keys:
+-- =========================
+
+-- LEGAL & REGULATORY
+-- - legal_documentation: Documentação legal da propriedade completa e atualizada
+-- - environmental_license: Licenças ambientais válidas e em vigor
+-- - land_ownership: Comprovação de propriedade ou direito de uso da terra
+-- - regularization_car: Cadastro Ambiental Rural (CAR) regularizado
+
+-- ENVIRONMENTAL
+-- - no_recent_deforestation: Sem desmatamento recente (últimos 5 anos)
+-- - native_species: Uso exclusivo de espécies nativas do bioma
+-- - biodiversity_plan: Plano de conservação da biodiversidade
+-- - water_conservation: Práticas de conservação de recursos hídricos
+-- - soil_conservation: Práticas de conservação do solo
+-- - pest_management: Manejo integrado de pragas (sem agrotóxicos proibidos)
+
+-- SOCIAL
+-- - social_impact: Impacto social positivo na comunidade local
+-- - labor_compliance: Conformidade com legislação trabalhista
+-- - community_engagement: Engajamento com comunidade local
+-- - traditional_rights: Respeito a direitos de comunidades tradicionais
+
+-- MONITORING & GOVERNANCE
+-- - monitoring_plan: Plano de monitoramento técnico estabelecido
+-- - reporting_commitment: Compromisso de reportar dados periodicamente
+-- - technical_capacity: Capacidade técnica para execução do projeto
+-- - financial_viability: Viabilidade financeira demonstrada
+
+-- CARBON ACCOUNTING
+-- - carbon_methodology: Metodologia de cálculo de sequestro validada
+-- - baseline_established: Linha de base de carbono estabelecida
+-- - additionality: Demonstração de adicionalidade do projeto
+-- - permanence_plan: Plano de permanência (mínimo 20 anos)
+
+-- =========================
+-- Usage Example:
+-- =========================
+
+-- When an analyst approves an area, they provide criteria:
+-- INSERT INTO area_criteria (id, area_id, criterion_key, criterion_label, met, notes)
+-- VALUES
+--   (gen_uuid(), 'area-123', 'legal_documentation', 'Documentação legal da propriedade', TRUE, 'Documentação completa verificada'),
+--   (gen_uuid(), 'area-123', 'native_species', 'Uso de espécies nativas do bioma', TRUE, 'Espécies compatíveis com Cerrado'),
+--   (gen_uuid(), 'area-123', 'monitoring_plan', 'Plano de monitoramento estabelecido', TRUE, 'Plano validado por técnico');
+
+-- =========================
+-- Audit Approval Threshold
+-- =========================
+
+-- For MVP, we require ALL provided criteria to be met (met = TRUE) for approval.
+-- Future: Could implement weighted criteria or minimum thresholds.

@@ -1,0 +1,133 @@
+-- =========================
+-- Migration 005: Update Areas Schema for MVP
+-- Created: 2026-02-01
+-- Description: Updates existing areas table to support simplified point-based location model
+-- =========================
+
+-- =========================
+-- 1. Rename/Add columns
+-- =========================
+
+-- Rename producer_id to owner_user_id for consistency
+ALTER TABLE areas RENAME COLUMN producer_id TO owner_user_id;
+
+-- Rename area_name to name for simplicity
+ALTER TABLE areas RENAME COLUMN area_name TO name;
+
+-- =========================
+-- 2. Add audit workflow columns
+-- =========================
+
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS audit_status VARCHAR(30);
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS audit_notes TEXT;
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS audited_by_user_id VARCHAR(36);
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS audited_at TIMESTAMP;
+
+-- Add FK for audited_by
+ALTER TABLE areas
+  DROP CONSTRAINT IF EXISTS areas_audited_by_user_id_fkey;
+
+ALTER TABLE areas
+  ADD CONSTRAINT areas_audited_by_user_id_fkey
+  FOREIGN KEY (audited_by_user_id) REFERENCES users(id);
+
+-- =========================
+-- 3. Add carbon capacity columns
+-- =========================
+
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS total_capacity_t_co2e DECIMAL(18, 6);
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS committed_t_co2e DECIMAL(18, 6) DEFAULT 0;
+ALTER TABLE areas ADD COLUMN IF NOT EXISTS t_co2e_per_tree_per_year DECIMAL(10, 6);
+
+-- =========================
+-- 4. Update status constraint to match new workflow
+-- =========================
+
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS areas_status_check;
+
+ALTER TABLE areas ADD CONSTRAINT check_status
+  CHECK (status IN ('draft', 'pending_audit', 'approved', 'active', 'rejected', 'suspended'));
+
+-- Add audit_status constraint
+ALTER TABLE areas ADD CONSTRAINT check_audit_status
+  CHECK (audit_status IS NULL OR audit_status IN ('pending', 'approved', 'rejected'));
+
+-- =========================
+-- 5. Add capacity validation constraints
+-- =========================
+
+ALTER TABLE areas ADD CONSTRAINT check_capacity
+  CHECK (total_capacity_t_co2e IS NULL OR total_capacity_t_co2e >= 0);
+
+ALTER TABLE areas ADD CONSTRAINT check_committed
+  CHECK (committed_t_co2e >= 0);
+
+-- =========================
+-- 6. Improve coordinate precision
+-- =========================
+
+-- Current: NUMERIC(9,6) - allows 999.999999 (wrong range for latitude)
+-- Update to: DECIMAL(10,8) for latitude, DECIMAL(11,8) for longitude
+
+ALTER TABLE areas ALTER COLUMN latitude TYPE DECIMAL(10, 8);
+ALTER TABLE areas ALTER COLUMN longitude TYPE DECIMAL(11, 8);
+
+-- Add coordinate range constraints
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS check_latitude;
+ALTER TABLE areas DROP CONSTRAINT IF EXISTS check_longitude;
+
+ALTER TABLE areas ADD CONSTRAINT check_latitude
+  CHECK (latitude >= -90 AND latitude <= 90);
+
+ALTER TABLE areas ADD CONSTRAINT check_longitude
+  CHECK (longitude >= -180 AND longitude <= 180);
+
+-- =========================
+-- 7. Update/Create indexes
+-- =========================
+
+-- Index on audit status
+CREATE INDEX IF NOT EXISTS idx_areas_audit_status ON areas(audit_status);
+
+-- =========================
+-- 8. Create/Update view for available areas
+-- =========================
+
+DROP VIEW IF EXISTS available_areas;
+
+CREATE OR REPLACE VIEW available_areas AS
+SELECT
+  a.*,
+  (COALESCE(a.total_capacity_t_co2e, 0) - COALESCE(a.committed_t_co2e, 0)) AS available_t_co2e
+FROM areas a
+WHERE a.status = 'active'
+  AND a.deleted_at IS NULL
+  AND (COALESCE(a.total_capacity_t_co2e, 0) - COALESCE(a.committed_t_co2e, 0)) > 0;
+
+-- =========================
+-- 9. Update existing data to new status values
+-- =========================
+
+-- Map old status values to new ones
+UPDATE areas SET status = 'pending_audit' WHERE status = 'submitted';
+UPDATE areas SET status = 'pending_audit' WHERE status = 'in_review';
+UPDATE areas SET status = 'draft' WHERE status = 'needs_info';
+-- 'approved', 'rejected', 'suspended' stay the same
+
+-- Set default committed_t_co2e for existing rows
+UPDATE areas SET committed_t_co2e = 0 WHERE committed_t_co2e IS NULL;
+
+-- =========================
+-- 10. Update comments
+-- =========================
+
+COMMENT ON TABLE areas IS 'Stores reforestation areas/projects with point-based locations (updated for MVP)';
+COMMENT ON COLUMN areas.owner_user_id IS 'User who owns/manages this area (formerly producer_id)';
+COMMENT ON COLUMN areas.name IS 'Area/project name (formerly area_name)';
+COMMENT ON COLUMN areas.latitude IS 'Latitude in decimal degrees (WGS84), range: -90 to 90, precision: 8 decimals';
+COMMENT ON COLUMN areas.longitude IS 'Longitude in decimal degrees (WGS84), range: -180 to 180, precision: 8 decimals';
+COMMENT ON COLUMN areas.status IS 'Area workflow status: draft → pending_audit → approved → active (or rejected/suspended)';
+COMMENT ON COLUMN areas.audit_status IS 'Audit-specific status: pending | approved | rejected';
+COMMENT ON COLUMN areas.total_capacity_t_co2e IS 'Maximum carbon sequestration capacity in tonnes CO2 equivalent';
+COMMENT ON COLUMN areas.committed_t_co2e IS 'Amount of capacity already allocated to compensations';
+COMMENT ON COLUMN areas.t_co2e_per_tree_per_year IS 'Carbon sequestration rate per tree per year (tCO2e)';

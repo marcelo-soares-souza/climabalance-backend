@@ -10,6 +10,7 @@ import { PostgresFootprintInputRepository } from './infrastructure/persistence/p
 import { PostgresFootprintBreakdownRepository } from './infrastructure/persistence/postgres/footprint-breakdown-repository';
 import { PostgresCompensationProjectionRepository } from './infrastructure/persistence/postgres/compensation-projection-repository';
 import { PostgresAreaRepository } from './infrastructure/persistence/postgres/area-repository';
+import { PostgresAreaCriteriaRepository } from './infrastructure/persistence/postgres/area-criteria-repository';
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
@@ -53,7 +54,8 @@ const emissionFactorRepository = new PostgresEmissionFactorRepository();
 const footprintInputRepository = new PostgresFootprintInputRepository();
 const footprintBreakdownRepository = new PostgresFootprintBreakdownRepository();
 const compensationProjectionRepository = new PostgresCompensationProjectionRepository();
-const areaRepository = new PostgresAreaRepository();
+const areaRepository = new PostgresAreaRepository(pgPool);
+const areaCriteriaRepository = new PostgresAreaCriteriaRepository(pgPool);
 const unitOfWork = new PostgresUnitOfWork(pgPool);
 logger.debug('startup.repositories.initialized');
 
@@ -108,6 +110,8 @@ const router = buildRouter({
   breakdownRepository: footprintBreakdownRepository,
   projectionRepository: compensationProjectionRepository,
   areaRepository: areaRepository,
+  areaCriteriaRepository: areaCriteriaRepository,
+  auditLog: auditLogRepository,
   passwordHasher: bunPasswordHasher,
   emailSender,
   unitOfWork,
