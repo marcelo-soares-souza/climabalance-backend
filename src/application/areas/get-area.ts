@@ -1,5 +1,6 @@
 import { AreaRepository } from '../../domain/areas/repositories/area-repository';
 import { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
+import { ForbiddenError, NotFoundError } from '../../domain/errors';
 
 export interface GetAreaResponse {
   id: string;
@@ -32,28 +33,30 @@ export interface GetAreaResponse {
 
 export interface GetAreaDeps {
   areaRepository: AreaRepository;
-  criteriaRepository: AreaCriteriaRepository;
+  areaCriteriaRepository: AreaCriteriaRepository;
 }
 
 export async function getArea(
   deps: GetAreaDeps,
   areaId: string,
-  userId: string
+  userId?: string
 ): Promise<GetAreaResponse> {
   const area = await deps.areaRepository.findById(areaId);
 
   if (!area) {
-    throw new Error('Area not found');
+    throw new NotFoundError('area.not_found');
   }
 
   // Authorization check (owner, or public if active)
-  if (area.ownerUserId !== userId && !area.isActive()) {
-    throw new Error('Access denied');
+  if (!area.isActive()) {
+    if (!userId || area.ownerUserId !== userId) {
+      throw new ForbiddenError('area.not_owner');
+    }
   }
 
   // Load criteria if area has been audited
   const criteria = area.auditStatus
-    ? await deps.criteriaRepository.findByAreaId(areaId)
+    ? await deps.areaCriteriaRepository.findByAreaId(areaId)
     : [];
 
   return {

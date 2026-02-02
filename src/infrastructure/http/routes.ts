@@ -4,7 +4,7 @@ import { createAuditHandlers } from './audit-handlers';
 import { createUserHandlers } from './user-handlers';
 import { createFootprintHandlers } from './footprint-handlers';
 import { createAreaHandlers } from './area-handlers';
-import { withAuth } from './auth';
+import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
 import type { UserHandlersDeps } from './user-handlers';
@@ -63,7 +63,7 @@ export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps & AuditHan
 
   // Area routes (CRUD)
   router.add('POST', '/api/v1/areas', withAuth((ctx) => areaHandlers.create(ctx), { roles: ['producer', 'administrator'] }));
-  router.add('GET', '/api/v1/areas/:id', withAuth((ctx) => areaHandlers.get(ctx, ctx.params.id)));
+  router.add('GET', '/api/v1/areas/:id', withOptionalAuth((ctx) => areaHandlers.get(ctx, ctx.params.id)));
   router.add('PATCH', '/api/v1/areas/:id', withAuth((ctx) => areaHandlers.update(ctx, ctx.params.id)));
   router.add('DELETE', '/api/v1/areas/:id', withAuth((ctx) => areaHandlers.remove(ctx, ctx.params.id)));
   router.add('GET', '/api/v1/areas', withAuth((ctx) => areaHandlers.list(ctx)));

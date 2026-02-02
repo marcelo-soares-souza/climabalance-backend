@@ -42,3 +42,23 @@ export function withAuth(handler: Handler, options?: { roles?: string[] }): Hand
     return handler(ctx);
   };
 }
+
+export function withOptionalAuth(handler: Handler): Handler {
+  return async (ctx: HttpContext) => {
+    const logContext = buildLogContext(ctx);
+    const log = getLogger(logContext);
+    const token = getToken(ctx.request);
+    if (!token) {
+      return handler(ctx);
+    }
+
+    const payload = await verifyJwt(token, env.jwtSecret);
+    if (!payload) {
+      log.warn('auth.invalid_token');
+      return errorResponse(401, 'auth.invalid', undefined, logContext);
+    }
+
+    ctx.auth = { userId: payload.sub, roles: payload.roles };
+    return handler(ctx);
+  };
+}
