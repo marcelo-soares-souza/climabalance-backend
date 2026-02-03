@@ -38,12 +38,37 @@ export type UpdateAreaRequest = z.infer<typeof updateAreaSchema>;
 /**
  * Schema for area criterion in approval
  */
-export const areaCriterionSchema = z.object({
-  criterionKey: z.string().min(1).max(100),
-  criterionLabel: z.string().min(1).max(200),
-  met: z.boolean(),
-  notes: z.string().max(1000).optional(),
-});
+export const areaCriterionSchema = z
+  .union([
+    z.object({
+      criterionKey: z.string().min(1).max(100),
+      criterionLabel: z.string().min(1).max(200),
+      met: z.boolean(),
+      notes: z.string().max(1000).optional().nullable(),
+    }),
+    z.object({
+      criterion_key: z.string().min(1).max(100),
+      criterion_label: z.string().min(1).max(200),
+      met: z.boolean(),
+      notes: z.string().max(1000).optional().nullable(),
+    }),
+  ])
+  .transform((value) => {
+    if ('criterionKey' in value) {
+      return {
+        criterionKey: value.criterionKey,
+        criterionLabel: value.criterionLabel,
+        met: value.met,
+        notes: value.notes ?? undefined,
+      };
+    }
+    return {
+      criterionKey: value.criterion_key,
+      criterionLabel: value.criterion_label,
+      met: value.met,
+      notes: value.notes ?? undefined,
+    };
+  });
 
 /**
  * Schema for approving an area with criteria

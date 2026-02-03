@@ -117,8 +117,13 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     let query = `
-      SELECT * FROM available_areas
-      WHERE 1=1
+      SELECT * FROM areas
+      WHERE deleted_at IS NULL
+        AND status = 'active'
+        AND (
+          total_capacity_t_co2e IS NULL
+          OR (COALESCE(total_capacity_t_co2e, 0) - COALESCE(committed_t_co2e, 0)) > 0
+        )
     `;
     const params: any[] = [];
     let paramIndex = 1;
