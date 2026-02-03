@@ -4,12 +4,14 @@ import { createAuditHandlers } from './audit-handlers';
 import { createUserHandlers } from './user-handlers';
 import { createFootprintHandlers } from './footprint-handlers';
 import { createAreaHandlers } from './area-handlers';
+import { createUpdateHandlers } from './update-handlers';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
 import type { UserHandlersDeps } from './user-handlers';
 import type { FootprintHandlersDeps } from './footprint-handlers';
 import type { AreaHandlersDeps } from './area-handlers';
+import type { UpdateHandlersDeps } from './update-handlers';
 import { errorResponse } from '../../shared/http/response';
 import { buildLogContext } from '../../shared/http/log-context';
 
@@ -24,13 +26,14 @@ function withAuthOrSelf(handler: Handler): Handler {
   });
 }
 
-export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps & AuditHandlersDeps & FootprintHandlersDeps & AreaHandlersDeps): Router {
+export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps & AuditHandlersDeps & FootprintHandlersDeps & AreaHandlersDeps & UpdateHandlersDeps): Router {
   const router = new Router();
   const authHandlers = createAuthHandlers(deps);
   const auditHandlers = createAuditHandlers(deps);
   const userHandlers = createUserHandlers(deps);
   const footprintHandlers = createFootprintHandlers(deps);
   const areaHandlers = createAreaHandlers(deps);
+  const updateHandlers = createUpdateHandlers(deps);
 
   // Auth routes
   router.add('POST', '/api/v1/auth/register', (ctx) => authHandlers.register(ctx));
@@ -80,6 +83,11 @@ export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps & AuditHan
 
   // Public map route (no auth required)
   router.add('GET', '/api/v1/map/areas', (ctx) => areaHandlers.getForMap(ctx));
+
+  // Update/Version routes (public for frontend version checking)
+  router.add('GET', '/api/v1/updates/version', (ctx) => updateHandlers.getVersion(ctx));
+  router.add('GET', '/api/v1/updates/stream', (ctx) => updateHandlers.streamUpdates(ctx));
+  router.add('POST', '/api/v1/updates/notify', withAuth((ctx) => updateHandlers.notifyUpdate(ctx), { roles: ['administrator'] }));
 
   return router;
 }
