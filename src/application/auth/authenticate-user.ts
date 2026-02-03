@@ -15,6 +15,7 @@ export type AuthenticateInput = {
 };
 
 export type AuthenticateResult = {
+  userId: string;
   accessToken: string;
   tokenType: 'Bearer';
   expiresIn: number;
@@ -60,6 +61,7 @@ export async function authenticateUser(
   const accessToken = await deps.jwtService.sign(payload, deps.config.jwtSecret);
 
   return {
+    userId: user.id,
     accessToken,
     tokenType: 'Bearer',
     expiresIn: deps.config.jwtTtlSeconds

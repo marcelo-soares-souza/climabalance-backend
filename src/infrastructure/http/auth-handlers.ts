@@ -36,6 +36,15 @@ export type AuthHandlersDeps = {
   users: UserRepository;
   confirmations: EmailConfirmationRepository;
   passwordResets: PasswordResetRepository;
+  auditLog: {
+    log(entry: {
+      actorUserId: string;
+      action: string;
+      entityType: string;
+      entityId: string;
+      metadata?: Record<string, any>;
+    }): Promise<void>;
+  };
   passwordHasher: PasswordHasher;
   emailSender: EmailSender;
   unitOfWork: UnitOfWork;
@@ -107,7 +116,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         const validated = parseWithSchema(loginSchema, body);
 
         log.debug('auth.login.attempt', { email: validated.email });
-        const token = await authenticateUser(
+        const { userId, ...token } = await authenticateUser(
           { email: validated.email, password: validated.password },
           {
             users: deps.users,
@@ -117,6 +126,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             config: deps.config
           }
         );
+
+        await deps.auditLog.log({
+          actorUserId: userId,
+          action: 'user.login',
+          entityType: 'user',
+          entityId: userId
+        });
 
         log.info('auth.login.success', { email: validated.email });
         return jsonResponse(200, { data: token }, logContext);
