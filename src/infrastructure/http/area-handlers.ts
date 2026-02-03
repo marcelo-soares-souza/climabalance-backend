@@ -78,6 +78,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             unitOfWork: deps.unitOfWork,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
+            auditLog: deps.auditLog,
           },
           {
             ownerUserId: ctx.auth!.userId,

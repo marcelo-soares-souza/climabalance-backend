@@ -17,6 +17,31 @@ function mapAuditLog(row: Record<string, unknown>): AuditLogEntry {
 export class PostgresAuditLogRepository implements AuditLogRepository {
   constructor(private db: Pool | PoolClient = pgPool) {}
 
+  async log(entry: {
+    actorUserId: string;
+    action: string;
+    entityType: string;
+    entityId: string;
+    metadata?: Record<string, any>;
+  }): Promise<void> {
+    const reason =
+      entry.metadata?.reason !== undefined
+        ? String(entry.metadata.reason)
+        : entry.metadata
+          ? JSON.stringify(entry.metadata)
+          : null;
+
+    await this.create({
+      id: crypto.randomUUID(),
+      actorUserId: entry.actorUserId ?? null,
+      action: entry.action,
+      entityType: entry.entityType,
+      entityId: entry.entityId ?? null,
+      reason,
+      createdAt: new Date()
+    });
+  }
+
   async create(entry: AuditLogEntry): Promise<void> {
     await this.db.query(
       `INSERT INTO audit_log (
