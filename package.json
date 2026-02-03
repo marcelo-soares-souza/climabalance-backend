@@ -8,6 +8,7 @@
     "typecheck": "bun x tsc --noEmit",
     "db:create": "bun src/scripts/create-db.ts",
     "seed:admin": "bun src/scripts/seed-admin.ts",
+    "seed:roles": "bun src/scripts/seed-roles.ts",
     "seed:map": "bun src/scripts/seed-map-areas.ts",
     "migrate": "bun src/scripts/migrate.ts",
     "test": "bun test"

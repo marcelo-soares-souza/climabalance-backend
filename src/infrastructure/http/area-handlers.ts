@@ -112,7 +112,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             areaCriteriaRepository: deps.areaCriteriaRepository,
           },
           id,
-          ctx.auth?.userId
+          ctx.auth?.userId,
+          ctx.auth?.roles
         );
 
         return jsonResponse(200, { data: result }, logContext);

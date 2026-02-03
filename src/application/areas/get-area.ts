@@ -39,7 +39,8 @@ export interface GetAreaDeps {
 export async function getArea(
   deps: GetAreaDeps,
   areaId: string,
-  userId?: string
+  userId?: string,
+  roles?: string[]
 ): Promise<GetAreaResponse> {
   const area = await deps.areaRepository.findById(areaId);
 
@@ -49,7 +50,8 @@ export async function getArea(
 
   // Authorization check (owner, or public if active)
   if (!area.isActive()) {
-    if (!userId || area.ownerUserId !== userId) {
+    const isPrivileged = roles?.includes('administrator') || roles?.includes('analyst');
+    if (!isPrivileged && (!userId || area.ownerUserId !== userId)) {
       throw new ForbiddenError('area.not_owner');
     }
   }
