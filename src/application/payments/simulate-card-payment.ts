@@ -1,5 +1,11 @@
 import { ForbiddenError, NotFoundError, ValidationError } from '../../domain/errors';
+import type { PaymentGatewayAdapter } from './payment-gateway';
+import { mapGatewayOutcomeToPaymentStatus } from './payment-status';
+import type { PaymentStore } from './payment-store';
 
+/**
+ * Input payload for simulating a credit-card payment.
+ */
 export type SimulateCardPaymentInput = {
   actorUserId: string;
   actorRoles: string[];
@@ -12,6 +18,9 @@ export type SimulateCardPaymentInput = {
   installments: number;
 };
 
+/**
+ * Payment simulator outcomes mirrored from gateway behavior.
+ */
 export type CardSimulationOutcome =
   | 'authorized'
   | 'declined'
@@ -19,10 +28,13 @@ export type CardSimulationOutcome =
   | 'timeout'
   | 'canceled';
 
+/**
+ * Result returned after simulation and local state synchronization.
+ */
 export type SimulateCardPaymentResult = {
   paymentId: string;
   compensationId: string;
-  provider: 'card_simulator';
+  provider: string;
   providerReference: string;
   simulationStatus: CardSimulationOutcome;
   paymentStatus: 'pending' | 'paid' | 'failed';
@@ -30,49 +42,16 @@ export type SimulateCardPaymentResult = {
   currency: string;
   installments: number;
   processedAt: Date;
-  compensationStatus: 'pending' | 'paid';
+  compensationStatus: 'pending' | 'paid' | 'canceled' | 'refunded';
 };
 
-export type PaymentCompensationSnapshot = {
-  id: string;
-  supporterUserId: string;
-  totalAmount: number;
-  currency: string;
-  status: 'pending' | 'paid' | 'canceled' | 'refunded';
-};
-
-export type PaymentCreateRecord = {
-  id: string;
-  compensationId: string;
-  provider: string;
-  providerReference: string;
-  amount: number;
-  currency: string;
-  status: 'pending' | 'paid' | 'failed';
-  paidAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export interface PaymentSimulationTransaction {
-  lockCompensation(compensationId: string): Promise<PaymentCompensationSnapshot | null>;
-  insertPayment(record: PaymentCreateRecord): Promise<void>;
-  updateCompensationStatus(
-    compensationId: string,
-    status: 'paid',
-    updatedAt: Date
-  ): Promise<void>;
-}
-
-export interface PaymentSimulationStore {
-  runInTransaction<T>(
-    work: (tx: PaymentSimulationTransaction) => Promise<T>
-  ): Promise<T>;
-}
-
+/**
+ * Simulates a card payment and synchronizes payment/compensation status atomically.
+ */
 export async function simulateCardPayment(
   deps: {
-    store: PaymentSimulationStore;
+    store: PaymentStore;
+    paymentGateway: PaymentGatewayAdapter;
     idGenerator: { generate(): string };
     clock: { now(): Date };
     auditLog: {
@@ -111,44 +90,67 @@ export async function simulateCardPayment(
       ]);
     }
 
-    const simulationStatus = resolveSimulationOutcome(normalizedCardNumber);
-    const paymentStatus = mapSimulationToPaymentStatus(simulationStatus);
-    const providerReference = buildProviderReference({
-      simulationStatus,
+    const gatewayResult = await deps.paymentGateway.createCharge({
+      paymentId,
+      compensationId: compensation.id,
+      amount: compensation.totalAmount,
+      currency: compensation.currency,
       cardNumber: normalizedCardNumber,
-      now,
+      cardholderName: input.cardholderName,
+      expirationMonth: input.expirationMonth,
+      expirationYear: input.expirationYear,
+      cvv: normalizeDigits(input.cvv),
+      installments: input.installments,
     });
+
+    const paymentStatus = mapGatewayOutcomeToPaymentStatus(gatewayResult.outcome);
 
     await tx.insertPayment({
       id: paymentId,
       compensationId: compensation.id,
-      provider: 'card_simulator',
-      providerReference,
+      provider: gatewayResult.provider,
+      providerReference: gatewayResult.providerReference,
       amount: compensation.totalAmount,
       currency: compensation.currency,
       status: paymentStatus,
-      paidAt: paymentStatus === 'paid' ? now : undefined,
+      paidAt: paymentStatus === 'paid' ? gatewayResult.processedAt : undefined,
       createdAt: now,
       updatedAt: now,
     });
 
-    let compensationStatus: 'pending' | 'paid' = 'pending';
+    let compensationStatus: 'pending' | 'paid' | 'canceled' | 'refunded' =
+      compensation.status;
     if (paymentStatus === 'paid') {
-      await tx.updateCompensationStatus(compensation.id, 'paid', now);
+      await tx.updateCompensationStatus({
+        compensationId: compensation.id,
+        status: 'paid',
+        updatedAt: now,
+      });
       compensationStatus = 'paid';
+    } else if (paymentStatus === 'failed' && compensation.status === 'pending') {
+      await tx.updateCompensationStatus({
+        compensationId: compensation.id,
+        status: 'canceled',
+        updatedAt: now,
+      });
+      await tx.releaseAreaCommitmentForCompensation({
+        compensationId: compensation.id,
+        updatedAt: now,
+      });
+      compensationStatus = 'canceled';
     }
 
     return {
       paymentId,
       compensationId: compensation.id,
-      provider: 'card_simulator' as const,
-      providerReference,
-      simulationStatus,
+      provider: gatewayResult.provider,
+      providerReference: gatewayResult.providerReference,
+      simulationStatus: gatewayResult.outcome,
       paymentStatus,
       amount: compensation.totalAmount,
       currency: compensation.currency,
       installments: input.installments,
-      processedAt: now,
+      processedAt: gatewayResult.processedAt,
       compensationStatus,
     };
   });
@@ -174,6 +176,9 @@ export async function simulateCardPayment(
   return result;
 }
 
+/**
+ * Validates simulation payload rules before touching persistence/gateway.
+ */
 function validateInput(input: SimulateCardPaymentInput): void {
   const errors: Array<{ field: string; message: string }> = [];
   const cardNumber = normalizeDigits(input.cardNumber);
@@ -213,47 +218,9 @@ function validateInput(input: SimulateCardPaymentInput): void {
   }
 }
 
+/**
+ * Keeps only numeric digits from card and CVV inputs.
+ */
 function normalizeDigits(value: string): string {
   return value.replace(/\D/g, '');
-}
-
-function resolveSimulationOutcome(cardNumber: string): CardSimulationOutcome {
-  switch (cardNumber) {
-    case '4111111111111111':
-      return 'authorized';
-    case '4000000000000002':
-      return 'declined';
-    case '4000000000000101':
-      return 'in_review';
-    case '4000000000009995':
-      return 'timeout';
-    case '4000000000009987':
-      return 'canceled';
-    default:
-      return 'authorized';
-  }
-}
-
-function mapSimulationToPaymentStatus(
-  outcome: CardSimulationOutcome
-): 'pending' | 'paid' | 'failed' {
-  switch (outcome) {
-    case 'authorized':
-      return 'paid';
-    case 'declined':
-    case 'canceled':
-      return 'failed';
-    case 'in_review':
-    case 'timeout':
-      return 'pending';
-  }
-}
-
-function buildProviderReference(input: {
-  simulationStatus: CardSimulationOutcome;
-  cardNumber: string;
-  now: Date;
-}): string {
-  const suffix = input.cardNumber.slice(-4);
-  return `sim_${input.simulationStatus}_${suffix}_${input.now.getTime()}`;
 }

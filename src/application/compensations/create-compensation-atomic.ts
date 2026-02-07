@@ -1,5 +1,8 @@
 import { NotFoundError, ValidationError } from '../../domain/errors';
 
+/**
+ * Input required to atomically create a pending compensation.
+ */
 export type CreateCompensationAtomicInput = {
   supporterUserId: string;
   areaId: string;
@@ -15,6 +18,9 @@ export type CreateCompensationAtomicInput = {
   treesCount: number;
 };
 
+/**
+ * Result returned after successful atomic compensation creation.
+ */
 export type CreateCompensationAtomicResult = {
   compensationId: string;
   areaId: string;
@@ -30,6 +36,9 @@ export type CreateCompensationAtomicResult = {
   createdAt: Date;
 };
 
+/**
+ * Area stock snapshot locked during compensation creation.
+ */
 export type CompensationAreaSnapshot = {
   id: string;
   status: string;
@@ -37,6 +46,9 @@ export type CompensationAreaSnapshot = {
   committedTCO2e: number;
 };
 
+/**
+ * Persistence record used when inserting a compensation row.
+ */
 export type CompensationCreateRecord = {
   id: string;
   supporterUserId: string;
@@ -57,6 +69,9 @@ export type CompensationCreateRecord = {
   updatedAt: Date;
 };
 
+/**
+ * Transaction boundary for compensation + area commitment updates.
+ */
 export interface CompensationAtomicTransaction {
   lockArea(areaId: string): Promise<CompensationAreaSnapshot | null>;
   updateAreaCommitted(
@@ -67,12 +82,18 @@ export interface CompensationAtomicTransaction {
   insertCompensation(record: CompensationCreateRecord): Promise<void>;
 }
 
+/**
+ * Port used by compensation use case to run atomic writes.
+ */
 export interface CompensationAtomicStore {
   runInTransaction<T>(
     work: (tx: CompensationAtomicTransaction) => Promise<T>
   ): Promise<T>;
 }
 
+/**
+ * Creates compensation and reserves area capacity within a single transaction.
+ */
 export async function createCompensationAtomic(
   deps: {
     store: CompensationAtomicStore;
@@ -181,6 +202,9 @@ export async function createCompensationAtomic(
   return result;
 }
 
+/**
+ * Validates business invariants for atomic compensation creation.
+ */
 function validateInput(input: CreateCompensationAtomicInput): void {
   const errors: Array<{ field: string; message: string }> = [];
   const mode = input.compensationMode ?? 'tco2e';

@@ -1,3 +1,6 @@
+/**
+ * File metadata persisted for certificate documents.
+ */
 export type CertificateFileRecord = {
   id: string;
   ownerUserId: string;
@@ -12,6 +15,9 @@ export type CertificateFileRecord = {
   deletedAt?: Date | null;
 };
 
+/**
+ * Certificate metadata persisted per compensation.
+ */
 export type CompensationCertificateRecord = {
   id: string;
   compensationId: string;
@@ -27,6 +33,9 @@ export type CompensationCertificateRecord = {
   deletedAt?: Date | null;
 };
 
+/**
+ * Certificate read model with joined owner/file information.
+ */
 export type CompensationCertificateLookup = {
   id: string;
   compensationId: string;
@@ -43,6 +52,9 @@ export type CompensationCertificateLookup = {
   storageUrl: string;
 };
 
+/**
+ * Lightweight listing projection for certificate history pages.
+ */
 export type CompensationCertificateListItem = {
   id: string;
   compensationId: string;
@@ -56,12 +68,19 @@ export type CompensationCertificateListItem = {
   mimeType: string;
 };
 
+/**
+ * Repository port for certificate persistence and lookup operations.
+ */
 export interface CompensationCertificateRepository {
   createFile(record: CertificateFileRecord, client?: any): Promise<void>;
   createCertificate(
     record: CompensationCertificateRecord,
     client?: any
   ): Promise<void>;
+  findByCompensationId(
+    compensationId: string,
+    client?: any
+  ): Promise<CompensationCertificateLookup | null>;
   findByCertificateNumber(
     certificateNumber: string,
     client?: any

@@ -80,6 +80,44 @@ export class PostgresCompensationCertificateRepository
     );
   }
 
+  async findByCompensationId(
+    compensationId: string
+  ): Promise<CompensationCertificateLookup | null> {
+    const result = await this.pool.query(
+      `SELECT
+        c.id,
+        c.compensation_id,
+        c.certificate_number,
+        c.file_id,
+        c.issued_at,
+        c.authenticity_hash,
+        c.validation_url,
+        c.qr_code_data,
+        c.status,
+        comp.supporter_user_id,
+        f.file_name,
+        f.mime_type,
+        f.storage_url
+      FROM certificates c
+      INNER JOIN compensations comp
+        ON comp.id = c.compensation_id
+       AND comp.deleted_at IS NULL
+      INNER JOIN files f
+        ON f.id = c.file_id
+       AND f.deleted_at IS NULL
+      WHERE c.compensation_id = $1
+        AND c.deleted_at IS NULL
+      ORDER BY c.created_at DESC
+      LIMIT 1`,
+      [compensationId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+    return mapLookupRow(result.rows[0] as Record<string, unknown>);
+  }
+
   async findByCertificateNumber(
     certificateNumber: string
   ): Promise<CompensationCertificateLookup | null> {

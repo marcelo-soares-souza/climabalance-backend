@@ -16,7 +16,8 @@ import { PostgresAreaMediaRepository } from './infrastructure/persistence/postgr
 import { PostgresCompensationAtomicStore } from './infrastructure/persistence/postgres/compensation-atomic-store';
 import { PostgresCompensationHistoryRepository } from './infrastructure/persistence/postgres/compensation-history-repository';
 import { PostgresCompensationCertificateRepository } from './infrastructure/persistence/postgres/compensation-certificate-repository';
-import { PostgresPaymentSimulationStore } from './infrastructure/persistence/postgres/payment-simulation-store';
+import { PostgresPaymentStore } from './infrastructure/persistence/postgres/payment-simulation-store';
+import { CardSimulatorPaymentGatewayAdapter } from './infrastructure/payments/card-simulator-gateway';
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
@@ -86,7 +87,7 @@ const areaMediaRepository = new PostgresAreaMediaRepository(pgPool);
 const compensationStore = new PostgresCompensationAtomicStore(pgPool);
 const compensationHistoryRepository = new PostgresCompensationHistoryRepository(pgPool);
 const compensationCertificateRepository = new PostgresCompensationCertificateRepository(pgPool);
-const paymentSimulationStore = new PostgresPaymentSimulationStore(pgPool);
+const paymentStore = new PostgresPaymentStore(pgPool);
 const unitOfWork = new PostgresUnitOfWork(pgPool);
 logger.debug('startup.repositories.initialized');
 
@@ -98,6 +99,12 @@ const jwtService = new HS256JwtService();
 const hashService = new WebCryptoHashService();
 const idGenerator = new UUIDv7Generator();
 const clock = new SystemClock();
+const paymentWebhookSecret =
+  process.env.PAYMENT_WEBHOOK_SECRET ?? 'dev-payment-webhook-secret';
+const paymentGateway = new CardSimulatorPaymentGatewayAdapter({
+  clock,
+  webhookSecret: paymentWebhookSecret,
+});
 const objectStorageDriver = (process.env.OBJECT_STORAGE_DRIVER ?? 'local')
   .trim()
   .toLowerCase();
@@ -191,7 +198,8 @@ const router = buildRouter({
   compensationStore,
   compensationHistoryRepository,
   compensationCertificateRepository,
-  paymentSimulationStore,
+  paymentStore,
+  paymentGateway,
   compensationCertificateStorage,
   compensationCertificatePdfGenerator,
   passwordHasher: bunPasswordHasher,

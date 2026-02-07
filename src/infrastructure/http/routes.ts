@@ -8,6 +8,7 @@ import { createUpdateHandlers } from './update-handlers';
 import { createCompensationHandlers } from './compensation-handlers';
 import { createCertificateHandlers } from './certificate-handlers';
 import { createPaymentHandlers } from './payment-handlers';
+import { openApiJsonHandler, swaggerUiHandler } from './openapi';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
@@ -72,6 +73,10 @@ export function buildRouter(
       withRateLimit(rateLimiter, { bucket, routeKey: `${method} ${path}` }, handler)
     );
   };
+
+  // API docs routes
+  addRoute('GET', '/api/v1/openapi.json', 'public', (ctx) => openApiJsonHandler(ctx));
+  addRoute('GET', '/api/v1/docs', 'public', (ctx) => swaggerUiHandler(ctx));
 
   // Auth routes
   addRoute('POST', '/api/v1/auth/register', 'auth', (ctx) => authHandlers.register(ctx));
@@ -180,6 +185,23 @@ export function buildRouter(
     'protected',
     withAuth((ctx) => paymentHandlers.simulate(ctx), {
       roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
+  addRoute(
+    'GET',
+    '/api/v1/payments/:id/status',
+    'protected',
+    withAuth((ctx) => paymentHandlers.status(ctx, ctx.params.id), {
+      roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
+  addRoute('POST', '/api/v1/payments/webhook', 'public', (ctx) => paymentHandlers.webhook(ctx));
+  addRoute(
+    'POST',
+    '/api/v1/payments/reconcile',
+    'admin',
+    withAuth((ctx) => paymentHandlers.reconcile(ctx), {
+      roles: ['administrator']
     })
   );
 

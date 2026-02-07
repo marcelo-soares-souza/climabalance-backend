@@ -16,10 +16,6 @@ import { buildLogContext } from '../../shared/http/log-context';
 import type { CompensationHistoryRepository } from '../../domain/compensations/repositories/compensation-history-repository';
 import { listCompensations } from '../../application/compensations/list-compensations';
 import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import type { CompensationCertificateRepository } from '../../domain/compensations/repositories/compensation-certificate-repository';
-import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
-import type { CompensationCertificatePdfGenerator } from '../../domain/compensations/services/certificate-pdf-generator';
-import { issueCompensationCertificate } from '../../application/compensations/issue-compensation-certificate';
 import {
   quoteTreePurchaseCompensation,
 } from '../../application/compensations/quote-tree-purchase-compensation';
@@ -28,9 +24,6 @@ export interface CompensationHandlersDeps {
   areaRepository: AreaRepository;
   compensationStore: CompensationAtomicStore;
   compensationHistoryRepository: CompensationHistoryRepository;
-  compensationCertificateRepository: CompensationCertificateRepository;
-  compensationCertificateStorage: CompensationCertificateStorage;
-  compensationCertificatePdfGenerator: CompensationCertificatePdfGenerator;
   idGenerator: IdGenerator;
   clock: Clock;
   auditLog: {
@@ -111,78 +104,6 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           }
         );
 
-        let certificate:
-          | {
-              id: string;
-              certificate_number: string;
-              file_id: string;
-              file_name: string;
-              mime_type: string;
-              issued_at: Date;
-            }
-          | null = null;
-
-        try {
-          const certificateResult = await issueCompensationCertificate(
-            {
-              repository: deps.compensationCertificateRepository,
-              storage: deps.compensationCertificateStorage,
-              pdfGenerator: deps.compensationCertificatePdfGenerator,
-              idGenerator: deps.idGenerator,
-              clock: deps.clock,
-              auditLog: deps.auditLog,
-            },
-            {
-              compensationId: result.compensationId,
-              supporterUserId: ctx.auth!.userId,
-              areaId: result.areaId,
-              calculationId: validated.calculation_id,
-              compensationMode: result.compensationMode,
-              horizonYears: result.horizonYears,
-              treesRequested: result.treesRequested,
-              pricePerTree: result.pricePerTree,
-              estimatedTotalTCO2e: result.estimatedTotalTCO2e,
-              totalTCO2e: result.totalTCO2e,
-              treesCount: result.treesCount,
-              totalAmount,
-              currency: validated.currency,
-              compensationMode: result.compensationMode,
-              horizonYears: result.horizonYears,
-              treesRequested: result.treesRequested,
-              pricePerTree: result.pricePerTree,
-              estimatedTotalTCO2e:
-                result.estimatedTotalTCO2e ?? result.totalTCO2e,
-            }
-          );
-
-          certificate = {
-            id: certificateResult.certificateId,
-              certificate_number: certificateResult.certificateNumber,
-              authenticity_hash: certificateResult.authenticityHash,
-              validation_url: certificateResult.validationUrl,
-              qr_code_data: certificateResult.qrCodeData,
-              file_id: certificateResult.fileId,
-              file_name: certificateResult.fileName,
-              mime_type: certificateResult.mimeType,
-            issued_at: certificateResult.issuedAt,
-          };
-        } catch (error) {
-          try {
-            await deps.auditLog.log({
-              actorUserId: ctx.auth!.userId,
-              action: 'compensation.certificate_generation_failed',
-              entityType: 'compensation',
-              entityId: result.compensationId,
-              metadata: {
-                reason:
-                  error instanceof Error ? error.message : String(error),
-              },
-            });
-          } catch (_auditError) {
-            // Best effort for failure telemetry.
-          }
-        }
-
         return jsonResponse(
           201,
           {
@@ -200,7 +121,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               status: result.status,
               remaining_t_co2e: result.remainingTCO2e,
               created_at: result.createdAt,
-              certificate,
+              certificate: null,
             },
             message_key: 'compensation.created_pending',
           },

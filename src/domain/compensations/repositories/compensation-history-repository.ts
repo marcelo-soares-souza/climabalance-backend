@@ -1,3 +1,6 @@
+/**
+ * Read model for compensation history listing APIs.
+ */
 export type CompensationHistoryItem = {
   id: string;
   supporterUserId: string;
@@ -17,6 +20,9 @@ export type CompensationHistoryItem = {
   createdAt: Date;
 };
 
+/**
+ * Repository port for compensation history projections.
+ */
 export interface CompensationHistoryRepository {
   listBySupporter(
     input: {

@@ -251,11 +251,9 @@ describe('POST /api/v1/compensations handler', () => {
     expect(payload.data.total_t_co2e).toBe(2.5);
     expect(payload.data.trees_count).toBe(120);
     expect(payload.data.status).toBe('pending');
-    expect(payload.data.certificate.id).toBe('cert-123');
-    expect(payload.data.certificate.file_id).toBe('file-123');
-    expect(payload.data.certificate.file_name).toContain('CBNC-');
-    expect(certificateRepository.files.length).toBe(1);
-    expect(certificateRepository.certificates.length).toBe(1);
+    expect(payload.data.certificate).toBeNull();
+    expect(certificateRepository.files.length).toBe(0);
+    expect(certificateRepository.certificates.length).toBe(0);
   });
 
   test('returns 400 when request is invalid', async () => {
