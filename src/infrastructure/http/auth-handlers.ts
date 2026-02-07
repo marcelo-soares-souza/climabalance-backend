@@ -1,5 +1,6 @@
 import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
 import type { PasswordResetRepository } from '../../domain/user/password-reset-repository';
+import type { RefreshTokenRepository } from '../../domain/user/refresh-token-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { PasswordHasher } from '../crypto/password';
 import type { EmailSender } from '../email/email-sender';
@@ -15,6 +16,8 @@ import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import { authenticateUser } from '../../application/auth/authenticate-user';
+import { refreshAccessToken } from '../../application/auth/refresh-access-token';
+import { revokeRefreshToken } from '../../application/auth/revoke-refresh-token';
 import { confirmEmail } from '../../application/auth/confirm-email';
 import { registerUser } from '../../application/auth/register-user';
 import { resendConfirmationEmail } from '../../application/auth/resend-confirmation-email';
@@ -30,12 +33,14 @@ import {
   resetPasswordSchema,
   parseWithSchema
 } from './schemas';
+import { refreshTokenSchema, revokeTokenSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
 
 export type AuthHandlersDeps = {
   users: UserRepository;
   confirmations: EmailConfirmationRepository;
   passwordResets: PasswordResetRepository;
+  refreshTokens: RefreshTokenRepository;
   auditLog: {
     log(entry: {
       actorUserId: string;
@@ -120,8 +125,12 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           { email: validated.email, password: validated.password },
           {
             users: deps.users,
+            refreshTokens: deps.refreshTokens,
             passwordHasher: deps.passwordHasher,
             jwtService: deps.jwtService,
+            hashService: deps.hashService,
+            tokenGenerator: deps.tokenGenerator,
+            idGenerator: deps.idGenerator,
             clock: deps.clock,
             config: deps.config
           }
@@ -253,6 +262,65 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
 
         log.info('auth.password_reset.success');
         return jsonResponse(200, { message_key: 'auth.password_reset_success' }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    refresh: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const body = await parseJson(ctx.request, ctx);
+        if (typeof body !== 'object' || body === null) {
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        }
+
+        const validated = parseWithSchema(refreshTokenSchema, body);
+
+        const result = await refreshAccessToken(
+          { refreshToken: validated.refresh_token },
+          {
+            refreshTokens: deps.refreshTokens,
+            users: deps.users,
+            jwtService: deps.jwtService,
+            hashService: deps.hashService,
+            tokenGenerator: deps.tokenGenerator,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+            config: deps.config
+          }
+        );
+
+        log.info('auth.refresh.success');
+        return jsonResponse(200, { data: result }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    revoke: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const body = await parseJson(ctx.request, ctx);
+        if (typeof body !== 'object' || body === null) {
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        }
+
+        const validated = parseWithSchema(revokeTokenSchema, body);
+
+        await revokeRefreshToken(
+          { refreshToken: validated.refresh_token },
+          {
+            refreshTokens: deps.refreshTokens,
+            hashService: deps.hashService,
+            clock: deps.clock
+          }
+        );
+
+        log.info('auth.revoke.success');
+        return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
       }

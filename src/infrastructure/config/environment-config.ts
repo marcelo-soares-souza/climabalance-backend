@@ -29,6 +29,7 @@ export class EnvironmentConfig implements Config {
   readonly jwtTtlSeconds: number;
   readonly emailConfirmTtlMinutes: number;
   readonly passwordResetTtlMinutes: number;
+  readonly refreshTokenTtlDays: number;
   readonly frontendUrl: string;
 
   constructor() {
@@ -38,6 +39,7 @@ export class EnvironmentConfig implements Config {
     this.jwtTtlSeconds = numberValue('JWT_TTL_SECONDS', 900);
     this.emailConfirmTtlMinutes = numberValue('EMAIL_CONFIRM_TTL_MINUTES', 60);
     this.passwordResetTtlMinutes = numberValue('PASSWORD_RESET_TTL_MINUTES', 60);
+    this.refreshTokenTtlDays = numberValue('REFRESH_TOKEN_TTL_DAYS', 7);
     this.frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
   }
 }

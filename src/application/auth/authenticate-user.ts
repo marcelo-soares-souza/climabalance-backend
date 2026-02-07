@@ -1,6 +1,10 @@
 import type { UserRepository } from '../../domain/user/user-repository';
+import type { RefreshTokenRepository } from '../../domain/user/refresh-token-repository';
 import type { PasswordHasher } from '../../infrastructure/crypto/password';
 import type { JwtService } from '../../domain/services/jwt-service';
+import type { HashService } from '../../domain/services/hash-service';
+import type { TokenGenerator } from '../../domain/services/token-generator';
+import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
 import {
@@ -17,16 +21,22 @@ export type AuthenticateInput = {
 export type AuthenticateResult = {
   userId: string;
   accessToken: string;
+  refreshToken: string;
   tokenType: 'Bearer';
   expiresIn: number;
+  refreshExpiresIn: number;
 };
 
 export async function authenticateUser(
   input: AuthenticateInput,
   deps: {
     users: UserRepository;
+    refreshTokens: RefreshTokenRepository;
     passwordHasher: PasswordHasher;
     jwtService: JwtService;
+    hashService: HashService;
+    tokenGenerator: TokenGenerator;
+    idGenerator: IdGenerator;
     clock: Clock;
     config: Config;
   }
@@ -48,22 +58,40 @@ export async function authenticateUser(
   }
 
   const roles = await deps.users.getRoles(user.id);
-  const now = Math.floor(deps.clock.now().getTime() / 1000);
+  const now = deps.clock.now();
+  const nowSec = Math.floor(now.getTime() / 1000);
   const payload = {
     sub: user.id,
     roles,
     iss: deps.config.jwtIssuer,
     aud: deps.config.jwtAudience,
-    iat: now,
-    exp: now + deps.config.jwtTtlSeconds
+    iat: nowSec,
+    exp: nowSec + deps.config.jwtTtlSeconds
   };
 
   const accessToken = await deps.jwtService.sign(payload, deps.config.jwtSecret);
 
+  // Issue refresh token
+  const rawRefreshToken = deps.tokenGenerator.generate();
+  const refreshTokenHash = await deps.hashService.sha256(rawRefreshToken);
+  const refreshTtlSeconds = deps.config.refreshTokenTtlDays * 86400;
+  const refreshExpiresAt = new Date(now.getTime() + refreshTtlSeconds * 1000);
+
+  await deps.refreshTokens.create({
+    id: deps.idGenerator.generate(),
+    userId: user.id,
+    tokenHash: refreshTokenHash,
+    expiresAt: refreshExpiresAt,
+    createdAt: now,
+    updatedAt: now,
+  });
+
   return {
     userId: user.id,
     accessToken,
+    refreshToken: rawRefreshToken,
     tokenType: 'Bearer',
-    expiresIn: deps.config.jwtTtlSeconds
+    expiresIn: deps.config.jwtTtlSeconds,
+    refreshExpiresIn: refreshTtlSeconds,
   };
 }

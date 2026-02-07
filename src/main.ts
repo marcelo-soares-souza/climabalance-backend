@@ -2,6 +2,7 @@ import { buildRouter } from './infrastructure/http/routes';
 import { PostgresUserRepository } from './infrastructure/persistence/postgres/user-repository';
 import { PostgresEmailConfirmationRepository } from './infrastructure/persistence/postgres/email-confirmation-repository';
 import { PostgresPasswordResetRepository } from './infrastructure/persistence/postgres/password-reset-repository';
+import { PostgresRefreshTokenRepository } from './infrastructure/persistence/postgres/refresh-token-repository';
 import { PostgresAuditLogRepository } from './infrastructure/persistence/postgres/audit-log-repository';
 import { PostgresUnitOfWork } from './infrastructure/persistence/postgres/postgres-unit-of-work';
 import { PostgresFootprintCalculationRepository } from './infrastructure/persistence/postgres/footprint-calculation-repository';
@@ -11,6 +12,8 @@ import { PostgresFootprintBreakdownRepository } from './infrastructure/persisten
 import { PostgresCompensationProjectionRepository } from './infrastructure/persistence/postgres/compensation-projection-repository';
 import { PostgresAreaRepository } from './infrastructure/persistence/postgres/area-repository';
 import { PostgresAreaCriteriaRepository } from './infrastructure/persistence/postgres/area-criteria-repository';
+import { PostgresAreaMediaRepository } from './infrastructure/persistence/postgres/area-media-repository';
+import { PostgresCompensationAtomicStore } from './infrastructure/persistence/postgres/compensation-atomic-store';
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
@@ -22,6 +25,7 @@ import { WebCryptoHashService } from './infrastructure/crypto/web-crypto-hash-se
 import { UUIDv7Generator } from './infrastructure/id/uuidv7-generator';
 import { SystemClock } from './infrastructure/time/system-clock';
 import { EnvironmentConfig } from './infrastructure/config/environment-config';
+import { LocalAreaMediaStorage } from './infrastructure/storage/local-area-media-storage';
 import { logger } from './shared/utils/logger';
 
 // Verify database connectivity on startup
@@ -48,6 +52,7 @@ logger.debug('startup.repositories.initializing');
 const userRepository = new PostgresUserRepository();
 const emailConfirmationRepository = new PostgresEmailConfirmationRepository();
 const passwordResetRepository = new PostgresPasswordResetRepository();
+const refreshTokenRepository = new PostgresRefreshTokenRepository();
 const auditLogRepository = new PostgresAuditLogRepository();
 const footprintCalculationRepository = new PostgresFootprintCalculationRepository();
 const emissionFactorRepository = new PostgresEmissionFactorRepository();
@@ -56,6 +61,8 @@ const footprintBreakdownRepository = new PostgresFootprintBreakdownRepository();
 const compensationProjectionRepository = new PostgresCompensationProjectionRepository();
 const areaRepository = new PostgresAreaRepository(pgPool);
 const areaCriteriaRepository = new PostgresAreaCriteriaRepository(pgPool);
+const areaMediaRepository = new PostgresAreaMediaRepository(pgPool);
+const compensationStore = new PostgresCompensationAtomicStore(pgPool);
 const unitOfWork = new PostgresUnitOfWork(pgPool);
 logger.debug('startup.repositories.initialized');
 
@@ -67,6 +74,7 @@ const jwtService = new HS256JwtService();
 const hashService = new WebCryptoHashService();
 const idGenerator = new UUIDv7Generator();
 const clock = new SystemClock();
+const areaMediaStorage = new LocalAreaMediaStorage();
 logger.debug('startup.services.initialized');
 
 // Infrastructure - Email
@@ -103,6 +111,7 @@ const router = buildRouter({
   users: userRepository,
   confirmations: emailConfirmationRepository,
   passwordResets: passwordResetRepository,
+  refreshTokens: refreshTokenRepository,
   auditLog: auditLogRepository,
   calculationRepository: footprintCalculationRepository,
   emissionFactorRepository: emissionFactorRepository,
@@ -111,7 +120,9 @@ const router = buildRouter({
   projectionRepository: compensationProjectionRepository,
   areaRepository: areaRepository,
   areaCriteriaRepository: areaCriteriaRepository,
-  auditLog: auditLogRepository,
+  areaMediaRepository: areaMediaRepository,
+  areaMediaStorage,
+  compensationStore,
   passwordHasher: bunPasswordHasher,
   emailSender,
   unitOfWork,

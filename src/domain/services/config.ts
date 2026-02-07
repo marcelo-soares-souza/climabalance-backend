@@ -9,5 +9,6 @@ export interface Config {
   readonly jwtTtlSeconds: number;
   readonly emailConfirmTtlMinutes: number;
   readonly passwordResetTtlMinutes: number;
+  readonly refreshTokenTtlDays: number;
   readonly frontendUrl: string;
 }

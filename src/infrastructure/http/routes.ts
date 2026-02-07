@@ -5,6 +5,7 @@ import { createUserHandlers } from './user-handlers';
 import { createFootprintHandlers } from './footprint-handlers';
 import { createAreaHandlers } from './area-handlers';
 import { createUpdateHandlers } from './update-handlers';
+import { createCompensationHandlers } from './compensation-handlers';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
@@ -12,8 +13,14 @@ import type { UserHandlersDeps } from './user-handlers';
 import type { FootprintHandlersDeps } from './footprint-handlers';
 import type { AreaHandlersDeps } from './area-handlers';
 import type { UpdateHandlersDeps } from './update-handlers';
+import type { CompensationHandlersDeps } from './compensation-handlers';
 import { errorResponse } from '../../shared/http/response';
 import { buildLogContext } from '../../shared/http/log-context';
+import {
+  InMemoryRateLimiter,
+  withRateLimit,
+  type RateLimitBucket
+} from './rate-limit';
 
 function withAuthOrSelf(handler: Handler): Handler {
   return withAuth(async (ctx: HttpContext) => {
@@ -26,68 +33,107 @@ function withAuthOrSelf(handler: Handler): Handler {
   });
 }
 
-export function buildRouter(deps: AuthHandlersDeps & UserHandlersDeps & AuditHandlersDeps & FootprintHandlersDeps & AreaHandlersDeps & UpdateHandlersDeps): Router {
+export function buildRouter(
+  deps: AuthHandlersDeps &
+    UserHandlersDeps &
+    AuditHandlersDeps &
+    FootprintHandlersDeps &
+    AreaHandlersDeps &
+    UpdateHandlersDeps &
+    CompensationHandlersDeps
+): Router {
   const router = new Router();
+  const rateLimiter = new InMemoryRateLimiter();
   const authHandlers = createAuthHandlers(deps);
   const auditHandlers = createAuditHandlers(deps);
   const userHandlers = createUserHandlers(deps);
   const footprintHandlers = createFootprintHandlers(deps);
   const areaHandlers = createAreaHandlers(deps);
   const updateHandlers = createUpdateHandlers(deps);
+  const compensationHandlers = createCompensationHandlers(deps);
+
+  const addRoute = (
+    method: string,
+    path: string,
+    bucket: RateLimitBucket,
+    handler: Handler
+  ) => {
+    router.add(
+      method,
+      path,
+      withRateLimit(rateLimiter, { bucket, routeKey: `${method} ${path}` }, handler)
+    );
+  };
 
   // Auth routes
-  router.add('POST', '/api/v1/auth/register', (ctx) => authHandlers.register(ctx));
-  router.add('POST', '/api/v1/auth/login', (ctx) => authHandlers.login(ctx));
-  router.add('POST', '/api/v1/auth/confirm-email', (ctx) => authHandlers.confirmEmail(ctx));
-  router.add('POST', '/api/v1/auth/confirm-email/resend', (ctx) => authHandlers.resendConfirmationEmail(ctx));
-  router.add('POST', '/api/v1/auth/password-reset/request', (ctx) => authHandlers.requestPasswordReset(ctx));
-  router.add('POST', '/api/v1/auth/password-reset/confirm', (ctx) => authHandlers.resetPassword(ctx));
+  addRoute('POST', '/api/v1/auth/register', 'auth', (ctx) => authHandlers.register(ctx));
+  addRoute('POST', '/api/v1/auth/login', 'auth', (ctx) => authHandlers.login(ctx));
+  addRoute('POST', '/api/v1/auth/confirm-email', 'auth', (ctx) => authHandlers.confirmEmail(ctx));
+  addRoute('POST', '/api/v1/auth/confirm-email/resend', 'auth', (ctx) => authHandlers.resendConfirmationEmail(ctx));
+  addRoute('POST', '/api/v1/auth/password-reset/request', 'auth', (ctx) => authHandlers.requestPasswordReset(ctx));
+  addRoute('POST', '/api/v1/auth/password-reset/confirm', 'auth', (ctx) => authHandlers.resetPassword(ctx));
+  addRoute('POST', '/api/v1/auth/refresh', 'auth', (ctx) => authHandlers.refresh(ctx));
+  addRoute('POST', '/api/v1/auth/revoke', 'protected', withAuth((ctx) => authHandlers.revoke(ctx)));
 
   // User routes
-  router.add('GET', '/api/v1/users', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
-  router.add('GET', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));
-  router.add('GET', '/api/v1/users/:id/profile', withAuthOrSelf((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
-  router.add('PATCH', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
-  router.add('DELETE', '/api/v1/users/:id', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
-  router.add('PUT', '/api/v1/users/:id/profile', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users', 'admin', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
+  addRoute('GET', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
+  addRoute('PATCH', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
+  addRoute('DELETE', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
+  addRoute('PUT', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
 
   // Audit routes
-  router.add('GET', '/api/v1/audit-log', withAuth(async (ctx) => auditHandlers.list(ctx), { roles: ['administrator'] }));
+  addRoute('GET', '/api/v1/audit-log', 'admin', withAuth(async (ctx) => auditHandlers.list(ctx), { roles: ['administrator'] }));
 
   // Footprint calculator routes
-  router.add('POST', '/api/v1/footprint/calculations', withAuth((ctx) => footprintHandlers.create(ctx)));
-  router.add('PATCH', '/api/v1/footprint/calculations/:id', withAuth((ctx) => footprintHandlers.update(ctx, ctx.params.id)));
-  router.add('POST', '/api/v1/footprint/calculations/:id/finalize', withAuth((ctx) => footprintHandlers.finalize(ctx, ctx.params.id)));
-  router.add('GET', '/api/v1/footprint/calculations/:id', withAuth((ctx) => footprintHandlers.get(ctx, ctx.params.id)));
-  router.add('GET', '/api/v1/footprint/calculations', withAuth((ctx) => footprintHandlers.list(ctx)));
-  router.add('DELETE', '/api/v1/footprint/calculations/:id', withAuth((ctx) => footprintHandlers.remove(ctx, ctx.params.id)));
-  router.add('GET', '/api/v1/footprint/emission-factors', (ctx) => footprintHandlers.getEmissionFactors(ctx));
-  router.add('POST', '/api/v1/footprint/calculations/:id/projection', withAuth((ctx) => footprintHandlers.createProjection(ctx, ctx.params.id)));
+  addRoute('POST', '/api/v1/footprint/calculations', 'protected', withAuth((ctx) => footprintHandlers.create(ctx)));
+  addRoute('PATCH', '/api/v1/footprint/calculations/:id', 'protected', withAuth((ctx) => footprintHandlers.update(ctx, ctx.params.id)));
+  addRoute('POST', '/api/v1/footprint/calculations/:id/finalize', 'protected', withAuth((ctx) => footprintHandlers.finalize(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/footprint/calculations/:id', 'protected', withAuth((ctx) => footprintHandlers.get(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/footprint/calculations', 'protected', withAuth((ctx) => footprintHandlers.list(ctx)));
+  addRoute('DELETE', '/api/v1/footprint/calculations/:id', 'protected', withAuth((ctx) => footprintHandlers.remove(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/footprint/emission-factors', 'public', (ctx) => footprintHandlers.getEmissionFactors(ctx));
+  addRoute('POST', '/api/v1/footprint/calculations/:id/projection', 'protected', withAuth((ctx) => footprintHandlers.createProjection(ctx, ctx.params.id)));
 
   // Area routes (CRUD)
-  router.add('POST', '/api/v1/areas', withAuth((ctx) => areaHandlers.create(ctx), { roles: ['producer', 'administrator'] }));
-  router.add('GET', '/api/v1/areas/:id', withOptionalAuth((ctx) => areaHandlers.get(ctx, ctx.params.id)));
-  router.add('PATCH', '/api/v1/areas/:id', withAuth((ctx) => areaHandlers.update(ctx, ctx.params.id)));
-  router.add('DELETE', '/api/v1/areas/:id', withAuth((ctx) => areaHandlers.remove(ctx, ctx.params.id)));
-  router.add('GET', '/api/v1/areas', withAuth((ctx) => areaHandlers.list(ctx)));
+  addRoute('POST', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.create(ctx), { roles: ['producer', 'administrator'] }));
+  addRoute('GET', '/api/v1/areas/:id', 'public', withOptionalAuth((ctx) => areaHandlers.get(ctx, ctx.params.id)));
+  addRoute('PATCH', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.update(ctx, ctx.params.id)));
+  addRoute('DELETE', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.remove(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.list(ctx)));
 
   // Area audit workflow routes
-  router.add('POST', '/api/v1/areas/:id/submit-audit', withAuth((ctx) => areaHandlers.submitForAudit(ctx, ctx.params.id)));
-  router.add('POST', '/api/v1/areas/:id/approve', withAuth((ctx) => areaHandlers.approve(ctx, ctx.params.id), { roles: ['analyst', 'administrator'] }));
-  router.add('POST', '/api/v1/areas/:id/reject', withAuth((ctx) => areaHandlers.reject(ctx, ctx.params.id), { roles: ['analyst', 'administrator'] }));
-  router.add('POST', '/api/v1/areas/:id/activate', withAuth((ctx) => areaHandlers.activate(ctx, ctx.params.id), { roles: ['analyst', 'administrator'] }));
-  router.add('POST', '/api/v1/areas/:id/suspend', withAuth((ctx) => areaHandlers.suspend(ctx, ctx.params.id), { roles: ['administrator'] }));
+  addRoute('POST', '/api/v1/areas/:id/submit-audit', 'protected', withAuth((ctx) => areaHandlers.submitForAudit(ctx, ctx.params.id)));
+  addRoute('POST', '/api/v1/areas/:id/approve', 'admin', withAuth((ctx) => areaHandlers.approve(ctx, ctx.params.id), { roles: ['analyst', 'administrator'] }));
+  addRoute('POST', '/api/v1/areas/:id/reject', 'admin', withAuth((ctx) => areaHandlers.reject(ctx, ctx.params.id), { roles: ['analyst', 'administrator'] }));
+  addRoute('POST', '/api/v1/areas/:id/activate', 'admin', withAuth((ctx) => areaHandlers.activate(ctx, ctx.params.id), { roles: ['analyst', 'administrator'] }));
+  addRoute('POST', '/api/v1/areas/:id/suspend', 'admin', withAuth((ctx) => areaHandlers.suspend(ctx, ctx.params.id), { roles: ['administrator'] }));
 
   // Area capacity route
-  router.add('GET', '/api/v1/areas/:id/capacity', withAuth((ctx) => areaHandlers.getCapacity(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/areas/:id/capacity', 'protected', withAuth((ctx) => areaHandlers.getCapacity(ctx, ctx.params.id)));
+  addRoute('POST', '/api/v1/areas/:id/media', 'protected', withAuth((ctx) => areaHandlers.uploadMedia(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
+  addRoute('GET', '/api/v1/areas/:id/media', 'public', withOptionalAuth((ctx) => areaHandlers.listMedia(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/areas/media/:id/file', 'public', withOptionalAuth((ctx) => areaHandlers.getMediaFile(ctx, ctx.params.id)));
+  addRoute('DELETE', '/api/v1/areas/media/:id', 'protected', withAuth((ctx) => areaHandlers.deleteMedia(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
 
   // Public map route (no auth required)
-  router.add('GET', '/api/v1/map/areas', (ctx) => areaHandlers.getForMap(ctx));
+  addRoute('GET', '/api/v1/map/areas', 'public', (ctx) => areaHandlers.getForMap(ctx));
 
   // Update/Version routes (public for frontend version checking)
-  router.add('GET', '/api/v1/updates/version', (ctx) => updateHandlers.getVersion(ctx));
-  router.add('GET', '/api/v1/updates/stream', (ctx) => updateHandlers.streamUpdates(ctx));
-  router.add('POST', '/api/v1/updates/notify', withAuth((ctx) => updateHandlers.notifyUpdate(ctx), { roles: ['administrator'] }));
+  addRoute('GET', '/api/v1/updates/version', 'public', (ctx) => updateHandlers.getVersion(ctx));
+  addRoute('GET', '/api/v1/updates/stream', 'public', (ctx) => updateHandlers.streamUpdates(ctx));
+  addRoute('POST', '/api/v1/updates/notify', 'admin', withAuth((ctx) => updateHandlers.notifyUpdate(ctx), { roles: ['administrator'] }));
+
+  // Compensation routes
+  addRoute(
+    'POST',
+    '/api/v1/compensations',
+    'protected',
+    withAuth((ctx) => compensationHandlers.create(ctx), {
+      roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
 
   return router;
 }

@@ -4,6 +4,7 @@ import { Biome } from '../../domain/areas/value-objects/biome';
 
 export interface ListAreasRequest {
   userId?: string;
+  roles?: string[];
   status?: string;
   biome?: string;
   ownerUserId?: string;
@@ -27,6 +28,12 @@ export interface ListAreasDeps {
   areaRepository: AreaRepository;
 }
 
+const PRIVILEGED_ROLES = ['administrator', 'analyst'];
+
+function isPrivileged(roles?: string[]): boolean {
+  return roles?.some((r) => PRIVILEGED_ROLES.includes(r)) ?? false;
+}
+
 export async function listAreas(
   deps: ListAreasDeps,
   request: ListAreasRequest
@@ -46,6 +53,8 @@ export async function listAreas(
 
   if (request.ownerUserId) {
     filters.ownerUserId = request.ownerUserId;
+  } else if (!isPrivileged(request.roles) && request.userId) {
+    filters.ownerUserId = request.userId;
   }
 
   const areas = await deps.areaRepository.findAll(filters);

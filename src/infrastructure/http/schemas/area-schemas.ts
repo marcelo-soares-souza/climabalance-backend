@@ -4,7 +4,6 @@ import { z } from 'zod';
  * Schema for creating a new area
  */
 export const createAreaSchema = z.object({
-  ownerUserId: z.string().uuid(),
   name: z.string().min(3).max(200),
   description: z.string().max(2000).optional(),
   latitude: z.number().min(-90).max(90),
@@ -88,6 +87,19 @@ export const rejectAreaSchema = z.object({
 });
 
 export type RejectAreaRequest = z.infer<typeof rejectAreaSchema>;
+
+/**
+ * Schema for uploading area media (photo/video)
+ */
+export const uploadAreaMediaSchema = z.object({
+  media_type: z.enum(['photo', 'video']),
+  description: z.string().trim().max(500).optional(),
+  mime_type: z.string().min(1).max(100),
+  file_name: z.string().min(1).max(255),
+  file_base64: z.string().min(1).max(40 * 1024 * 1024),
+});
+
+export type UploadAreaMediaRequest = z.infer<typeof uploadAreaMediaSchema>;
 
 /**
  * Schema for listing areas with filters

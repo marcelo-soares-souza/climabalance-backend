@@ -207,8 +207,17 @@ const mockConfig = {
   jwtTtlSeconds: 900,
   emailConfirmTtlMinutes: 60,
   passwordResetTtlMinutes: 60,
+  refreshTokenTtlDays: 7,
   frontendUrl: 'http://localhost:3000'
 };
+
+class MemoryRefreshTokenRepository {
+  tokens: any[] = [];
+  async create(input: any) { this.tokens.push(input); return input; }
+  async findByTokenHash(hash: string) { return this.tokens.find((t) => t.tokenHash === hash && !t.deletedAt) ?? null; }
+  async revoke(id: string, revokedAt: Date) { const t = this.tokens.find((t) => t.id === id); if (t) t.revokedAt = revokedAt; }
+  async revokeAllByUserId(userId: string, revokedAt: Date) { this.tokens.filter((t) => t.userId === userId && !t.revokedAt).forEach((t) => t.revokedAt = revokedAt); }
+}
 
 // Factory function to create a mock UnitOfWork for tests
 function createMockUnitOfWork(repos: { users: any; confirmations: any }) {
@@ -276,12 +285,17 @@ test('register, confirm email, and authenticate user', async () => {
   expect(user?.emailConfirmedAt).not.toBeNull();
   expect(user?.status).toBe('active');
 
+  const refreshTokens = new MemoryRefreshTokenRepository();
   const authResult = await authenticateUser(
     { email: 'user@example.com', password: 'secret123' },
     {
       users,
+      refreshTokens,
       passwordHasher: fakePasswordHasher,
       jwtService: mockJwtService,
+      hashService: mockHashService,
+      tokenGenerator: mockTokenGenerator,
+      idGenerator: mockIdGenerator,
       clock: mockClock,
       config: mockConfig
     }
@@ -290,4 +304,7 @@ test('register, confirm email, and authenticate user', async () => {
   expect(authResult.tokenType).toBe('Bearer');
   expect(authResult.accessToken.split('.').length).toBe(3);
   expect(authResult.expiresIn).toBe(900);
+  expect(authResult.refreshToken).toBeDefined();
+  expect(authResult.refreshExpiresIn).toBe(7 * 86400);
+  expect(refreshTokens.tokens.length).toBe(1);
 });

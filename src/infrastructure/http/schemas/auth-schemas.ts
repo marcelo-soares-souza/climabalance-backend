@@ -40,3 +40,11 @@ export const resetPasswordSchema = z.object({
   (data) => data.password === data.password_confirm,
   { message: 'mismatch', path: ['password_confirm'] }
 );
+
+export const refreshTokenSchema = z.object({
+  refresh_token: z.string({ required_error: 'required' }).min(1, { message: 'required' })
+});
+
+export const revokeTokenSchema = z.object({
+  refresh_token: z.string({ required_error: 'required' }).min(1, { message: 'required' })
+});
