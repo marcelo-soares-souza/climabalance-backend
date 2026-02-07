@@ -7,6 +7,7 @@ import { createAreaHandlers } from './area-handlers';
 import { createUpdateHandlers } from './update-handlers';
 import { createCompensationHandlers } from './compensation-handlers';
 import { createCertificateHandlers } from './certificate-handlers';
+import { createPaymentHandlers } from './payment-handlers';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
@@ -16,6 +17,7 @@ import type { AreaHandlersDeps } from './area-handlers';
 import type { UpdateHandlersDeps } from './update-handlers';
 import type { CompensationHandlersDeps } from './compensation-handlers';
 import type { CertificateHandlersDeps } from './certificate-handlers';
+import type { PaymentHandlersDeps } from './payment-handlers';
 import { errorResponse } from '../../shared/http/response';
 import { buildLogContext } from '../../shared/http/log-context';
 import {
@@ -43,7 +45,8 @@ export function buildRouter(
     AreaHandlersDeps &
     UpdateHandlersDeps &
     CompensationHandlersDeps &
-    CertificateHandlersDeps
+    CertificateHandlersDeps &
+    PaymentHandlersDeps
 ): Router {
   const router = new Router();
   const rateLimiter = new InMemoryRateLimiter();
@@ -55,6 +58,7 @@ export function buildRouter(
   const updateHandlers = createUpdateHandlers(deps);
   const compensationHandlers = createCompensationHandlers(deps);
   const certificateHandlers = createCertificateHandlers(deps);
+  const paymentHandlers = createPaymentHandlers(deps);
 
   const addRoute = (
     method: string,
@@ -167,6 +171,14 @@ export function buildRouter(
     '/api/v1/certificates/:id/download',
     'protected',
     withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id), {
+      roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
+  addRoute(
+    'POST',
+    '/api/v1/payments/simulate',
+    'protected',
+    withAuth((ctx) => paymentHandlers.simulate(ctx), {
       roles: ['individual', 'legal_entity', 'administrator']
     })
   );

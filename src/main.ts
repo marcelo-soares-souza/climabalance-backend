@@ -16,6 +16,7 @@ import { PostgresAreaMediaRepository } from './infrastructure/persistence/postgr
 import { PostgresCompensationAtomicStore } from './infrastructure/persistence/postgres/compensation-atomic-store';
 import { PostgresCompensationHistoryRepository } from './infrastructure/persistence/postgres/compensation-history-repository';
 import { PostgresCompensationCertificateRepository } from './infrastructure/persistence/postgres/compensation-certificate-repository';
+import { PostgresPaymentSimulationStore } from './infrastructure/persistence/postgres/payment-simulation-store';
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
@@ -85,6 +86,7 @@ const areaMediaRepository = new PostgresAreaMediaRepository(pgPool);
 const compensationStore = new PostgresCompensationAtomicStore(pgPool);
 const compensationHistoryRepository = new PostgresCompensationHistoryRepository(pgPool);
 const compensationCertificateRepository = new PostgresCompensationCertificateRepository(pgPool);
+const paymentSimulationStore = new PostgresPaymentSimulationStore(pgPool);
 const unitOfWork = new PostgresUnitOfWork(pgPool);
 logger.debug('startup.repositories.initialized');
 
@@ -189,6 +191,7 @@ const router = buildRouter({
   compensationStore,
   compensationHistoryRepository,
   compensationCertificateRepository,
+  paymentSimulationStore,
   compensationCertificateStorage,
   compensationCertificatePdfGenerator,
   passwordHasher: bunPasswordHasher,

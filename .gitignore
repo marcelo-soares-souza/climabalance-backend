@@ -28,5 +28,5 @@ Thumbs.db
 .vscode/
 
 # Storage
-storage
+/storage
 
