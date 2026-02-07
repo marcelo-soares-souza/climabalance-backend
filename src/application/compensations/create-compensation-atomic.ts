@@ -4,6 +4,11 @@ export type CreateCompensationAtomicInput = {
   supporterUserId: string;
   areaId: string;
   calculationId?: string;
+  compensationMode?: 'tco2e' | 'tree_purchase';
+  horizonYears?: number;
+  treesRequested?: number;
+  pricePerTree?: number;
+  estimatedTotalTCO2e?: number;
   totalTCO2e: number;
   totalAmount: number;
   currency: string;
@@ -13,6 +18,11 @@ export type CreateCompensationAtomicInput = {
 export type CreateCompensationAtomicResult = {
   compensationId: string;
   areaId: string;
+  compensationMode: 'tco2e' | 'tree_purchase';
+  horizonYears?: number;
+  treesRequested?: number;
+  pricePerTree?: number;
+  estimatedTotalTCO2e?: number;
   totalTCO2e: number;
   treesCount: number;
   status: 'pending';
@@ -32,6 +42,11 @@ export type CompensationCreateRecord = {
   supporterUserId: string;
   areaId: string;
   calculationId?: string;
+  compensationMode: 'tco2e' | 'tree_purchase';
+  horizonYears?: number;
+  treesRequested?: number;
+  pricePerTree?: number;
+  estimatedTotalTCO2e?: number;
   totalCO2Kg: number;
   totalTCO2e: number;
   treesCount: number;
@@ -79,6 +94,7 @@ export async function createCompensationAtomic(
 
   const now = deps.clock.now();
   const compensationId = deps.idGenerator.generate();
+  const compensationMode = input.compensationMode ?? 'tco2e';
 
   const result = await deps.store.runInTransaction(async (tx) => {
     const area = await tx.lockArea(input.areaId);
@@ -113,6 +129,11 @@ export async function createCompensationAtomic(
       supporterUserId: input.supporterUserId,
       areaId: area.id,
       calculationId: input.calculationId,
+      compensationMode,
+      horizonYears: input.horizonYears,
+      treesRequested: input.treesRequested,
+      pricePerTree: input.pricePerTree,
+      estimatedTotalTCO2e: input.estimatedTotalTCO2e ?? input.totalTCO2e,
       totalCO2Kg: input.totalTCO2e * 1000,
       totalTCO2e: input.totalTCO2e,
       treesCount: input.treesCount,
@@ -126,6 +147,11 @@ export async function createCompensationAtomic(
     return {
       compensationId,
       areaId: area.id,
+      compensationMode,
+      horizonYears: input.horizonYears,
+      treesRequested: input.treesRequested,
+      pricePerTree: input.pricePerTree,
+      estimatedTotalTCO2e: input.estimatedTotalTCO2e ?? input.totalTCO2e,
       totalTCO2e: input.totalTCO2e,
       treesCount: input.treesCount,
       status: 'pending' as const,
@@ -141,6 +167,11 @@ export async function createCompensationAtomic(
     entityId: result.compensationId,
     metadata: {
       area_id: result.areaId,
+      compensation_mode: result.compensationMode,
+      horizon_years: result.horizonYears,
+      trees_requested: result.treesRequested,
+      price_per_tree: result.pricePerTree,
+      estimated_total_t_co2e: result.estimatedTotalTCO2e,
       total_t_co2e: result.totalTCO2e,
       trees_count: result.treesCount,
       remaining_t_co2e: result.remainingTCO2e,
@@ -152,6 +183,7 @@ export async function createCompensationAtomic(
 
 function validateInput(input: CreateCompensationAtomicInput): void {
   const errors: Array<{ field: string; message: string }> = [];
+  const mode = input.compensationMode ?? 'tco2e';
 
   if (input.totalTCO2e <= 0) {
     errors.push({ field: 'total_t_co2e', message: 'must_be_positive' });
@@ -164,6 +196,20 @@ function validateInput(input: CreateCompensationAtomicInput): void {
   }
   if (!input.currency || input.currency.length !== 3) {
     errors.push({ field: 'currency', message: 'must_be_iso_4217' });
+  }
+  if (mode !== 'tco2e' && mode !== 'tree_purchase') {
+    errors.push({ field: 'compensation_mode', message: 'invalid_mode' });
+  }
+  if (mode === 'tree_purchase') {
+    if (!input.horizonYears || input.horizonYears <= 0) {
+      errors.push({ field: 'horizon_years', message: 'must_be_positive' });
+    }
+    if (!input.treesRequested || input.treesRequested <= 0) {
+      errors.push({ field: 'trees_requested', message: 'must_be_positive' });
+    }
+    if (!input.pricePerTree || input.pricePerTree <= 0) {
+      errors.push({ field: 'price_per_tree', message: 'must_be_positive' });
+    }
   }
 
   if (errors.length > 0) {

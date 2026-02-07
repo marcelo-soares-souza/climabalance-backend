@@ -168,4 +168,63 @@ describe('createCompensationAtomic', () => {
     expect(store.compensations.length).toBe(1);
     expect(store.area.committedTCO2e).toBe(4);
   });
+
+  test('prevents double counting under concurrent tree_purchase requests', async () => {
+    const deps = {
+      store,
+      idGenerator: {
+        generate: () => `comp-${++sequence}`,
+      },
+      clock: {
+        now: () => new Date('2026-02-07T15:00:00Z'),
+      },
+      auditLog: {
+        async log() {},
+      },
+    };
+
+    const [first, second] = await Promise.allSettled([
+      createCompensationAtomic(deps, {
+        supporterUserId: 'supporter-1',
+        areaId: 'area-1',
+        compensationMode: 'tree_purchase',
+        horizonYears: 20,
+        treesRequested: 10,
+        pricePerTree: 12,
+        estimatedTotalTCO2e: 3,
+        totalTCO2e: 3,
+        totalAmount: 120,
+        currency: 'BRL',
+        treesCount: 10,
+      }),
+      createCompensationAtomic(deps, {
+        supporterUserId: 'supporter-2',
+        areaId: 'area-1',
+        compensationMode: 'tree_purchase',
+        horizonYears: 20,
+        treesRequested: 10,
+        pricePerTree: 12,
+        estimatedTotalTCO2e: 3,
+        totalTCO2e: 3,
+        totalAmount: 120,
+        currency: 'BRL',
+        treesCount: 10,
+      }),
+    ]);
+
+    const fulfilled = [first, second].filter(
+      (entry) => entry.status === 'fulfilled'
+    );
+    const rejected = [first, second].filter(
+      (entry) => entry.status === 'rejected'
+    );
+
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    expect(store.compensations.length).toBe(1);
+    expect(store.compensations[0].compensationMode).toBe('tree_purchase');
+    expect(store.compensations[0].treesRequested).toBe(10);
+    expect(store.compensations[0].horizonYears).toBe(20);
+    expect(store.area.committedTCO2e).toBe(3);
+  });
 });

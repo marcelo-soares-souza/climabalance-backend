@@ -1,0 +1,42 @@
+import { getLogger } from '../utils/logger';
+import { buildLogContext } from './log-context';
+export async function parseJson(request, ctx, maxBytes = 1024 * 64) {
+    const contentType = request.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        throw new Error('invalid_content_type');
+    }
+    const reader = request.body?.getReader();
+    if (!reader)
+        return logPayload({}, request, ctx);
+    const chunks = [];
+    let total = 0;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done)
+            break;
+        if (value) {
+            total += value.length;
+            if (total > maxBytes) {
+                throw new Error('payload_too_large');
+            }
+            chunks.push(value);
+        }
+    }
+    const buffer = Buffer.concat(chunks);
+    if (buffer.length === 0)
+        return logPayload({}, request, ctx);
+    const parsed = JSON.parse(buffer.toString('utf-8'));
+    return logPayload(parsed, request, ctx);
+}
+function logPayload(payload, request, ctx) {
+    if (!ctx)
+        return payload;
+    const url = new URL(request.url);
+    const metadata = {
+        method: request.method,
+        path: url.pathname,
+        body: payload
+    };
+    getLogger(buildLogContext(ctx)).info('request.payload', metadata);
+    return payload;
+}

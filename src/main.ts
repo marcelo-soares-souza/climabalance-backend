@@ -14,6 +14,8 @@ import { PostgresAreaRepository } from './infrastructure/persistence/postgres/ar
 import { PostgresAreaCriteriaRepository } from './infrastructure/persistence/postgres/area-criteria-repository';
 import { PostgresAreaMediaRepository } from './infrastructure/persistence/postgres/area-media-repository';
 import { PostgresCompensationAtomicStore } from './infrastructure/persistence/postgres/compensation-atomic-store';
+import { PostgresCompensationHistoryRepository } from './infrastructure/persistence/postgres/compensation-history-repository';
+import { PostgresCompensationCertificateRepository } from './infrastructure/persistence/postgres/compensation-certificate-repository';
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from './infrastructure/crypto/password';
 import { ConsoleEmailSender } from './infrastructure/email/console-email-sender';
@@ -26,7 +28,17 @@ import { UUIDv7Generator } from './infrastructure/id/uuidv7-generator';
 import { SystemClock } from './infrastructure/time/system-clock';
 import { EnvironmentConfig } from './infrastructure/config/environment-config';
 import { LocalAreaMediaStorage } from './infrastructure/storage/local-area-media-storage';
+import { LocalCertificateStorage } from './infrastructure/storage/local-certificate-storage';
+import {
+  S3CompatibleObjectStorage,
+  type S3CompatibleConfig,
+} from './infrastructure/storage/s3-compatible-object-storage';
+import { S3AreaMediaStorage } from './infrastructure/storage/s3-area-media-storage';
+import { S3CertificateStorage } from './infrastructure/storage/s3-certificate-storage';
+import { SimpleCertificatePdfGenerator } from './infrastructure/pdf/simple-certificate-pdf-generator';
 import { logger } from './shared/utils/logger';
+import type { AreaMediaStorage } from './domain/areas/services/area-media-storage';
+import type { CompensationCertificateStorage } from './domain/compensations/services/certificate-storage';
 
 // Verify database connectivity on startup
 async function verifyDatabaseConnection(): Promise<void> {
@@ -47,6 +59,14 @@ async function verifyDatabaseConnection(): Promise<void> {
 
 logger.info('startup.initializing');
 
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value || value.trim().length === 0) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 // Infrastructure - Repositories
 logger.debug('startup.repositories.initializing');
 const userRepository = new PostgresUserRepository();
@@ -63,6 +83,8 @@ const areaRepository = new PostgresAreaRepository(pgPool);
 const areaCriteriaRepository = new PostgresAreaCriteriaRepository(pgPool);
 const areaMediaRepository = new PostgresAreaMediaRepository(pgPool);
 const compensationStore = new PostgresCompensationAtomicStore(pgPool);
+const compensationHistoryRepository = new PostgresCompensationHistoryRepository(pgPool);
+const compensationCertificateRepository = new PostgresCompensationCertificateRepository(pgPool);
 const unitOfWork = new PostgresUnitOfWork(pgPool);
 logger.debug('startup.repositories.initialized');
 
@@ -74,7 +96,49 @@ const jwtService = new HS256JwtService();
 const hashService = new WebCryptoHashService();
 const idGenerator = new UUIDv7Generator();
 const clock = new SystemClock();
-const areaMediaStorage = new LocalAreaMediaStorage();
+const objectStorageDriver = (process.env.OBJECT_STORAGE_DRIVER ?? 'local')
+  .trim()
+  .toLowerCase();
+
+let areaMediaStorage: AreaMediaStorage;
+let compensationCertificateStorage: CompensationCertificateStorage;
+
+if (objectStorageDriver === 's3') {
+  const s3Config: S3CompatibleConfig = {
+    endpoint: requiredEnv('S3_ENDPOINT'),
+    region: process.env.S3_REGION ?? 'us-east-1',
+    bucket: requiredEnv('S3_BUCKET'),
+    accessKeyId: requiredEnv('S3_ACCESS_KEY_ID'),
+    secretAccessKey: requiredEnv('S3_SECRET_ACCESS_KEY'),
+    sessionToken: process.env.S3_SESSION_TOKEN,
+    forcePathStyle: (process.env.S3_FORCE_PATH_STYLE ?? 'true')
+      .toLowerCase()
+      .trim() !== 'false',
+  };
+
+  const objectStorage = new S3CompatibleObjectStorage(s3Config);
+  areaMediaStorage = new S3AreaMediaStorage(
+    objectStorage,
+    process.env.S3_AREA_MEDIA_PREFIX ?? 'area-media'
+  );
+  compensationCertificateStorage = new S3CertificateStorage(
+    objectStorage,
+    process.env.S3_CERTIFICATE_PREFIX ?? 'certificates'
+  );
+  logger.info('storage.object.configured', {
+    driver: 's3',
+    endpoint: s3Config.endpoint,
+    bucket: s3Config.bucket,
+    region: s3Config.region,
+    force_path_style: s3Config.forcePathStyle,
+  });
+} else {
+  areaMediaStorage = new LocalAreaMediaStorage();
+  compensationCertificateStorage = new LocalCertificateStorage();
+  logger.info('storage.object.configured', { driver: 'local' });
+}
+
+const compensationCertificatePdfGenerator = new SimpleCertificatePdfGenerator();
 logger.debug('startup.services.initialized');
 
 // Infrastructure - Email
@@ -123,6 +187,10 @@ const router = buildRouter({
   areaMediaRepository: areaMediaRepository,
   areaMediaStorage,
   compensationStore,
+  compensationHistoryRepository,
+  compensationCertificateRepository,
+  compensationCertificateStorage,
+  compensationCertificatePdfGenerator,
   passwordHasher: bunPasswordHasher,
   emailSender,
   unitOfWork,

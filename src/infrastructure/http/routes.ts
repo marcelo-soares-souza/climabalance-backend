@@ -6,6 +6,7 @@ import { createFootprintHandlers } from './footprint-handlers';
 import { createAreaHandlers } from './area-handlers';
 import { createUpdateHandlers } from './update-handlers';
 import { createCompensationHandlers } from './compensation-handlers';
+import { createCertificateHandlers } from './certificate-handlers';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
@@ -14,6 +15,7 @@ import type { FootprintHandlersDeps } from './footprint-handlers';
 import type { AreaHandlersDeps } from './area-handlers';
 import type { UpdateHandlersDeps } from './update-handlers';
 import type { CompensationHandlersDeps } from './compensation-handlers';
+import type { CertificateHandlersDeps } from './certificate-handlers';
 import { errorResponse } from '../../shared/http/response';
 import { buildLogContext } from '../../shared/http/log-context';
 import {
@@ -40,7 +42,8 @@ export function buildRouter(
     FootprintHandlersDeps &
     AreaHandlersDeps &
     UpdateHandlersDeps &
-    CompensationHandlersDeps
+    CompensationHandlersDeps &
+    CertificateHandlersDeps
 ): Router {
   const router = new Router();
   const rateLimiter = new InMemoryRateLimiter();
@@ -51,6 +54,7 @@ export function buildRouter(
   const areaHandlers = createAreaHandlers(deps);
   const updateHandlers = createUpdateHandlers(deps);
   const compensationHandlers = createCompensationHandlers(deps);
+  const certificateHandlers = createCertificateHandlers(deps);
 
   const addRoute = (
     method: string,
@@ -79,6 +83,8 @@ export function buildRouter(
   addRoute('GET', '/api/v1/users', 'admin', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
   addRoute('GET', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/compensations', 'protected', withAuthOrSelf((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/certificates', 'protected', withAuthOrSelf((ctx) => certificateHandlers.listByUser(ctx, ctx.params.id)));
   addRoute('PATCH', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
   addRoute('PUT', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
@@ -131,6 +137,36 @@ export function buildRouter(
     '/api/v1/compensations',
     'protected',
     withAuth((ctx) => compensationHandlers.create(ctx), {
+      roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
+  addRoute(
+    'POST',
+    '/api/v1/compensations/quote',
+    'protected',
+    withAuth((ctx) => compensationHandlers.quote(ctx), {
+      roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
+  addRoute(
+    'GET',
+    '/api/v1/compensations',
+    'protected',
+    withAuth((ctx) => compensationHandlers.listOwn(ctx), {
+      roles: ['individual', 'legal_entity', 'administrator']
+    })
+  );
+  addRoute(
+    'GET',
+    '/api/v1/certificates/validate',
+    'public',
+    (ctx) => certificateHandlers.validate(ctx)
+  );
+  addRoute(
+    'GET',
+    '/api/v1/certificates/:id/download',
+    'protected',
+    withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id), {
       roles: ['individual', 'legal_entity', 'administrator']
     })
   );

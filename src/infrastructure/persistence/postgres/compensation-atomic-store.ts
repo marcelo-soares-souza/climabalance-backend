@@ -59,6 +59,11 @@ class PostgresCompensationAtomicTransaction
         supporter_user_id,
         area_id,
         calculation_id,
+        compensation_mode,
+        horizon_years,
+        trees_requested,
+        price_per_tree,
+        estimated_total_t_co2e,
         total_co2_kg,
         total_t_co2e,
         trees_count,
@@ -69,13 +74,18 @@ class PostgresCompensationAtomicTransaction
         updated_at,
         deleted_at
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18
       )`,
       [
         record.id,
         record.supporterUserId,
         record.areaId,
         record.calculationId ?? null,
+        record.compensationMode,
+        record.horizonYears ?? null,
+        record.treesRequested ?? null,
+        record.pricePerTree ?? null,
+        record.estimatedTotalTCO2e ?? null,
         record.totalCO2Kg,
         record.totalTCO2e,
         record.treesCount,
