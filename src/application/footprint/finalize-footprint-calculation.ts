@@ -15,7 +15,8 @@ export interface FinalizeFootprintCalculationDeps {
 export async function finalizeFootprintCalculation(
   deps: FinalizeFootprintCalculationDeps,
   calculationId: string,
-  userId: string
+  userId: string,
+  isAdmin = false
 ): Promise<void> {
   const calculation = await deps.calculationRepository.findById(calculationId);
 
@@ -23,11 +24,12 @@ export async function finalizeFootprintCalculation(
     throw new NotFoundError('footprint.calculation.not_found');
   }
 
-  if (calculation.user_id !== userId) {
+  // Allow admin to finalize any calculation, regular users only their own
+  if (calculation.user_id !== userId && !isAdmin) {
     throw new ForbiddenError('footprint.calculation.not_owner');
   }
 
-  if (!canFinalizeCalculation(calculation)) {
+  if (!canFinalizeCalculation(calculation, isAdmin)) {
     throw new ValidationError([
       { field: 'status', message: 'Calculation is already finalized' }
     ]);

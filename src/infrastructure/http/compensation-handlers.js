@@ -1,11 +1,12 @@
 import { parseJson } from '../../shared/http/request';
 import { jsonResponse } from '../../shared/http/response';
 import { parseWithSchema } from './schemas/validation-helper';
-import { createCompensationSchema, listCompensationsQuerySchema, quoteTreePurchaseSchema, } from './schemas/compensation-schemas';
+import { createCompensationSchema, listAreaContributionsQuerySchema, listCompensationsQuerySchema, quoteTreePurchaseSchema, } from './schemas/compensation-schemas';
 import { createCompensationAtomic } from '../../application/compensations/create-compensation-atomic';
 import { handleError } from './error-mapper';
 import { buildLogContext } from '../../shared/http/log-context';
 import { listCompensations } from '../../application/compensations/list-compensations';
+import { listAreaContributions } from '../../application/compensations/list-area-contributions';
 import { issueCompensationCertificate } from '../../application/compensations/issue-compensation-certificate';
 import { quoteTreePurchaseCompensation, } from '../../application/compensations/quote-tree-purchase-compensation';
 export function createCompensationHandlers(deps) {
@@ -225,6 +226,37 @@ export function createCompensationHandlers(deps) {
                         currency: item.currency,
                         status: item.status,
                         created_at: item.createdAt,
+                    })),
+                }, logContext);
+            }
+            catch (error) {
+                return handleError(error, undefined, logContext);
+            }
+        },
+        /**
+         * GET /api/v1/areas/:id/contributions
+         * Lists paid tree purchase contributions for a given area.
+         */
+        async listByArea(ctx, areaId) {
+            const logContext = buildLogContext(ctx);
+            try {
+                const query = Object.fromEntries(new URL(ctx.request.url).searchParams.entries());
+                const validated = parseWithSchema(listAreaContributionsQuerySchema, query);
+                const result = await listAreaContributions({
+                    historyRepository: deps.compensationHistoryRepository,
+                }, {
+                    areaId,
+                    limit: validated.limit,
+                    offset: validated.offset,
+                });
+                return jsonResponse(200, {
+                    data: result.map((item) => ({
+                        compensation_id: item.compensationId,
+                        supporter_user_id: item.supporterUserId,
+                        supporter_display_name: item.supporterDisplayName,
+                        trees_count: item.treesCount,
+                        total_t_co2e: item.totalTCO2e,
+                        compensated_at: item.compensatedAt,
                     })),
                 }, logContext);
             }

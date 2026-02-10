@@ -21,6 +21,18 @@ export type CompensationHistoryItem = {
 };
 
 /**
+ * Read model for area-level contributor listing.
+ */
+export type AreaContributionItem = {
+  compensationId: string;
+  supporterUserId: string;
+  supporterDisplayName?: string | null;
+  treesCount: number;
+  totalTCO2e: number;
+  compensatedAt: Date;
+};
+
+/**
  * Repository port for compensation history projections.
  */
 export interface CompensationHistoryRepository {
@@ -33,4 +45,13 @@ export interface CompensationHistoryRepository {
     },
     client?: any
   ): Promise<CompensationHistoryItem[]>;
+
+  listPaidTreePurchaseByArea(
+    input: {
+      areaId: string;
+      limit: number;
+      offset: number;
+    },
+    client?: any
+  ): Promise<AreaContributionItem[]>;
 }

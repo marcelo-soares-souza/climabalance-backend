@@ -424,6 +424,17 @@ const routes: ApiRouteDoc[] = [
     includeNotFound: true,
   },
   {
+    method: 'get',
+    path: '/api/v1/areas/:id/contributions',
+    summary: 'List area contributions',
+    description:
+      'Lists paid tree purchase contributions for a given area without financial values.',
+    tags: ['Compensations'],
+    queryParameters: [...commonListQuery],
+    successStatus: '200',
+    successResponse: 'OkList',
+  },
+  {
     method: 'patch',
     path: '/api/v1/areas/:id',
     summary: 'Update area',

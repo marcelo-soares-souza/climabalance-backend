@@ -82,6 +82,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async update(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(updateCalculationSchema, body);
@@ -97,6 +98,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           {
             calculation_id: id,
             user_id: ctx.auth!.userId,
+            isAdmin,
             ...validated
           }
         );
@@ -119,6 +121,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async finalize(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
         await finalizeFootprintCalculation(
           {
@@ -128,7 +131,8 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             clock: deps.clock
           },
           id,
-          ctx.auth!.userId
+          ctx.auth!.userId,
+          isAdmin
         );
 
         return jsonResponse(
@@ -208,13 +212,15 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async remove(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
         await deleteFootprintCalculation(
           {
             calculationRepository: deps.calculationRepository
           },
           id,
-          ctx.auth!.userId
+          ctx.auth!.userId,
+          isAdmin
         );
 
         return jsonResponse(

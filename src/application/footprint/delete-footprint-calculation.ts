@@ -9,7 +9,8 @@ export interface DeleteFootprintCalculationDeps {
 export async function deleteFootprintCalculation(
   deps: DeleteFootprintCalculationDeps,
   calculationId: string,
-  userId: string
+  userId: string,
+  isAdmin = false
 ): Promise<void> {
   const calculation = await deps.calculationRepository.findById(calculationId);
 
@@ -17,11 +18,12 @@ export async function deleteFootprintCalculation(
     throw new NotFoundError('footprint.calculation.not_found');
   }
 
-  if (calculation.user_id !== userId) {
+  // Allow admin to delete any calculation, regular users only their own
+  if (calculation.user_id !== userId && !isAdmin) {
     throw new ForbiddenError('footprint.calculation.not_owner');
   }
 
-  if (!canDeleteCalculation(calculation)) {
+  if (!canDeleteCalculation(calculation, isAdmin)) {
     throw new ValidationError([
       { field: 'status', message: 'Cannot delete finalized calculation' }
     ]);

@@ -12,7 +12,10 @@ import type {
   CompensationCertificateRepository,
 } from '../src/domain/compensations/repositories/compensation-certificate-repository';
 import type { CompensationHistoryRepository } from '../src/domain/compensations/repositories/compensation-history-repository';
-import type { CompensationHistoryItem } from '../src/domain/compensations/repositories/compensation-history-repository';
+import type {
+  AreaContributionItem,
+  CompensationHistoryItem,
+} from '../src/domain/compensations/repositories/compensation-history-repository';
 import type { CompensationCertificateStorage } from '../src/domain/compensations/services/certificate-storage';
 import type { CompensationCertificatePdfGenerator } from '../src/domain/compensations/services/certificate-pdf-generator';
 import type { HttpContext } from '../src/shared/http/router';
@@ -46,12 +49,35 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
 class InMemoryCompensationHistoryRepository
   implements CompensationHistoryRepository
 {
-  constructor(private readonly items: CompensationHistoryItem[] = []) {}
+  constructor(
+    private readonly items: CompensationHistoryItem[] = [],
+    private readonly areaContributions: Array<
+      AreaContributionItem & { areaId: string }
+    > = []
+  ) {}
 
   async listBySupporter(input: {
     supporterUserId: string;
+    status?: CompensationHistoryItem['status'];
+    limit: number;
+    offset: number;
   }): Promise<CompensationHistoryItem[]> {
-    return this.items.filter((item) => item.supporterUserId === input.supporterUserId);
+    const filtered = this.items.filter(
+      (item) =>
+        item.supporterUserId === input.supporterUserId &&
+        (input.status == null || item.status === input.status)
+    );
+    return filtered.slice(input.offset, input.offset + input.limit);
+  }
+
+  async listPaidTreePurchaseByArea(input: {
+    areaId: string;
+    limit: number;
+    offset: number;
+  }): Promise<AreaContributionItem[]> {
+    return this.areaContributions
+      .filter((item) => item.areaId === input.areaId)
+      .slice(input.offset, input.offset + input.limit);
   }
 }
 
@@ -401,6 +427,60 @@ describe('POST /api/v1/compensations handler', () => {
     expect(payload.data).toHaveLength(1);
     expect(payload.data[0].id).toBe('comp-2');
     expect(payload.data[0].status).toBe('paid');
+  });
+
+  test('lists paid tree contributions by area without financial amount', async () => {
+    const handlers = createCompensationHandlers({
+      areaRepository: new InMemoryAreaRepository(activeArea) as any,
+      compensationStore: new InMemoryCompensationStore({
+        id: 'area-1',
+        status: 'active',
+        totalCapacityTCO2e: 10,
+        committedTCO2e: 1,
+      }),
+      compensationHistoryRepository: new InMemoryCompensationHistoryRepository(
+        [],
+        [
+          {
+            compensationId: 'comp-tree-paid-1',
+            areaId: 'area-1',
+            supporterUserId: 'supporter-3',
+            supporterDisplayName: 'Maria Souza',
+            treesCount: 40,
+            totalTCO2e: 0.6,
+            compensatedAt: new Date('2026-02-07T17:30:00Z'),
+          },
+        ]
+      ),
+      compensationCertificateRepository:
+        new InMemoryCompensationCertificateRepository(),
+      compensationCertificateStorage: new InMemoryCompensationCertificateStorage(),
+      compensationCertificatePdfGenerator:
+        new InMemoryCompensationCertificatePdfGenerator(),
+      idGenerator: {
+        generate: () => 'comp-123',
+      },
+      clock: {
+        now: () => new Date('2026-02-07T16:00:00Z'),
+      },
+      auditLog: {
+        async log() {},
+      },
+    });
+
+    const response = await handlers.listByArea(
+      buildGetContext('/api/v1/areas/area-1/contributions?limit=10&offset=0'),
+      'area-1'
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.data).toHaveLength(1);
+    expect(payload.data[0].compensation_id).toBe('comp-tree-paid-1');
+    expect(payload.data[0].supporter_display_name).toBe('Maria Souza');
+    expect(payload.data[0].trees_count).toBe(40);
+    expect(payload.data[0].total_t_co2e).toBe(0.6);
+    expect(payload.data[0].total_amount).toBeUndefined();
   });
 
   test('quotes tree purchase compensation for 20-year horizon', async () => {

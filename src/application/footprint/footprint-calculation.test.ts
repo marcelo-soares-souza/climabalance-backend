@@ -16,7 +16,9 @@ import type { AuditLogEntry, AuditLogFilters, AuditLogRepository } from '../../d
 import type { UnitOfWork } from '../../infrastructure/persistence/unit-of-work';
 import { ValidationError } from '../../domain/errors';
 import { createFootprintCalculation } from './create-footprint-calculation';
+import { updateFootprintCalculation } from './update-footprint-calculation';
 import { finalizeFootprintCalculation } from './finalize-footprint-calculation';
+import { deleteFootprintCalculation } from './delete-footprint-calculation';
 import { listFootprintCalculations } from './list-footprint-calculations';
 import { getFootprintCalculation } from './get-footprint-calculation';
 
@@ -559,5 +561,406 @@ describe('footprint calculations', () => {
 
     expect(result.user_id).toBe('user-2');
     expect(result.user_email).toBe('user2@example.com');
+  });
+
+  it('allows admin to update calculations owned by other users', async () => {
+    const factors: EmissionFactor[] = [
+      {
+        id: 'factor-1',
+        activity_type: 'energy_residential',
+        unit: 'kwh',
+        factor_value: 0.1,
+        factor_unit: 'kg_co2e',
+        source: 'test',
+        valid_from: null,
+        valid_to: null,
+        region: 'BR',
+        version: '2026-01',
+        metadata_json: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+        deleted_at: null
+      }
+    ];
+
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+    const inputRepository = new MemoryFootprintInputRepository();
+    const breakdownRepository = new MemoryFootprintBreakdownRepository();
+    const projectionRepository = new MemoryCompensationProjectionRepository();
+    const auditLogRepository = new MemoryAuditLogRepository();
+    const unitOfWork = new MemoryUnitOfWork({
+      calculationRepository,
+      inputRepository,
+      breakdownRepository,
+      projectionRepository,
+      auditLogRepository
+    });
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-2',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'draft',
+      finalized_at: null,
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-02T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    // Admin should be able to update other user's calculation
+    await updateFootprintCalculation(
+      {
+        calculationRepository,
+        emissionFactorRepository: new MemoryEmissionFactorRepository(factors),
+        unitOfWork,
+        idGenerator,
+        clock
+      },
+      {
+        calculation_id: 'calc-1',
+        user_id: 'admin-1',
+        isAdmin: true,
+        inputs: [
+          { category: 'energy', unit: 'kwh', value: 200 }
+        ]
+      }
+    );
+
+    const updated = await calculationRepository.findById('calc-1');
+    expect(updated?.total_kg_co2e).toBeCloseTo(20, 6);
+    expect(updated?.user_id).toBe('user-2');
+  });
+
+  it('allows admin to update finalized calculations', async () => {
+    const factors: EmissionFactor[] = [
+      {
+        id: 'factor-1',
+        activity_type: 'energy_residential',
+        unit: 'kwh',
+        factor_value: 0.1,
+        factor_unit: 'kg_co2e',
+        source: 'test',
+        valid_from: null,
+        valid_to: null,
+        region: 'BR',
+        version: '2026-01',
+        metadata_json: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+        deleted_at: null
+      }
+    ];
+
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+    const inputRepository = new MemoryFootprintInputRepository();
+    const breakdownRepository = new MemoryFootprintBreakdownRepository();
+    const projectionRepository = new MemoryCompensationProjectionRepository();
+    const auditLogRepository = new MemoryAuditLogRepository();
+    const unitOfWork = new MemoryUnitOfWork({
+      calculationRepository,
+      inputRepository,
+      breakdownRepository,
+      projectionRepository,
+      auditLogRepository
+    });
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-1',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'finalized',
+      finalized_at: new Date('2026-01-03T00:00:00Z'),
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-03T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    // Admin should be able to update finalized calculation
+    await updateFootprintCalculation(
+      {
+        calculationRepository,
+        emissionFactorRepository: new MemoryEmissionFactorRepository(factors),
+        unitOfWork,
+        idGenerator,
+        clock
+      },
+      {
+        calculation_id: 'calc-1',
+        user_id: 'admin-1',
+        isAdmin: true,
+        inputs: [
+          { category: 'energy', unit: 'kwh', value: 300 }
+        ]
+      }
+    );
+
+    const updated = await calculationRepository.findById('calc-1');
+    expect(updated?.total_kg_co2e).toBeCloseTo(30, 6);
+    expect(updated?.status).toBe('finalized');
+  });
+
+  it('allows admin to delete calculations owned by other users', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-2',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'draft',
+      finalized_at: null,
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-02T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    // Admin should be able to delete other user's calculation
+    await deleteFootprintCalculation(
+      { calculationRepository },
+      'calc-1',
+      'admin-1',
+      true
+    );
+
+    const deleted = await calculationRepository.findById('calc-1');
+    expect(deleted?.deleted_at).not.toBeNull();
+  });
+
+  it('allows admin to delete finalized calculations', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-1',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'finalized',
+      finalized_at: new Date('2026-01-03T00:00:00Z'),
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-03T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    // Admin should be able to delete finalized calculation
+    await deleteFootprintCalculation(
+      { calculationRepository },
+      'calc-1',
+      'admin-1',
+      true
+    );
+
+    const deleted = await calculationRepository.findById('calc-1');
+    expect(deleted?.deleted_at).not.toBeNull();
+  });
+
+  it('allows admin to finalize calculations owned by other users', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+    const inputRepository = new MemoryFootprintInputRepository();
+    const breakdownRepository = new MemoryFootprintBreakdownRepository();
+    const projectionRepository = new MemoryCompensationProjectionRepository();
+    const auditLogRepository = new MemoryAuditLogRepository();
+    const unitOfWork = new MemoryUnitOfWork({
+      calculationRepository,
+      inputRepository,
+      breakdownRepository,
+      projectionRepository,
+      auditLogRepository
+    });
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-2',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'draft',
+      finalized_at: null,
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-02T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    // Admin should be able to finalize other user's calculation
+    await finalizeFootprintCalculation(
+      {
+        calculationRepository,
+        unitOfWork,
+        idGenerator,
+        clock
+      },
+      'calc-1',
+      'admin-1',
+      true
+    );
+
+    const finalized = await calculationRepository.findById('calc-1');
+    expect(finalized?.status).toBe('finalized');
+    expect(finalized?.finalized_at).not.toBeNull();
+    expect(finalized?.user_id).toBe('user-2');
+  });
+
+  it('prevents non-admin from updating finalized calculations', async () => {
+    const factors: EmissionFactor[] = [
+      {
+        id: 'factor-1',
+        activity_type: 'energy_residential',
+        unit: 'kwh',
+        factor_value: 0.1,
+        factor_unit: 'kg_co2e',
+        source: 'test',
+        valid_from: null,
+        valid_to: null,
+        region: 'BR',
+        version: '2026-01',
+        metadata_json: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+        deleted_at: null
+      }
+    ];
+
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+    const inputRepository = new MemoryFootprintInputRepository();
+    const breakdownRepository = new MemoryFootprintBreakdownRepository();
+    const projectionRepository = new MemoryCompensationProjectionRepository();
+    const auditLogRepository = new MemoryAuditLogRepository();
+    const unitOfWork = new MemoryUnitOfWork({
+      calculationRepository,
+      inputRepository,
+      breakdownRepository,
+      projectionRepository,
+      auditLogRepository
+    });
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-1',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'finalized',
+      finalized_at: new Date('2026-01-03T00:00:00Z'),
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-03T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    let error: unknown = null;
+    try {
+      await updateFootprintCalculation(
+        {
+          calculationRepository,
+          emissionFactorRepository: new MemoryEmissionFactorRepository(factors),
+          unitOfWork,
+          idGenerator,
+          clock
+        },
+        {
+          calculation_id: 'calc-1',
+          user_id: 'user-1',
+          isAdmin: false,
+          inputs: [
+            { category: 'energy', unit: 'kwh', value: 200 }
+          ]
+        }
+      );
+    } catch (err) {
+      error = err;
+    }
+
+    expect(error).toBeInstanceOf(ValidationError);
+  });
+
+  it('prevents non-admin from deleting finalized calculations', async () => {
+    const calculationRepository = new MemoryFootprintCalculationRepository();
+
+    const calculation: FootprintCalculation = {
+      id: 'calc-1',
+      user_id: 'user-1',
+      profile_type: 'individual',
+      period_start: new Date('2026-01-01'),
+      period_end: new Date('2026-02-01'),
+      total_kg_co2e: 10,
+      total_t_co2e: 0.01,
+      unit: 'kg',
+      calculation_method: 'activity_based',
+      data_quality: 'estimated',
+      factors_version: '2026-01',
+      status: 'finalized',
+      finalized_at: new Date('2026-01-03T00:00:00Z'),
+      created_at: new Date('2026-01-02T00:00:00Z'),
+      updated_at: new Date('2026-01-03T00:00:00Z'),
+      deleted_at: null
+    };
+
+    await calculationRepository.save(calculation);
+
+    let error: unknown = null;
+    try {
+      await deleteFootprintCalculation(
+        { calculationRepository },
+        'calc-1',
+        'user-1',
+        false
+      );
+    } catch (err) {
+      error = err;
+    }
+
+    expect(error).toBeInstanceOf(ValidationError);
   });
 });

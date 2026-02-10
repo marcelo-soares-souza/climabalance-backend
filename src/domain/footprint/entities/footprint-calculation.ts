@@ -27,23 +27,44 @@ export interface FootprintCalculation {
 
 /**
  * Check if calculation can be edited
+ * Admin can edit any calculation (except soft-deleted)
  */
-export function canEditCalculation(calculation: FootprintCalculation): boolean {
+export function canEditCalculation(
+  calculation: FootprintCalculation,
+  isAdmin = false
+): boolean {
+  if (isAdmin) {
+    return !calculation.deleted_at;
+  }
   return calculation.status === 'draft' && !calculation.deleted_at;
 }
 
 /**
  * Check if calculation can be finalized
+ * Admin can finalize any draft calculation
  */
-export function canFinalizeCalculation(calculation: FootprintCalculation): boolean {
+export function canFinalizeCalculation(
+  calculation: FootprintCalculation,
+  isAdmin = false
+): boolean {
+  if (isAdmin) {
+    return calculation.status === 'draft' && !calculation.deleted_at;
+  }
   return calculation.status === 'draft' && !calculation.deleted_at;
 }
 
 /**
  * Check if calculation can be deleted
+ * Admin can delete any calculation (except soft-deleted)
  */
-export function canDeleteCalculation(calculation: FootprintCalculation): boolean {
-  // Only drafts can be deleted
+export function canDeleteCalculation(
+  calculation: FootprintCalculation,
+  isAdmin = false
+): boolean {
+  if (isAdmin) {
+    return !calculation.deleted_at;
+  }
+  // Only drafts can be deleted by regular users
   return calculation.status === 'draft' && !calculation.deleted_at;
 }
 

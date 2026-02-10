@@ -67,3 +67,8 @@ export const listCompensationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
+
+export const listAreaContributionsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});

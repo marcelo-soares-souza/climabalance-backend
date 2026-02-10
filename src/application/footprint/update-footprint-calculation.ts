@@ -14,6 +14,7 @@ import { NotFoundError, ForbiddenError, ValidationError } from '../../domain/err
 export interface UpdateFootprintCalculationRequest {
   calculation_id: string;
   user_id: string;
+  isAdmin?: boolean;
   period_start?: string;
   period_end?: string;
   inputs?: CreateFootprintInputDTO[];
@@ -39,11 +40,12 @@ export async function updateFootprintCalculation(
     throw new NotFoundError('footprint.calculation.not_found');
   }
 
-  if (calculation.user_id !== request.user_id) {
+  // Allow admin to edit any calculation, regular users only their own
+  if (calculation.user_id !== request.user_id && !request.isAdmin) {
     throw new ForbiddenError('footprint.calculation.not_owner');
   }
 
-  if (!canEditCalculation(calculation)) {
+  if (!canEditCalculation(calculation, request.isAdmin)) {
     throw new ValidationError([
       { field: 'status', message: 'Cannot edit finalized calculation' }
     ]);

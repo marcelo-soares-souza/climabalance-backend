@@ -114,6 +114,14 @@ export function buildRouter(
   // Area routes (CRUD)
   addRoute('POST', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.create(ctx), { roles: ['producer', 'administrator'] }));
   addRoute('GET', '/api/v1/areas/:id', 'public', withOptionalAuth((ctx) => areaHandlers.get(ctx, ctx.params.id)));
+  addRoute(
+    'GET',
+    '/api/v1/areas/:id/contributions',
+    'public',
+    withOptionalAuth((ctx) =>
+      compensationHandlers.listByArea(ctx, ctx.params.id)
+    )
+  );
   addRoute('PATCH', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.update(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.remove(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.list(ctx)));
@@ -145,25 +153,19 @@ export function buildRouter(
     'POST',
     '/api/v1/compensations',
     'protected',
-    withAuth((ctx) => compensationHandlers.create(ctx), {
-      roles: ['individual', 'legal_entity', 'administrator']
-    })
+    withAuth((ctx) => compensationHandlers.create(ctx))
   );
   addRoute(
     'POST',
     '/api/v1/compensations/quote',
     'protected',
-    withAuth((ctx) => compensationHandlers.quote(ctx), {
-      roles: ['individual', 'legal_entity', 'administrator']
-    })
+    withAuth((ctx) => compensationHandlers.quote(ctx))
   );
   addRoute(
     'GET',
     '/api/v1/compensations',
     'protected',
-    withAuth((ctx) => compensationHandlers.listOwn(ctx), {
-      roles: ['individual', 'legal_entity', 'administrator']
-    })
+    withAuth((ctx) => compensationHandlers.listOwn(ctx))
   );
   addRoute(
     'GET',
@@ -175,25 +177,19 @@ export function buildRouter(
     'GET',
     '/api/v1/certificates/:id/download',
     'protected',
-    withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id), {
-      roles: ['individual', 'legal_entity', 'administrator']
-    })
+    withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id))
   );
   addRoute(
     'POST',
     '/api/v1/payments/simulate',
     'protected',
-    withAuth((ctx) => paymentHandlers.simulate(ctx), {
-      roles: ['individual', 'legal_entity', 'administrator']
-    })
+    withAuth((ctx) => paymentHandlers.simulate(ctx))
   );
   addRoute(
     'GET',
     '/api/v1/payments/:id/status',
     'protected',
-    withAuth((ctx) => paymentHandlers.status(ctx, ctx.params.id), {
-      roles: ['individual', 'legal_entity', 'administrator']
-    })
+    withAuth((ctx) => paymentHandlers.status(ctx, ctx.params.id))
   );
   addRoute('POST', '/api/v1/payments/webhook', 'public', (ctx) => paymentHandlers.webhook(ctx));
   addRoute(

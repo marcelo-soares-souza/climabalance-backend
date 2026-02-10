@@ -67,6 +67,7 @@ export function buildRouter(deps) {
     // Area routes (CRUD)
     addRoute('POST', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.create(ctx), { roles: ['producer', 'administrator'] }));
     addRoute('GET', '/api/v1/areas/:id', 'public', withOptionalAuth((ctx) => areaHandlers.get(ctx, ctx.params.id)));
+    addRoute('GET', '/api/v1/areas/:id/contributions', 'public', withOptionalAuth((ctx) => compensationHandlers.listByArea(ctx, ctx.params.id)));
     addRoute('PATCH', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.update(ctx, ctx.params.id)));
     addRoute('DELETE', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.remove(ctx, ctx.params.id)));
     addRoute('GET', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.list(ctx)));
@@ -89,18 +90,10 @@ export function buildRouter(deps) {
     addRoute('GET', '/api/v1/updates/stream', 'public', (ctx) => updateHandlers.streamUpdates(ctx));
     addRoute('POST', '/api/v1/updates/notify', 'admin', withAuth((ctx) => updateHandlers.notifyUpdate(ctx), { roles: ['administrator'] }));
     // Compensation routes
-    addRoute('POST', '/api/v1/compensations', 'protected', withAuth((ctx) => compensationHandlers.create(ctx), {
-        roles: ['individual', 'legal_entity', 'administrator']
-    }));
-    addRoute('POST', '/api/v1/compensations/quote', 'protected', withAuth((ctx) => compensationHandlers.quote(ctx), {
-        roles: ['individual', 'legal_entity', 'administrator']
-    }));
-    addRoute('GET', '/api/v1/compensations', 'protected', withAuth((ctx) => compensationHandlers.listOwn(ctx), {
-        roles: ['individual', 'legal_entity', 'administrator']
-    }));
+    addRoute('POST', '/api/v1/compensations', 'protected', withAuth((ctx) => compensationHandlers.create(ctx)));
+    addRoute('POST', '/api/v1/compensations/quote', 'protected', withAuth((ctx) => compensationHandlers.quote(ctx)));
+    addRoute('GET', '/api/v1/compensations', 'protected', withAuth((ctx) => compensationHandlers.listOwn(ctx)));
     addRoute('GET', '/api/v1/certificates/validate', 'public', (ctx) => certificateHandlers.validate(ctx));
-    addRoute('GET', '/api/v1/certificates/:id/download', 'protected', withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id), {
-        roles: ['individual', 'legal_entity', 'administrator']
-    }));
+    addRoute('GET', '/api/v1/certificates/:id/download', 'protected', withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id)));
     return router;
 }
