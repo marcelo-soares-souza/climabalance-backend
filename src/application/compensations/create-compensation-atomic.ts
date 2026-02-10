@@ -132,16 +132,7 @@ export async function createCompensationAtomic(
       ]);
     }
 
-    const available = Math.max(area.totalCapacityTCO2e - area.committedTCO2e, 0);
-    if (available < input.totalTCO2e) {
-      throw new ValidationError([
-        {
-          field: 'total_t_co2e',
-          message: 'insufficient_capacity',
-        },
-      ]);
-    }
-
+    // Allow over-commitment: no validation against available capacity
     const newCommitted = area.committedTCO2e + input.totalTCO2e;
     await tx.updateAreaCommitted(area.id, newCommitted, now);
 

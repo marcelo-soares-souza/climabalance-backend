@@ -158,6 +158,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           {
             areaId: id,
             userId: ctx.auth!.userId,
+            isAdmin: ctx.auth!.roles.includes('administrator'),
             ...validated,
           }
         );
@@ -187,7 +188,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             unitOfWork: deps.unitOfWork,
           },
           id,
-          ctx.auth!.userId
+          ctx.auth!.userId,
+          ctx.auth!.roles.includes('administrator')
         );
 
         return jsonResponse(

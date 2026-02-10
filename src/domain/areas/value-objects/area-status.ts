@@ -85,8 +85,22 @@ export class AreaStatus {
     return this.value === 'draft';
   }
 
+  canBeEditedFor(isAdmin: boolean): boolean {
+    if (isAdmin) {
+      return true;
+    }
+    return this.canBeEdited();
+  }
+
   canBeDeleted(): boolean {
     return this.value === 'draft';
+  }
+
+  canBeDeletedFor(isAdmin: boolean): boolean {
+    if (isAdmin) {
+      return true;
+    }
+    return this.canBeDeleted();
   }
 
   canBeSubmittedForAudit(): boolean {

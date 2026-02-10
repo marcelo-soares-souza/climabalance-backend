@@ -77,14 +77,9 @@ export async function quoteTreePurchaseCompensation(
 
   const availableTCO2e = area.carbonCapacity?.availableTCO2e ?? 0;
   const hasCapacity = availableTCO2e >= estimatedTotalTCO2e;
-  if (!hasCapacity) {
-    throw new ValidationError([
-      {
-        field: 'trees_requested',
-        message: 'insufficient_capacity',
-      },
-    ]);
-  }
+
+  // No validation: allow purchases beyond available capacity
+  // hasCapacity is returned for informational purposes only
 
   return {
     areaId: area.id,

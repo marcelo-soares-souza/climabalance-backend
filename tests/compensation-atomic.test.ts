@@ -94,36 +94,38 @@ describe('createCompensationAtomic', () => {
     expect(store.compensations[0].totalCO2Kg).toBe(2500);
   });
 
-  test('rejects when area has insufficient available capacity', async () => {
-    await expect(
-      createCompensationAtomic(
-        {
-          store,
-          idGenerator: {
-            generate: () => `comp-${++sequence}`,
-          },
-          clock: {
-            now: () => new Date('2026-02-07T15:00:00Z'),
-          },
-          auditLog: {
-            async log() {},
-          },
+  test('allows over-commitment beyond available capacity', async () => {
+    const result = await createCompensationAtomic(
+      {
+        store,
+        idGenerator: {
+          generate: () => `comp-${++sequence}`,
         },
-        {
-          supporterUserId: 'supporter-1',
-          areaId: 'area-1',
-          totalTCO2e: 6,
-          totalAmount: 600,
-          currency: 'BRL',
-          treesCount: 200,
-        }
-      )
-    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
-    expect(store.compensations.length).toBe(0);
-    expect(store.area.committedTCO2e).toBe(0);
+        clock: {
+          now: () => new Date('2026-02-07T15:00:00Z'),
+        },
+        auditLog: {
+          async log() {},
+        },
+      },
+      {
+        supporterUserId: 'supporter-1',
+        areaId: 'area-1',
+        totalTCO2e: 6,
+        totalAmount: 600,
+        currency: 'BRL',
+        treesCount: 200,
+      }
+    );
+
+    // Should succeed even though 6 tCO2e exceeds available capacity (5 tCO2e)
+    expect(result.compensationId).toBe('comp-1');
+    expect(store.area.committedTCO2e).toBe(6);
+    expect(store.compensations.length).toBe(1);
+    expect(result.remainingTCO2e).toBe(0); // Negative clamped to 0 in display
   });
 
-  test('prevents double counting under concurrent requests', async () => {
+  test('allows both concurrent requests with over-commitment', async () => {
     const deps = {
       store,
       idGenerator: {
@@ -159,17 +161,15 @@ describe('createCompensationAtomic', () => {
     const fulfilled = [first, second].filter(
       (entry) => entry.status === 'fulfilled'
     );
-    const rejected = [first, second].filter(
-      (entry) => entry.status === 'rejected'
-    );
 
-    expect(fulfilled.length).toBe(1);
-    expect(rejected.length).toBe(1);
-    expect(store.compensations.length).toBe(1);
-    expect(store.area.committedTCO2e).toBe(4);
+    // Both requests should succeed, allowing over-commitment
+    expect(fulfilled.length).toBe(2);
+    expect(store.compensations.length).toBe(2);
+    // Total committed: 8 tCO2e (exceeds capacity of 5)
+    expect(store.area.committedTCO2e).toBe(8);
   });
 
-  test('prevents double counting under concurrent tree_purchase requests', async () => {
+  test('allows both concurrent tree_purchase requests with over-commitment', async () => {
     const deps = {
       store,
       idGenerator: {
@@ -215,16 +215,14 @@ describe('createCompensationAtomic', () => {
     const fulfilled = [first, second].filter(
       (entry) => entry.status === 'fulfilled'
     );
-    const rejected = [first, second].filter(
-      (entry) => entry.status === 'rejected'
-    );
 
-    expect(fulfilled.length).toBe(1);
-    expect(rejected.length).toBe(1);
-    expect(store.compensations.length).toBe(1);
+    // Both tree_purchase requests should succeed
+    expect(fulfilled.length).toBe(2);
+    expect(store.compensations.length).toBe(2);
     expect(store.compensations[0].compensationMode).toBe('tree_purchase');
     expect(store.compensations[0].treesRequested).toBe(10);
     expect(store.compensations[0].horizonYears).toBe(20);
-    expect(store.area.committedTCO2e).toBe(3);
+    // Total committed: 6 tCO2e (exceeds capacity of 5)
+    expect(store.area.committedTCO2e).toBe(6);
   });
 });

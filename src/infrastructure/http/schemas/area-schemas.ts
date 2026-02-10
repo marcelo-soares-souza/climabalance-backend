@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 /**
  * Schema for creating a new area
+ * Accepts both snake_case and camelCase for API compatibility
  */
 export const createAreaSchema = z.object({
   name: z.string().min(3).max(200),
@@ -12,13 +13,26 @@ export const createAreaSchema = z.object({
   state: z.string().max(50).optional(),
   city: z.string().max(100).optional(),
   totalCapacityTCO2e: z.number().positive().optional(),
+  total_capacity_t_co2e: z.number().positive().optional(),
   tCO2ePerTreePerYear: z.number().positive().optional(),
-});
+  t_co2e_per_tree_per_year: z.number().positive().optional(),
+}).transform((data) => ({
+  name: data.name,
+  description: data.description,
+  latitude: data.latitude,
+  longitude: data.longitude,
+  biome: data.biome,
+  state: data.state,
+  city: data.city,
+  totalCapacityTCO2e: data.totalCapacityTCO2e ?? data.total_capacity_t_co2e,
+  tCO2ePerTreePerYear: data.tCO2ePerTreePerYear ?? data.t_co2e_per_tree_per_year,
+}));
 
 export type CreateAreaRequest = z.infer<typeof createAreaSchema>;
 
 /**
  * Schema for updating an existing area
+ * Accepts both snake_case and camelCase for API compatibility
  */
 export const updateAreaSchema = z.object({
   name: z.string().min(3).max(200).optional(),
@@ -29,8 +43,20 @@ export const updateAreaSchema = z.object({
   state: z.string().max(50).optional(),
   city: z.string().max(100).optional(),
   totalCapacityTCO2e: z.number().positive().optional(),
+  total_capacity_t_co2e: z.number().positive().optional(),
   tCO2ePerTreePerYear: z.number().positive().optional(),
-});
+  t_co2e_per_tree_per_year: z.number().positive().optional(),
+}).transform((data) => ({
+  name: data.name,
+  description: data.description,
+  latitude: data.latitude,
+  longitude: data.longitude,
+  biome: data.biome,
+  state: data.state,
+  city: data.city,
+  totalCapacityTCO2e: data.totalCapacityTCO2e ?? data.total_capacity_t_co2e,
+  tCO2ePerTreePerYear: data.tCO2ePerTreePerYear ?? data.t_co2e_per_tree_per_year,
+}));
 
 export type UpdateAreaRequest = z.infer<typeof updateAreaSchema>;
 

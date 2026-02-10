@@ -15,9 +15,8 @@ export class CarbonCapacity {
       throw new Error('Committed capacity cannot be negative');
     }
 
-    if (committed > totalCapacity) {
-      throw new Error('Committed capacity cannot exceed total capacity');
-    }
+    // Allow over-commitment: committed can exceed total capacity
+    // This enables flexible compensation purchases beyond declared capacity
 
     this.totalCapacityTCO2e = totalCapacity;
     this.committedTCO2e = committed;
@@ -41,12 +40,11 @@ export class CarbonCapacity {
   }
 
   reserve(amountTCO2e: number): CarbonCapacity {
-    if (!this.canReserve(amountTCO2e)) {
-      throw new Error(
-        `Cannot reserve ${amountTCO2e} tCO2e. Available: ${this.availableTCO2e} tCO2e`
-      );
+    if (amountTCO2e <= 0) {
+      throw new Error('Reserve amount must be positive');
     }
 
+    // Allow over-commitment: no validation against available capacity
     return new CarbonCapacity(
       this.totalCapacityTCO2e,
       this.committedTCO2e + amountTCO2e

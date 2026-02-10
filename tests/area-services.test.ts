@@ -111,10 +111,15 @@ describe('CarbonStockService', () => {
     expect(area!.carbonCapacity?.availableTCO2e).toBe(75);
   });
 
-  test('should fail to reserve more than available capacity', async () => {
-    expect(async () => {
-      await carbonStockService.reserveStock('area-1', 150);
-    }).toThrow();
+  test('should allow over-commitment beyond available capacity', async () => {
+    // Reserve more than the total capacity (100 tCO2e)
+    await carbonStockService.reserveStock('area-1', 150);
+
+    const area = await areaRepository.findById('area-1');
+    expect(area).not.toBeNull();
+    expect(area!.carbonCapacity?.committedTCO2e).toBe(150);
+    // Available becomes negative but is clamped in some contexts
+    expect(area!.carbonCapacity?.availableTCO2e).toBe(-50);
   });
 
   test('should release carbon stock successfully', async () => {

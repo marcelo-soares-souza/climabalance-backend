@@ -72,12 +72,20 @@ export class Area {
 
   // Business rules
 
-  canBeEditedBy(userId: string): boolean {
-    return this.ownerUserId === userId && this.status.canBeEdited();
+  canBeEditedBy(userId: string, isAdmin = false): boolean {
+    const canEdit = this.status.canBeEditedFor(isAdmin);
+    if (isAdmin) {
+      return canEdit;
+    }
+    return this.ownerUserId === userId && canEdit;
   }
 
-  canBeDeletedBy(userId: string): boolean {
-    return this.ownerUserId === userId && this.status.canBeDeleted();
+  canBeDeletedBy(userId: string, isAdmin = false): boolean {
+    const canDelete = this.status.canBeDeletedFor(isAdmin);
+    if (isAdmin) {
+      return canDelete;
+    }
+    return this.ownerUserId === userId && canDelete;
   }
 
   canBeSubmittedForAudit(): boolean {
@@ -208,17 +216,20 @@ export class Area {
 
   // Mutations
 
-  update(updates: {
-    name?: string;
-    description?: string;
-    location?: Location;
-    biome?: Biome;
-    state?: string;
-    city?: string;
-    totalCapacityTCO2e?: number;
-    tCO2ePerTreePerYear?: number;
-  }): void {
-    if (!this.status.canBeEdited()) {
+  update(
+    updates: {
+      name?: string;
+      description?: string;
+      location?: Location;
+      biome?: Biome;
+      state?: string;
+      city?: string;
+      totalCapacityTCO2e?: number;
+      tCO2ePerTreePerYear?: number;
+    },
+    options?: { forceEdit?: boolean }
+  ): void {
+    if (!options?.forceEdit && !this.status.canBeEdited()) {
       throw new Error('Area cannot be edited in current status');
     }
 

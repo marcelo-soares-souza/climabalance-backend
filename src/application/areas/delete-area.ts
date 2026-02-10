@@ -1,4 +1,11 @@
 import { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import { Area } from '../../domain/areas/entities/area';
+
+export interface DeleteAreaRequest {
+  userId: string;
+  areaId: string;
+  isAdmin?: boolean;
+}
 
 export interface DeleteAreaDeps {
   areaRepository: AreaRepository;
@@ -6,20 +13,17 @@ export interface DeleteAreaDeps {
 
 export async function deleteArea(
   deps: DeleteAreaDeps,
-  areaId: string,
-  userId: string
+  request: DeleteAreaRequest
 ): Promise<void> {
-  const area = await deps.areaRepository.findById(areaId);
+  const area = await deps.areaRepository.findById(request.areaId);
 
   if (!area) {
     throw new Error('Area not found');
   }
 
-  if (!area.canBeDeletedBy(userId)) {
+  if (!area.canBeDeletedBy(request.userId, request.isAdmin ?? false)) {
     throw new Error('User cannot delete this area');
   }
 
-  area.softDelete();
-
-  await deps.areaRepository.update(area);
+  await deps.areaRepository.delete(area.id);
 }

@@ -5,6 +5,7 @@ import { Biome } from '../../domain/areas/value-objects/biome';
 export interface UpdateAreaRequest {
   userId: string;
   areaId: string;
+  isAdmin?: boolean;
   name?: string;
   description?: string;
   latitude?: number;
@@ -30,7 +31,7 @@ export async function updateArea(
     throw new Error('Area not found');
   }
 
-  if (!area.canBeEditedBy(request.userId)) {
+  if (!area.canBeEditedBy(request.userId, request.isAdmin ?? false)) {
     throw new Error('User cannot edit this area');
   }
 
@@ -53,7 +54,7 @@ export async function updateArea(
     updates.biome = Biome.fromString(request.biome);
   }
 
-  area.update(updates);
+  area.update(updates, { forceEdit: request.isAdmin ?? false });
 
   await deps.areaRepository.update(area);
 }
