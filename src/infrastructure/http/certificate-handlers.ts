@@ -4,11 +4,16 @@ import { handleError } from './error-mapper';
 import { buildLogContext } from '../../shared/http/log-context';
 import type { CompensationCertificateRepository } from '../../domain/compensations/repositories/compensation-certificate-repository';
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
+import type { CompensationCertificatePdfGenerator } from '../../domain/compensations/services/certificate-pdf-generator';
+import type { CompensationHistoryRepository } from '../../domain/compensations/repositories/compensation-history-repository';
 import { NotFoundError, ValidationError, ForbiddenError } from '../../domain/errors';
+import { logger } from '../../shared/utils/logger';
 
 export interface CertificateHandlersDeps {
   compensationCertificateRepository: CompensationCertificateRepository;
   compensationCertificateStorage: CompensationCertificateStorage;
+  compensationCertificatePdfGenerator: CompensationCertificatePdfGenerator;
+  compensationHistoryRepository: CompensationHistoryRepository;
 }
 
 export function createCertificateHandlers(deps: CertificateHandlersDeps) {
@@ -117,9 +122,76 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
           throw new ForbiddenError('auth.forbidden');
         }
 
-        const bytes = await deps.compensationCertificateStorage.read(
-          certificate.storageUrl
-        );
+        let bytes: Uint8Array;
+
+        try {
+          bytes = await deps.compensationCertificateStorage.read(
+            certificate.storageUrl
+          );
+        } catch (storageError) {
+          // Fallback: regenerate certificate if file not found
+          const isFileNotFound =
+            storageError instanceof Error &&
+            (storageError.message.includes('ENOENT') ||
+              storageError.message.includes('not_found') ||
+              storageError.message.includes('no such file'));
+
+          if (!isFileNotFound) {
+            throw storageError;
+          }
+
+          logger.warn('certificate.file_not_found.regenerating', {
+            certificate_id: certificateId,
+            storage_url: certificate.storageUrl,
+            error: storageError instanceof Error ? storageError.message : String(storageError),
+          });
+
+          // Fetch compensation data
+          const compensation = await deps.compensationHistoryRepository.findById(
+            certificate.compensationId
+          );
+
+          if (!compensation) {
+            logger.error('certificate.compensation_not_found', {
+              certificate_id: certificateId,
+              compensation_id: certificate.compensationId,
+            });
+            throw new NotFoundError('compensation.not_found');
+          }
+
+          // Regenerate PDF
+          bytes = await deps.compensationCertificatePdfGenerator.generate({
+            certificateNumber: certificate.certificateNumber,
+            issuedAt: certificate.issuedAt ?? new Date(),
+            compensationId: certificate.compensationId,
+            supporterUserId: certificate.supporterUserId,
+            areaId: compensation.areaId,
+            calculationId: compensation.calculationId ?? undefined,
+            compensationMode: compensation.compensationMode,
+            horizonYears: compensation.horizonYears ?? undefined,
+            treesRequested: compensation.treesRequested ?? undefined,
+            pricePerTree: compensation.pricePerTree ?? undefined,
+            estimatedTotalTCO2e: compensation.estimatedTotalTCO2e ?? undefined,
+            authenticityHash: certificate.authenticityHash ?? '',
+            validationUrl: certificate.validationUrl ?? '',
+            qrCodeData: certificate.qrCodeData ?? '',
+            totalTCO2e: compensation.totalTCO2e,
+            treesCount: compensation.treesCount ?? 0,
+            totalAmount: compensation.totalAmount,
+            currency: compensation.currency,
+          });
+
+          // Save regenerated file
+          await deps.compensationCertificateStorage.save({
+            certificateId,
+            bytes,
+          });
+
+          logger.info('certificate.regenerated', {
+            certificate_id: certificateId,
+            file_size_bytes: bytes.byteLength,
+          });
+        }
 
         return new Response(bytes, {
           status: 200,

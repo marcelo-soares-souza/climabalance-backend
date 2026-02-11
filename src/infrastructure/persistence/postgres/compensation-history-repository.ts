@@ -134,4 +134,37 @@ export class PostgresCompensationHistoryRepository
       mapAreaContributionRow(row as Record<string, unknown>)
     );
   }
+
+  async findById(compensationId: string): Promise<CompensationHistoryItem | null> {
+    const result = await this.pool.query(
+      `SELECT
+        c.id,
+        c.supporter_user_id,
+        c.area_id,
+        a.name AS area_name,
+        c.calculation_id,
+        c.compensation_mode,
+        c.horizon_years,
+        c.trees_requested,
+        c.price_per_tree,
+        c.estimated_total_t_co2e,
+        COALESCE(c.total_t_co2e, (c.total_co2_kg / 1000.0)) AS total_t_co2e,
+        c.trees_count,
+        c.total_amount,
+        c.currency,
+        c.status,
+        c.created_at
+      FROM compensations c
+      LEFT JOIN areas a ON a.id = c.area_id
+      WHERE c.id = $1
+        AND c.deleted_at IS NULL`,
+      [compensationId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return mapRow(result.rows[0] as Record<string, unknown>);
+  }
 }

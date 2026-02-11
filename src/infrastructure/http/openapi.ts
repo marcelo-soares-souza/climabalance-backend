@@ -391,6 +391,16 @@ const routes: ApiRouteDoc[] = [
   },
   {
     method: 'post',
+    path: '/api/v1/footprint/calculate-guest',
+    summary: 'Calculate guest footprint',
+    description: 'Calculates carbon footprint for anonymous users without creating a calculation record.',
+    tags: ['Footprint'],
+    requestBodyRef: 'FootprintCalculateGuestRequest',
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+  {
+    method: 'post',
     path: '/api/v1/footprint/calculations/:id/projection',
     summary: 'Create compensation projection',
     description: 'Creates compensation projection for a finalized calculation.',

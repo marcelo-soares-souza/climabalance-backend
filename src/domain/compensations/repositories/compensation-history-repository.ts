@@ -54,4 +54,6 @@ export interface CompensationHistoryRepository {
     },
     client?: any
   ): Promise<AreaContributionItem[]>;
+
+  findById(compensationId: string, client?: any): Promise<CompensationHistoryItem | null>;
 }
