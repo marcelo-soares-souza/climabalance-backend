@@ -13,7 +13,8 @@ import { handleError } from './error-mapper';
 import {
   createCalculationSchema,
   updateCalculationSchema,
-  createProjectionSchema
+  createProjectionSchema,
+  calculateGuestSchema
 } from './schemas/footprint-schemas';
 import { parseWithSchema } from './schemas/validation-helper';
 import { createFootprintCalculation } from '../../application/footprint/create-footprint-calculation';
@@ -24,6 +25,7 @@ import { listFootprintCalculations } from '../../application/footprint/list-foot
 import { deleteFootprintCalculation } from '../../application/footprint/delete-footprint-calculation';
 import { getEmissionFactors } from '../../application/footprint/get-emission-factors';
 import { createCompensationProjection, type AreaRepository } from '../../application/footprint/create-compensation-projection';
+import { calculateGuestFootprint } from '../../application/footprint/calculate-guest-footprint';
 import { buildLogContext } from '../../shared/http/log-context';
 
 export interface FootprintHandlersDeps {
@@ -292,6 +294,37 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           {
             data: result,
             messages: ['footprint.projection.created']
+          },
+          logContext
+        );
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * POST /api/v1/footprint/calculate-guest
+     * Calculate carbon footprint for guest (unauthenticated) users
+     * Does not persist calculation to database
+     */
+    async calculateGuest(ctx: HttpContext) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const body = await parseJson(ctx.request, ctx);
+        const validated = parseWithSchema(calculateGuestSchema, body);
+
+        const result = await calculateGuestFootprint(
+          {
+            emissionFactorRepository: deps.emissionFactorRepository
+          },
+          validated
+        );
+
+        return jsonResponse(
+          200,
+          {
+            data: result,
+            messages: ['footprint.guest_calculation.completed']
           },
           logContext
         );

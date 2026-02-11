@@ -109,6 +109,7 @@ export function buildRouter(
   addRoute('GET', '/api/v1/footprint/calculations', 'protected', withAuth((ctx) => footprintHandlers.list(ctx)));
   addRoute('DELETE', '/api/v1/footprint/calculations/:id', 'protected', withAuth((ctx) => footprintHandlers.remove(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/footprint/emission-factors', 'public', (ctx) => footprintHandlers.getEmissionFactors(ctx));
+  addRoute('POST', '/api/v1/footprint/calculate-guest', 'public', (ctx) => footprintHandlers.calculateGuest(ctx));
   addRoute('POST', '/api/v1/footprint/calculations/:id/projection', 'protected', withAuth((ctx) => footprintHandlers.createProjection(ctx, ctx.params.id)));
 
   // Area routes (CRUD)

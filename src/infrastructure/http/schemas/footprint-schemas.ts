@@ -24,6 +24,19 @@ export const createCalculationSchema = z.object({
 });
 
 /**
+ * Guest footprint calculation schema (no user_id required)
+ */
+export const calculateGuestSchema = z.object({
+  profile_type: z.enum(['individual', 'legal_entity']),
+  period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+  period_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
+  inputs: z.array(footprintInputSchema).min(1, 'At least one input is required'),
+  data_quality: z.enum(['real', 'estimated', 'standard']).optional(),
+  factors_version: z.string().optional(),
+  region: z.string().optional()
+});
+
+/**
  * Update footprint calculation schema
  */
 export const updateCalculationSchema = z.object({
