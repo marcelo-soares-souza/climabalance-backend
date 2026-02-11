@@ -62,7 +62,28 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
               entity_type: entry.entityType,
               entity_id: entry.entityId ?? null,
               reason: entry.reason ?? null,
-              created_at: entry.createdAt
+              created_at: entry.createdAt,
+              // Request context
+              user_agent: entry.userAgent ?? null,
+              request_id: entry.requestId ?? null,
+              // Operation result
+              success: entry.success ?? true,
+              error_code: entry.errorCode ?? null,
+              http_status: entry.httpStatus ?? null,
+              // Geolocation
+              country_code: entry.countryCode ?? null,
+              city: entry.city ?? null,
+              // Criticality
+              severity: entry.severity ?? 'info',
+              category: entry.category ?? null,
+              is_sensitive: entry.isSensitive ?? false,
+              // State tracking
+              previous_state: entry.previousState ?? null,
+              new_state: entry.newState ?? null,
+              changed_fields: entry.changedFields ?? null,
+              // Performance
+              duration_ms: entry.durationMs ?? null,
+              resource_changes: entry.resourceChanges ?? 0,
             }))
           },
           logContext

@@ -11,6 +11,7 @@ import type { HashService } from '../../domain/services/hash-service';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { HttpContext } from '../../shared/http/router';
 import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
@@ -41,15 +42,7 @@ export type AuthHandlersDeps = {
   confirmations: EmailConfirmationRepository;
   passwordResets: PasswordResetRepository;
   refreshTokens: RefreshTokenRepository;
-  auditLog: {
-    log(entry: {
-      actorUserId: string;
-      action: string;
-      entityType: string;
-      entityId: string;
-      metadata?: Record<string, any>;
-    }): Promise<void>;
-  };
+  auditLog: Pick<AuditLogRepository, 'log'>;
   passwordHasher: PasswordHasher;
   emailSender: EmailSender;
   unitOfWork: UnitOfWork;
@@ -140,7 +133,12 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           actorUserId: userId,
           action: 'user.login',
           entityType: 'user',
-          entityId: userId
+          entityId: userId,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['security'],
         });
 
         log.info('auth.login.success', { email: validated.email });

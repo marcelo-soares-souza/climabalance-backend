@@ -21,6 +21,8 @@ import type { PaymentGatewayAdapter } from '../../application/payments/payment-g
 import type { CompensationCertificateRepository } from '../../domain/compensations/repositories/compensation-certificate-repository';
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
 import type { CompensationCertificatePdfGenerator } from '../../domain/compensations/services/certificate-pdf-generator';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
+import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 
 export interface PaymentHandlersDeps {
   paymentStore: PaymentStore;
@@ -30,15 +32,7 @@ export interface PaymentHandlersDeps {
   compensationCertificatePdfGenerator: CompensationCertificatePdfGenerator;
   idGenerator: IdGenerator;
   clock: Clock;
-  auditLog: {
-    log(entry: {
-      actorUserId: string;
-      action: string;
-      entityType: string;
-      entityId: string;
-      metadata?: Record<string, any>;
-    }): Promise<void>;
-  };
+  auditLog: Pick<AuditLogRepository, 'log'>;
 }
 
 export function createPaymentHandlers(deps: PaymentHandlersDeps) {
@@ -49,6 +43,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
      */
     async simulate(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(simulateCardPaymentSchema, body);
@@ -59,7 +54,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             paymentGateway: deps.paymentGateway,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             actorUserId: ctx.auth!.userId,
@@ -76,7 +71,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
         const certificate = await ensureCertificateAfterPaidCompensation(
           deps,
           result.compensationId,
-          ctx.auth!.userId
+          ctx.auth!.userId,
+          requestAuditLog
         );
 
         return jsonResponse(
@@ -111,6 +107,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
      */
     async status(ctx: HttpContext, paymentId: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const result = await getPaymentStatus(
           {
@@ -127,7 +124,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
         const certificate = await ensureCertificateAfterPaidCompensation(
           deps,
           result.compensationId,
-          ctx.auth!.userId
+          ctx.auth!.userId,
+          requestAuditLog
         );
 
         return jsonResponse(
@@ -160,6 +158,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
      */
     async webhook(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const rawPayload = await readTextBody(ctx.request, 1024 * 64);
         const signature = ctx.request.headers.get('x-payment-signature');
@@ -186,7 +185,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             store: deps.paymentStore,
             paymentGateway: deps.paymentGateway,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             provider: body.provider,
@@ -199,7 +198,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             ? await ensureCertificateAfterPaidCompensation(
                 deps,
                 result.compensationId,
-                'system:webhook'
+                'system:webhook',
+                requestAuditLog
               )
             : null;
 
@@ -229,6 +229,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
      */
     async reconcile(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(reconcilePaymentsSchema, body ?? {});
@@ -238,7 +239,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             store: deps.paymentStore,
             paymentGateway: deps.paymentGateway,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             actorUserId: ctx.auth!.userId,
@@ -249,7 +250,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           await ensureCertificateAfterPaidCompensation(
             deps,
             compensationId,
-            ctx.auth!.userId
+            ctx.auth!.userId,
+            requestAuditLog
           );
         }
 
@@ -278,7 +280,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
 async function ensureCertificateAfterPaidCompensation(
   deps: PaymentHandlersDeps,
   compensationId: string,
-  actorUserId: string
+  actorUserId: string,
+  auditLog: Pick<AuditLogRepository, 'log'>
 ): Promise<null | {
   id: string;
   certificate_number: string;
@@ -322,7 +325,7 @@ async function ensureCertificateAfterPaidCompensation(
         pdfGenerator: deps.compensationCertificatePdfGenerator,
         idGenerator: deps.idGenerator,
         clock: deps.clock,
-        auditLog: deps.auditLog,
+        auditLog,
       },
       {
         compensationId: compensation.id,
@@ -356,7 +359,7 @@ async function ensureCertificateAfterPaidCompensation(
       issued_at: issued.issuedAt,
     };
   } catch (error) {
-    await deps.auditLog.log({
+    await auditLog.log({
       actorUserId,
       action: 'payment.certificate_issue_failed',
       entityType: 'compensation',

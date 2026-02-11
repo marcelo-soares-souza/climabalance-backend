@@ -2,6 +2,7 @@ import type { HttpContext } from '../../shared/http/router';
 import type { CompensationAtomicStore } from '../../application/compensations/create-compensation-atomic';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { parseJson } from '../../shared/http/request';
 import { jsonResponse } from '../../shared/http/response';
 import { parseWithSchema } from './schemas/validation-helper';
@@ -21,6 +22,7 @@ import type { AreaRepository } from '../../domain/areas/repositories/area-reposi
 import {
   quoteTreePurchaseCompensation,
 } from '../../application/compensations/quote-tree-purchase-compensation';
+import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 
 export interface CompensationHandlersDeps {
   areaRepository: AreaRepository;
@@ -28,15 +30,7 @@ export interface CompensationHandlersDeps {
   compensationHistoryRepository: CompensationHistoryRepository;
   idGenerator: IdGenerator;
   clock: Clock;
-  auditLog: {
-    log(entry: {
-      actorUserId: string;
-      action: string;
-      entityType: string;
-      entityId: string;
-      metadata?: Record<string, any>;
-    }): Promise<void>;
-  };
+  auditLog: Pick<AuditLogRepository, 'log'>;
 }
 
 export function createCompensationHandlers(deps: CompensationHandlersDeps) {
@@ -47,6 +41,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
      */
     async create(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createCompensationSchema, body);
@@ -88,7 +83,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             store: deps.compensationStore,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             supporterUserId: ctx.auth!.userId,

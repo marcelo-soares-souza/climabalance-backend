@@ -6,6 +6,7 @@ import type { AreaMediaStorage } from '../../domain/areas/services/area-media-st
 import type { UnitOfWork } from '../persistence/unit-of-work';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { parseJson } from '../../shared/http/request';
 import { jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
@@ -38,37 +39,31 @@ import { getAreaMediaFile } from '../../application/areas/get-area-media-file';
 import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
 import { CarbonStockService } from '../../domain/areas/services/carbon-stock.service';
 import { buildLogContext } from '../../shared/http/log-context';
+import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 
 export interface AreaHandlersDeps {
   areaRepository: AreaRepository;
   areaCriteriaRepository: AreaCriteriaRepository;
   areaMediaRepository: AreaMediaRepository;
   areaMediaStorage: AreaMediaStorage;
-  auditLog: {
-    log(entry: {
-      actorUserId: string;
-      action: string;
-      entityType: string;
-      entityId: string;
-      metadata?: Record<string, any>;
-    }): Promise<void>;
-  };
+  auditLog: Pick<AuditLogRepository, 'log'>;
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
   clock: Clock;
 }
 
 export function createAreaHandlers(deps: AreaHandlersDeps) {
-  // Domain services
-  const auditService = new AreaAuditService({
-    areaRepository: deps.areaRepository,
-    criteriaRepository: deps.areaCriteriaRepository,
-    auditLog: deps.auditLog,
-    clock: deps.clock,
-  });
   const carbonStockService = new CarbonStockService({
     areaRepository: deps.areaRepository,
   });
+
+  const createAuditService = (ctx: HttpContext) =>
+    new AreaAuditService({
+      areaRepository: deps.areaRepository,
+      criteriaRepository: deps.areaCriteriaRepository,
+      auditLog: withAuditLogContext(deps.auditLog, ctx),
+      clock: deps.clock,
+    });
 
   return {
     /**
@@ -77,6 +72,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async create(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createAreaSchema, body);
@@ -87,7 +83,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             unitOfWork: deps.unitOfWork,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             ownerUserId: ctx.auth!.userId,
@@ -238,6 +234,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async submitForAudit(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const auditService = createAuditService(ctx);
       try {
         await submitAreaForAudit(
           {
@@ -265,6 +262,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async approve(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const auditService = createAuditService(ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(approveAreaSchema, body);
@@ -300,6 +298,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async reject(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const auditService = createAuditService(ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(rejectAreaSchema, body);
@@ -331,6 +330,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async activate(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const auditService = createAuditService(ctx);
       try {
         await activateArea(
           {
@@ -358,6 +358,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async suspend(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const auditService = createAuditService(ctx);
       try {
         await suspendArea(
           {
@@ -429,6 +430,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async uploadMedia(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx, 35 * 1024 * 1024);
         const validated = parseWithSchema(uploadAreaMediaSchema, body);
@@ -440,7 +442,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             areaMediaStorage: deps.areaMediaStorage,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             areaId: id,
@@ -510,6 +512,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async deleteMedia(ctx: HttpContext, mediaId: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         await deleteAreaMedia(
           {
@@ -517,7 +520,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             areaMediaRepository: deps.areaMediaRepository,
             areaMediaStorage: deps.areaMediaStorage,
             clock: deps.clock,
-            auditLog: deps.auditLog,
+            auditLog: requestAuditLog,
           },
           {
             mediaId,

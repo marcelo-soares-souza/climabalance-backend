@@ -224,7 +224,10 @@ async function main() {
     logger.info('startup.server.starting', { port: appPort, url: appUrl });
     Bun.serve({
       port: appPort,
-      fetch: (request) => router.handle(request)
+      fetch: (request, server) => {
+        const clientIp = server.requestIP(request)?.address;
+        return router.handle(request, { clientIp });
+      }
     });
 
     logger.info('startup.complete', { url: appUrl, port: appPort });

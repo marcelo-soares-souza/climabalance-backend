@@ -18,6 +18,10 @@ export type HttpContext = {
 
 export type Handler = (ctx: HttpContext) => Promise<Response> | Response;
 
+export type HandleOptions = {
+  clientIp?: string;
+};
+
 type Route = {
   method: string;
   path: string;
@@ -49,11 +53,11 @@ export class Router {
     this.routes.push({ method: method.toUpperCase(), path, regex, paramNames, handler });
   }
 
-  async handle(request: Request): Promise<Response> {
+  async handle(request: Request, options?: HandleOptions): Promise<Response> {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
     const requestId = uuidv7();
-    const clientIp = getClientIp(request);
+    const clientIp = getClientIp(request) ?? options?.clientIp;
     const corsHeaders = buildCorsHeaders(request);
 
     if (method === 'OPTIONS') {
