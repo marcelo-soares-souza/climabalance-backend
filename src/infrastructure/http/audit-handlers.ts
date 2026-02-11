@@ -56,6 +56,8 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
             data: entries.map((entry) => ({
               id: entry.id,
               actor_user_id: entry.actorUserId ?? null,
+              actor_email: entry.actorEmail ?? null,
+              client_ip: entry.clientIp ?? null,
               action: entry.action,
               entity_type: entry.entityType,
               entity_id: entry.entityId ?? null,

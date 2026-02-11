@@ -1,6 +1,8 @@
 export type AuditLogEntry = {
   id: string;
   actorUserId?: string | null;
+  actorEmail?: string | null;
+  clientIp?: string | null;
   action: string;
   entityType: string;
   entityId?: string | null;
