@@ -16,12 +16,19 @@ export interface AreaListItem {
   id: string;
   ownerUserId: string;
   name: string;
+  description?: string;
   latitude: number;
   longitude: number;
   biome?: string;
+  state?: string;
+  city?: string;
   status: string;
+  totalCapacityTCO2e?: number;
+  committedTCO2e?: number;
   availableTCO2e?: number;
+  tCO2ePerTreePerYear?: number;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ListAreasDeps {
@@ -63,11 +70,18 @@ export async function listAreas(
     id: area.id,
     ownerUserId: area.ownerUserId,
     name: area.name,
+    description: area.description,
     latitude: area.location.latitude,
     longitude: area.location.longitude,
     biome: area.biome?.toString(),
+    state: area.state,
+    city: area.city,
     status: area.status.toString(),
+    totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e,
+    committedTCO2e: area.carbonCapacity?.committedTCO2e,
     availableTCO2e: area.carbonCapacity?.availableTCO2e,
+    tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
     createdAt: area.createdAt,
+    updatedAt: area.updatedAt,
   }));
 }
