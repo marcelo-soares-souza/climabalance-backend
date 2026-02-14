@@ -14,6 +14,11 @@ function resolveExtension(mimeType: string): string {
   return extensionByMime[mimeType] ?? 'bin';
 }
 
+function sanitizeObjectKeySegment(value: string): string {
+  const sanitized = value.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+  return sanitized || 'unknown-user';
+}
+
 export class S3AreaMediaStorage implements AreaMediaStorage {
   constructor(
     private readonly objectStorage: S3CompatibleObjectStorage,
@@ -22,11 +27,13 @@ export class S3AreaMediaStorage implements AreaMediaStorage {
 
   async save(params: {
     mediaId: string;
+    uploadedByUserId: string;
     mimeType: string;
     bytes: Uint8Array;
   }): Promise<{ storagePath: string }> {
     const ext = resolveExtension(params.mimeType);
-    const objectKey = `${this.prefix}/${params.mediaId}.${ext}`;
+    const userFolder = sanitizeObjectKeySegment(params.uploadedByUserId);
+    const objectKey = `${this.prefix}/${userFolder}/${params.mediaId}.${ext}`;
     const storagePath = await this.objectStorage.putObject({
       key: objectKey,
       bytes: params.bytes,

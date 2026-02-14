@@ -15,18 +15,26 @@ function resolveExtension(mimeType: string): string {
   return extensionByMime[mimeType] ?? 'bin';
 }
 
+function sanitizePathSegment(value: string): string {
+  const sanitized = value.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+  return sanitized || 'unknown-user';
+}
+
 export class LocalAreaMediaStorage implements AreaMediaStorage {
   constructor(private readonly basePath: string = process.env.AREA_MEDIA_STORAGE_PATH ?? './storage/area-media') {}
 
   async save(params: {
     mediaId: string;
+    uploadedByUserId: string;
     mimeType: string;
     bytes: Uint8Array;
   }): Promise<{ storagePath: string }> {
-    await mkdir(this.basePath, { recursive: true });
+    const userFolder = sanitizePathSegment(params.uploadedByUserId);
+    const userPath = path.join(this.basePath, userFolder);
+    await mkdir(userPath, { recursive: true });
     const ext = resolveExtension(params.mimeType);
     const fileName = `${params.mediaId}.${ext}`;
-    const fullPath = path.join(this.basePath, fileName);
+    const fullPath = path.join(userPath, fileName);
     await writeFile(fullPath, params.bytes);
     return { storagePath: fullPath };
   }

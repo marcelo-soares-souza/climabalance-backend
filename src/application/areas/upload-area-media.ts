@@ -102,6 +102,7 @@ export async function uploadAreaMedia(
   const description = normalizeDescription(input.description);
   const storage = await deps.areaMediaStorage.save({
     mediaId,
+    uploadedByUserId: input.actorUserId,
     mimeType: input.mimeType,
     bytes,
   });

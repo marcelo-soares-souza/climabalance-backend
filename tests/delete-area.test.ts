@@ -91,7 +91,12 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
 class MemoryAreaMediaStorage implements AreaMediaStorage {
   deletedPaths: string[] = [];
 
-  async save(): Promise<{ storagePath: string }> {
+  async save(_params: {
+    mediaId: string;
+    uploadedByUserId: string;
+    mimeType: string;
+    bytes: Uint8Array;
+  }): Promise<{ storagePath: string }> {
     return { storagePath: '' };
   }
 

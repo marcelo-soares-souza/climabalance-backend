@@ -1,6 +1,7 @@
 export interface AreaMediaStorage {
   save(params: {
     mediaId: string;
+    uploadedByUserId: string;
     mimeType: string;
     bytes: Uint8Array;
   }): Promise<{ storagePath: string }>;

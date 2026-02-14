@@ -95,14 +95,17 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
 
 class MemoryAreaMediaStorage implements AreaMediaStorage {
   private files = new Map<string, Uint8Array>();
+  lastSavedPath: string | null = null;
 
   async save(params: {
     mediaId: string;
+    uploadedByUserId: string;
     mimeType: string;
     bytes: Uint8Array;
   }): Promise<{ storagePath: string }> {
-    const storagePath = `memory://${params.mediaId}`;
+    const storagePath = `memory://${params.uploadedByUserId}/${params.mediaId}`;
     this.files.set(storagePath, params.bytes);
+    this.lastSavedPath = storagePath;
     return { storagePath };
   }
 
@@ -186,6 +189,9 @@ describe('area media flow', () => {
     );
 
     expect(upload.id).toBe('media-1');
+    expect(areaMediaStorage.lastSavedPath).toBe('memory://owner-1/media-1');
+    const savedMedia = await areaMediaRepository.findById(upload.id);
+    expect(savedMedia?.storagePath).toBe('memory://owner-1/media-1');
 
     const listed = await listAreaMedia(
       {
