@@ -82,7 +82,7 @@ export class AreaStatus {
   }
 
   canBeEdited(): boolean {
-    return this.value === 'draft';
+    return this.value === 'draft' || this.value === 'active';
   }
 
   canBeEditedFor(isAdmin: boolean): boolean {

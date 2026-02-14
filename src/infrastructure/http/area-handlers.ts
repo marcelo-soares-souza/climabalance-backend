@@ -3,6 +3,7 @@ import type { AreaRepository } from '../../domain/areas/repositories/area-reposi
 import type { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
 import type { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
+import type { UserRepository } from '../../domain/user/user-repository';
 import type { UnitOfWork } from '../persistence/unit-of-work';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
@@ -42,6 +43,7 @@ import { buildLogContext } from '../../shared/http/log-context';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 
 export interface AreaHandlersDeps {
+  users: UserRepository;
   areaRepository: AreaRepository;
   areaCriteriaRepository: AreaCriteriaRepository;
   areaMediaRepository: AreaMediaRepository;
@@ -123,6 +125,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           {
             areaRepository: deps.areaRepository,
             areaCriteriaRepository: deps.areaCriteriaRepository,
+            userRepository: deps.users,
           },
           id,
           ctx.auth?.userId,
@@ -137,7 +140,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
 
     /**
      * PATCH /api/v1/areas/:id
-     * Update an area (only allowed in draft status)
+     * Update an area (owner/admin for active, owner for draft, admin override otherwise)
      */
     async update(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
@@ -181,11 +184,15 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         await deleteArea(
           {
             areaRepository: deps.areaRepository,
-            unitOfWork: deps.unitOfWork,
+            areaMediaRepository: deps.areaMediaRepository,
+            areaMediaStorage: deps.areaMediaStorage,
+            clock: deps.clock,
           },
-          id,
-          ctx.auth!.userId,
-          ctx.auth!.roles.includes('administrator')
+          {
+            areaId: id,
+            userId: ctx.auth!.userId,
+            isAdmin: ctx.auth!.roles.includes('administrator'),
+          }
         );
 
         return jsonResponse(

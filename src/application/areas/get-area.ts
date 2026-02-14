@@ -1,10 +1,12 @@
 import { AreaRepository } from '../../domain/areas/repositories/area-repository';
 import { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
+import type { UserRepository } from '../../domain/user/user-repository';
 import { ForbiddenError, NotFoundError } from '../../domain/errors';
 
 export interface GetAreaResponse {
   id: string;
   ownerUserId: string;
+  ownerEmail?: string;
   name: string;
   description?: string;
   latitude: number;
@@ -34,6 +36,7 @@ export interface GetAreaResponse {
 export interface GetAreaDeps {
   areaRepository: AreaRepository;
   areaCriteriaRepository: AreaCriteriaRepository;
+  userRepository?: Pick<UserRepository, 'findById'>;
 }
 
 export async function getArea(
@@ -60,10 +63,14 @@ export async function getArea(
   const criteria = area.auditStatus
     ? await deps.areaCriteriaRepository.findByAreaId(areaId)
     : [];
+  const owner = deps.userRepository
+    ? await deps.userRepository.findById(area.ownerUserId)
+    : null;
 
   return {
     id: area.id,
     ownerUserId: area.ownerUserId,
+    ownerEmail: owner?.email,
     name: area.name,
     description: area.description,
     latitude: area.location.latitude,

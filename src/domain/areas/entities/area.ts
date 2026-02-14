@@ -81,11 +81,10 @@ export class Area {
   }
 
   canBeDeletedBy(userId: string, isAdmin = false): boolean {
-    const canDelete = this.status.canBeDeletedFor(isAdmin);
     if (isAdmin) {
-      return canDelete;
+      return true;
     }
-    return this.ownerUserId === userId && canDelete;
+    return this.ownerUserId === userId;
   }
 
   canBeSubmittedForAudit(): boolean {
@@ -273,10 +272,6 @@ export class Area {
   }
 
   softDelete(): void {
-    if (!this.status.canBeDeleted()) {
-      throw new Error('Area cannot be deleted in current status');
-    }
-
     this.deletedAt = new Date();
     this.updatedAt = new Date();
   }

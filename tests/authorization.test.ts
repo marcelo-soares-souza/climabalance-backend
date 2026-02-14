@@ -88,7 +88,7 @@ describe('Authorization - Area Domain Entity', () => {
     expect(area.canBeDeletedBy('other-user')).toBe(false);
   });
 
-  test('cannot edit active area', () => {
+  test('owner can edit active area', () => {
     const activeArea = new Area({
       id: 'area-2',
       ownerUserId: 'owner-user',
@@ -99,10 +99,10 @@ describe('Authorization - Area Domain Entity', () => {
       updatedAt: new Date(),
     });
 
-    expect(activeArea.canBeEditedBy('owner-user')).toBe(false);
+    expect(activeArea.canBeEditedBy('owner-user')).toBe(true);
   });
 
-  test('cannot delete active area', () => {
+  test('admin can edit active area', () => {
     const activeArea = new Area({
       id: 'area-2',
       ownerUserId: 'owner-user',
@@ -113,7 +113,21 @@ describe('Authorization - Area Domain Entity', () => {
       updatedAt: new Date(),
     });
 
-    expect(activeArea.canBeDeletedBy('owner-user')).toBe(false);
+    expect(activeArea.canBeEditedBy('other-user', true)).toBe(true);
+  });
+
+  test('owner can delete active area', () => {
+    const activeArea = new Area({
+      id: 'area-2',
+      ownerUserId: 'owner-user',
+      name: 'Active Area',
+      location: new Location(-15.7939, -47.8828),
+      status: AreaStatus.ACTIVE,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    expect(activeArea.canBeDeletedBy('owner-user')).toBe(true);
   });
 });
 

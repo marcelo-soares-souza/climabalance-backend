@@ -9,6 +9,9 @@ export interface AreaMapItem {
   biome?: string;
   state?: string;
   city?: string;
+  status: string;
+  totalCapacityTCO2e: number;
+  committedTCO2e: number;
   availableTCO2e: number;
   tCO2ePerTreePerYear?: number;
 }
@@ -37,6 +40,9 @@ export async function getAreasForMap(
     biome: area.biome?.toString(),
     state: area.state,
     city: area.city,
+    status: area.status.toString(),
+    totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e || 0,
+    committedTCO2e: area.carbonCapacity?.committedTCO2e || 0,
     availableTCO2e: area.carbonCapacity?.availableTCO2e || 0,
     tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
   }));
