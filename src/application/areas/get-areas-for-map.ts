@@ -24,13 +24,13 @@ export async function getAreasForMap(
   deps: GetAreasForMapDeps,
   filters?: { biome?: string }
 ): Promise<AreaMapItem[]> {
-  const repoFilters: any = {};
+  const repoFilters: any = { onlyActive: true };
 
   if (filters?.biome) {
     repoFilters.biome = Biome.fromString(filters.biome);
   }
 
-  const areas = await deps.areaRepository.findActiveWithCapacity(repoFilters);
+  const areas = await deps.areaRepository.findAll(repoFilters);
 
   return areas.map((area) => ({
     id: area.id,

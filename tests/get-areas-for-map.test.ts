@@ -1,0 +1,85 @@
+import { describe, expect, test } from 'bun:test';
+import { getAreasForMap } from '../src/application/areas/get-areas-for-map';
+import { Area } from '../src/domain/areas/entities/area';
+import { AreaStatus } from '../src/domain/areas/value-objects/area-status';
+import { CarbonCapacity } from '../src/domain/areas/value-objects/carbon-capacity';
+import { Location } from '../src/domain/areas/value-objects/location';
+
+class RecordingAreaRepository {
+  findAllFilters: Record<string, unknown> | undefined;
+
+  constructor(private readonly areas: Area[]) {}
+
+  async findAll(filters?: Record<string, unknown>): Promise<Area[]> {
+    this.findAllFilters = filters;
+    return this.areas.filter((area) => {
+      if (filters?.onlyActive && !area.isActive()) return false;
+      if (filters?.biome && area.biome?.toString() !== String(filters.biome)) return false;
+      return true;
+    });
+  }
+
+  async findActiveWithCapacity(): Promise<Area[]> {
+    throw new Error('should_not_be_called');
+  }
+}
+
+function makeArea(input: {
+  id: string;
+  status: AreaStatus;
+  totalCapacityTCO2e?: number;
+  committedTCO2e?: number;
+}): Area {
+  return new Area({
+    id: input.id,
+    ownerUserId: 'producer-1',
+    name: input.id,
+    location: new Location(-15.7939, -47.8828),
+    status: input.status,
+    carbonCapacity:
+      input.totalCapacityTCO2e != null
+        ? new CarbonCapacity(input.totalCapacityTCO2e, input.committedTCO2e ?? 0)
+        : undefined,
+    createdAt: new Date('2026-02-07T12:00:00Z'),
+    updatedAt: new Date('2026-02-07T12:00:00Z'),
+  });
+}
+
+describe('getAreasForMap', () => {
+  test('returns active areas even when available capacity is zero or negative', async () => {
+    const overCommittedArea = makeArea({
+      id: 'area-overcommitted',
+      status: AreaStatus.ACTIVE,
+      totalCapacityTCO2e: 5,
+      committedTCO2e: 8,
+    });
+    const zeroCapacityArea = makeArea({
+      id: 'area-without-capacity',
+      status: AreaStatus.ACTIVE,
+    });
+    const suspendedArea = makeArea({
+      id: 'area-suspended',
+      status: AreaStatus.SUSPENDED,
+      totalCapacityTCO2e: 20,
+      committedTCO2e: 1,
+    });
+
+    const areaRepository = new RecordingAreaRepository([
+      overCommittedArea,
+      zeroCapacityArea,
+      suspendedArea,
+    ]);
+
+    const result = await getAreasForMap({
+      areaRepository: areaRepository as any,
+    });
+
+    expect(areaRepository.findAllFilters).toEqual({ onlyActive: true });
+    expect(result.map((item) => item.id)).toEqual([
+      'area-overcommitted',
+      'area-without-capacity',
+    ]);
+    expect(result[0]?.availableTCO2e).toBe(-3);
+    expect(result[1]?.availableTCO2e).toBe(0);
+  });
+});
