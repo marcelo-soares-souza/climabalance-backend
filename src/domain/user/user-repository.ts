@@ -22,6 +22,8 @@ export type UpdateUserInput = {
 export type UserFilters = {
   status?: string;
   search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
 };

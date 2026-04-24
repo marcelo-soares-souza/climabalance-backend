@@ -27,12 +27,16 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         const url = new URL(ctx.request.url);
         const status = url.searchParams.get('status') ?? undefined;
         const search = url.searchParams.get('search') ?? undefined;
+        const sortBy = url.searchParams.get('sort_by') ?? undefined;
+        const sortOrder = url.searchParams.get('sort_order') ?? undefined;
         const limit = url.searchParams.get('limit');
         const offset = url.searchParams.get('offset');
         const users = await listUsers(
           {
             status,
             search,
+            sortBy,
+            sortOrder: sortOrder === 'asc' ? 'asc' : sortOrder === 'desc' ? 'desc' : undefined,
             limit: limit ? Number(limit) : undefined,
             offset: offset ? Number(offset) : undefined
           },

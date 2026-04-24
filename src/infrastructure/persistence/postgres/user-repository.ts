@@ -129,12 +129,16 @@ export class PostgresUserRepository implements UserRepository {
       values.push(`%${filters.search}%`);
     }
 
+    const allowedSortColumns = ['email', 'status', 'created_at', 'last_login_at'];
+    const sortBy = filters.sortBy && allowedSortColumns.includes(filters.sortBy) ? filters.sortBy : 'created_at';
+    const sortOrder = filters.sortOrder === 'asc' ? 'ASC' : 'DESC';
+
     const limit = filters.limit ?? 50;
     const offset = filters.offset ?? 0;
     values.push(limit, offset);
 
     const result = await this.db.query(
-      `SELECT * FROM users WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT $${index++} OFFSET $${index++}`,
+      `SELECT * FROM users WHERE ${conditions.join(' AND ')} ORDER BY ${sortBy} ${sortOrder} LIMIT $${index++} OFFSET $${index++}`,
       values
     );
     return result.rows.map(mapUser);
