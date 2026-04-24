@@ -28,13 +28,15 @@ export function createUserHandlers(deps) {
                 }, { users: deps.users });
                 log.info('user.list', { count: users.length });
                 return jsonResponse(200, {
-                    data: users.map((user) => ({
+                    data: await Promise.all(users.map(async (user) => ({
                         id: user.id,
                         email: user.email,
                         status: user.status,
                         locale: user.locale,
-                        email_confirmed_at: user.emailConfirmedAt
-                    }))
+                        email_confirmed_at: user.emailConfirmedAt,
+                        created_at: user.createdAt,
+                        roles: await deps.users.getRoles(user.id)
+                    })))
                 }, logContext);
             }
             catch (error) {
@@ -53,7 +55,9 @@ export function createUserHandlers(deps) {
                         email: user.email,
                         status: user.status,
                         locale: user.locale,
-                        email_confirmed_at: user.emailConfirmedAt
+                        email_confirmed_at: user.emailConfirmedAt,
+                        created_at: user.createdAt,
+                        roles: await deps.users.getRoles(user.id)
                     }
                 }, logContext);
             }
@@ -116,7 +120,9 @@ export function createUserHandlers(deps) {
                         email: user.email,
                         status: user.status,
                         locale: user.locale,
-                        email_confirmed_at: user.emailConfirmedAt
+                        email_confirmed_at: user.emailConfirmedAt,
+                        created_at: user.createdAt,
+                        roles: await deps.users.getRoles(user.id)
                     }
                 }, logContext);
             }
