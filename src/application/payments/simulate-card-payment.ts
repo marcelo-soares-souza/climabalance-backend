@@ -146,7 +146,7 @@ export async function simulateCardPayment(
       provider: gatewayResult.provider,
       providerReference: gatewayResult.providerReference,
       simulationStatus: gatewayResult.outcome,
-      paymentStatus,
+      paymentStatus: paymentStatus as 'pending' | 'paid' | 'failed',
       amount: compensation.totalAmount,
       currency: compensation.currency,
       installments: input.installments,

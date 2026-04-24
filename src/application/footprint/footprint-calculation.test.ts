@@ -203,6 +203,10 @@ class MemoryAuditLogRepository implements AuditLogRepository {
   async list(_filters: AuditLogFilters): Promise<AuditLogEntry[]> {
     return this.entries;
   }
+
+  async log(): Promise<void> {
+    // no-op for tests
+  }
 }
 
 class MemoryUnitOfWork implements UnitOfWork {

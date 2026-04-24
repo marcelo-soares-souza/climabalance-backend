@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import { emailSchema } from './common-schemas';
 
-const userStatusSchema = z.enum(['active', 'pending', 'suspended'], {
-  errorMap: () => ({ message: 'invalid' })
-});
+const userStatusSchema = z.enum(['active', 'pending', 'suspended']);
 
 const optionalTrimmedString = (max: number) =>
   z.preprocess(

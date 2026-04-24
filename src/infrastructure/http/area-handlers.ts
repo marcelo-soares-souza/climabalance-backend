@@ -82,7 +82,6 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         const result = await createArea(
           {
             areaRepository: deps.areaRepository,
-            unitOfWork: deps.unitOfWork,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
             auditLog: requestAuditLog,
@@ -151,8 +150,6 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         await updateArea(
           {
             areaRepository: deps.areaRepository,
-            unitOfWork: deps.unitOfWork,
-            clock: deps.clock,
           },
           {
             areaId: id,
@@ -277,11 +274,10 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         await approveArea(
           {
             auditService,
-            idGenerator: deps.idGenerator,
           },
           {
             areaId: id,
-            userId: ctx.auth!.userId,
+            analystId: ctx.auth!.userId,
             criteria: validated.criteria,
             notes: validated.notes,
           }

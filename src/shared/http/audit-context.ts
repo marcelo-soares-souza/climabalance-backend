@@ -15,7 +15,7 @@ export function extractAuditContext(ctx: HttpContext): {
   const headers = ctx.request.headers;
 
   return {
-    actorEmail: ctx.auth?.email,
+    actorEmail: (ctx.auth as { userId: string; roles: string[]; email?: string } | undefined)?.email,
     clientIp: ctx.clientIp ?? headers.get('x-real-ip') ?? headers.get('x-forwarded-for')?.split(',')[0],
     userAgent: headers.get('user-agent') ?? undefined,
     requestId: ctx.requestId,

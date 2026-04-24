@@ -1,7 +1,7 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogFormat = 'text' | 'json';
 
-type LogContext = {
+export type LogContext = {
   requestId?: string;
   userId?: string;
   clientIp?: string;

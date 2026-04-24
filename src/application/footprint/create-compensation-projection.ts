@@ -1,20 +1,10 @@
 import type { FootprintCalculationRepository } from '../../domain/footprint/repositories/footprint-calculation-repository';
 import type { CompensationProjectionRepository } from '../../domain/footprint/repositories/compensation-projection-repository';
+import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import { calculateTreesNeeded } from '../../domain/footprint/entities/compensation-projection';
 import { NotFoundError, ForbiddenError } from '../../domain/errors';
-
-/**
- * Area repository interface (partial, for getting sequestration rate)
- */
-export interface AreaRepository {
-  findById(id: string): Promise<{
-    id: string;
-    biome: string | null;
-    t_co2e_per_tree_per_year?: number;
-  } | null>;
-}
 
 export interface CreateCompensationProjectionRequest {
   calculation_id: string;
@@ -71,7 +61,7 @@ export async function createCompensationProjection(
   }
 
   // 3. Get sequestration rate (area-specific or default)
-  const tCO2ePerTreePerYear = area.t_co2e_per_tree_per_year || DEFAULT_T_CO2E_PER_TREE_PER_YEAR;
+  const tCO2ePerTreePerYear = area.tCO2ePerTreePerYear || DEFAULT_T_CO2E_PER_TREE_PER_YEAR;
 
   // 4. Calculate trees needed
   const horizonYears = request.horizon_years || 5;
@@ -89,7 +79,7 @@ export async function createCompensationProjection(
     id: projectionId,
     calculation_id: request.calculation_id,
     area_id: request.area_id,
-    biome: area.biome,
+    biome: area.biome?.toString() ?? null,
     t_co2e_per_tree_per_year: tCO2ePerTreePerYear,
     trees_needed: treesNeeded,
     horizon_years: horizonYears,
@@ -104,7 +94,7 @@ export async function createCompensationProjection(
     projection_id: projectionId,
     calculation_id: request.calculation_id,
     area_id: request.area_id,
-    biome: area.biome,
+    biome: area.biome?.toString() ?? null,
     t_co2e_per_tree_per_year: tCO2ePerTreePerYear,
     trees_needed: treesNeeded,
     horizon_years: horizonYears

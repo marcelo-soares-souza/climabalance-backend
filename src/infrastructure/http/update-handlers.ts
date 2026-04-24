@@ -93,7 +93,7 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
      * This would typically be called by a deployment script/webhook
      */
     async notifyUpdate(ctx: HttpContext): Promise<Response> {
-      const body = await ctx.request.json();
+      const body = await ctx.request.json() as { buildId?: string; timestamp?: number };
       const { buildId, timestamp } = body;
 
       if (!buildId) {

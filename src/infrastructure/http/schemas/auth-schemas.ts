@@ -4,13 +4,11 @@ import { emailSchema, passwordSchema, localeSchema, tokenSchema } from './common
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  password_confirm: z.string({ required_error: 'required' }),
-  human_challenge_id: z.string({ required_error: 'required' }).min(1, { message: 'required' }),
-  human_answer: z.string({ required_error: 'required' }).trim().min(1, { message: 'required' }).max(200, { message: 'too_long' }),
+  password_confirm: z.string().min(1, { message: 'required' }),
+  human_challenge_id: z.string().min(1, { message: 'required' }),
+  human_answer: z.string().trim().min(1, { message: 'required' }).max(200, { message: 'too_long' }),
   locale: localeSchema,
-  role_key: z.enum(['individual', 'producer', 'legal_entity'], {
-    errorMap: () => ({ message: 'invalid' })
-  }).optional()
+  role_key: z.enum(['individual', 'producer', 'legal_entity']).optional()
 }).refine(
   (data) => data.password === data.password_confirm,
   { message: 'mismatch', path: ['password_confirm'] }
@@ -18,7 +16,7 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string({ required_error: 'required' }).min(1, { message: 'required' }).max(200, { message: 'too_long' })
+  password: z.string().min(1, { message: 'required' }).max(200, { message: 'too_long' })
 });
 
 export const confirmEmailSchema = z.object({
@@ -37,16 +35,16 @@ export const requestPasswordResetSchema = z.object({
 export const resetPasswordSchema = z.object({
   token: tokenSchema,
   password: passwordSchema,
-  password_confirm: z.string({ required_error: 'required' })
+  password_confirm: z.string().min(1, { message: 'required' })
 }).refine(
   (data) => data.password === data.password_confirm,
   { message: 'mismatch', path: ['password_confirm'] }
 );
 
 export const refreshTokenSchema = z.object({
-  refresh_token: z.string({ required_error: 'required' }).min(1, { message: 'required' })
+  refresh_token: z.string().min(1, { message: 'required' })
 });
 
 export const revokeTokenSchema = z.object({
-  refresh_token: z.string({ required_error: 'required' }).min(1, { message: 'required' })
+  refresh_token: z.string().min(1, { message: 'required' })
 });

@@ -24,7 +24,8 @@ import { getFootprintCalculation } from '../../application/footprint/get-footpri
 import { listFootprintCalculations } from '../../application/footprint/list-footprint-calculations';
 import { deleteFootprintCalculation } from '../../application/footprint/delete-footprint-calculation';
 import { getEmissionFactors } from '../../application/footprint/get-emission-factors';
-import { createCompensationProjection, type AreaRepository } from '../../application/footprint/create-compensation-projection';
+import { createCompensationProjection } from '../../application/footprint/create-compensation-projection';
+import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
 import { calculateGuestFootprint } from '../../application/footprint/calculate-guest-footprint';
 import { buildLogContext } from '../../shared/http/log-context';
 

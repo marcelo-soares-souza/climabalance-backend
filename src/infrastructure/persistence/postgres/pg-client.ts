@@ -9,7 +9,7 @@ export const pgPool = new Pool({
 pgPool.on('error', (error, client) => {
   logger.error('database.pool_error', {
     message: error.message,
-    code: error.code,
+    code: (error as { code?: string }).code,
     stack: error.stack
   });
 });

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const emailSchema = z
-  .string({ required_error: 'required' })
+  .string()
   .trim()
   .min(1, { message: 'required' })
   .max(320, { message: 'too_long' })
@@ -9,7 +9,7 @@ export const emailSchema = z
   .transform(email => email.toLowerCase());
 
 export const passwordSchema = z
-  .string({ required_error: 'required' })
+  .string()
   .min(8, { message: 'too_short' })
   .max(200, { message: 'too_long' });
 
@@ -20,7 +20,7 @@ export const localeSchema = z
   .optional();
 
 export const tokenSchema = z
-  .string({ required_error: 'required' })
+  .string()
   .trim()
   .min(1, { message: 'required' })
   .max(500, { message: 'too_long' });

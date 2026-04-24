@@ -27,10 +27,10 @@ export class Biome {
       case 'cerrado':
         return Biome.CERRADO;
       case 'amazonia':
-      case 'amazônia':
+      case 'amazônia' as BiomeValue:
         return Biome.AMAZONIA;
       case 'mata_atlantica':
-      case 'mata_atlântica':
+      case 'mata_atlântica' as BiomeValue:
         return Biome.MATA_ATLANTICA;
       case 'caatinga':
         return Biome.CAATINGA;

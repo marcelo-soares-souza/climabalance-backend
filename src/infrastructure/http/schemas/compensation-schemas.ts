@@ -1,14 +1,14 @@
 import { z } from 'zod';
 
 const currencySchema = z
-  .string({ required_error: 'required' })
+  .string()
   .trim()
   .length(3)
   .transform((value) => value.toUpperCase());
 
 export const createCompensationSchema = z
   .object({
-    area_id: z.string({ required_error: 'required' }).min(1, 'required'),
+    area_id: z.string().min(1, 'required'),
     calculation_id: z.string().min(1).optional(),
     compensation_mode: z.enum(['tco2e', 'tree_purchase']).optional(),
     total_t_co2e: z.number().positive().optional(),
@@ -57,7 +57,7 @@ export const createCompensationSchema = z
   });
 
 export const quoteTreePurchaseSchema = z.object({
-  area_id: z.string({ required_error: 'required' }).min(1, 'required'),
+  area_id: z.string().min(1, 'required'),
   trees_requested: z.number().int().positive(),
   currency: currencySchema,
 });

@@ -195,7 +195,7 @@ const mockIdGenerator = {
   generate: () => `test-id-${++idCounter}`
 };
 
-let mockTime = new Date('2024-01-01T00:00:00Z');
+const mockTime = new Date('2024-01-01T00:00:00Z');
 const mockClock = {
   now: () => mockTime
 };
