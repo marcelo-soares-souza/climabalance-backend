@@ -260,7 +260,6 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               compensation_id: item.compensationId,
               supporter_user_id: item.supporterUserId,
               supporter_display_name: item.supporterDisplayName,
-              user_email: item.supporterDisplayName || item.supporterEmail || item.supporterUserId,
               trees_count: item.treesCount,
               total_t_co2e: item.totalTCO2e,
               compensated_at: item.compensatedAt,

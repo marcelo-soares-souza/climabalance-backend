@@ -3,6 +3,12 @@ import { emailSchema } from './common-schemas';
 const userStatusSchema = z.enum(['active', 'pending', 'suspended'], {
     errorMap: () => ({ message: 'invalid' })
 });
+const optionalTrimmedString = (max) => z.preprocess((value) => {
+    if (typeof value !== 'string')
+        return value;
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+}, z.string().max(max, { message: 'too_long' }).optional());
 export const updateUserSchema = z.object({
     email: emailSchema.optional(),
     password: z.string().min(8, { message: 'too_short' }).max(200, { message: 'too_long' }).optional(),
@@ -10,16 +16,16 @@ export const updateUserSchema = z.object({
     status: userStatusSchema.optional()
 });
 export const upsertProfileSchema = z.object({
-    display_name: z.string().trim().max(200, { message: 'too_long' }).optional(),
-    document_type: z.string().trim().max(30, { message: 'too_long' }).optional(),
-    document_number: z.string().trim().max(50, { message: 'too_long' }).optional(),
-    birth_date: z.string().trim().max(20, { message: 'too_long' }).optional(),
-    phone: z.string().trim().max(50, { message: 'too_long' }).optional(),
-    country_code: z.string().trim().max(2, { message: 'too_long' }).optional(),
-    address_line1: z.string().trim().max(200, { message: 'too_long' }).optional(),
-    address_line2: z.string().trim().max(200, { message: 'too_long' }).optional(),
-    address_city: z.string().trim().max(120, { message: 'too_long' }).optional(),
-    address_state: z.string().trim().max(120, { message: 'too_long' }).optional(),
-    address_postal_code: z.string().trim().max(30, { message: 'too_long' }).optional(),
-    address_country: z.string().trim().max(2, { message: 'too_long' }).optional()
+    display_name: optionalTrimmedString(200),
+    document_type: optionalTrimmedString(30),
+    document_number: optionalTrimmedString(50),
+    birth_date: optionalTrimmedString(20),
+    phone: optionalTrimmedString(50),
+    country_code: optionalTrimmedString(2),
+    address_line1: optionalTrimmedString(200),
+    address_line2: optionalTrimmedString(200),
+    address_city: optionalTrimmedString(120),
+    address_state: optionalTrimmedString(120),
+    address_postal_code: optionalTrimmedString(30),
+    address_country: optionalTrimmedString(2)
 });
