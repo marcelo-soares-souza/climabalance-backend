@@ -27,6 +27,7 @@ export type AreaContributionItem = {
   compensationId: string;
   supporterUserId: string;
   supporterDisplayName?: string | null;
+  supporterEmail?: string | null;
   treesCount: number;
   totalTCO2e: number;
   compensatedAt: Date;

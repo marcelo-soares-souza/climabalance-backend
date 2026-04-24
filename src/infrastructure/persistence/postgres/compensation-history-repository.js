@@ -29,6 +29,9 @@ function mapAreaContributionRow(row) {
         supporterDisplayName: row.supporter_display_name == null
             ? null
             : String(row.supporter_display_name),
+        supporterEmail: row.supporter_email == null
+            ? null
+            : String(row.supporter_email),
         treesCount: Number(row.trees_count ?? 0),
         totalTCO2e: Number(row.total_t_co2e ?? 0),
         compensatedAt: new Date(String(row.compensated_at)),
@@ -80,6 +83,7 @@ export class PostgresCompensationHistoryRepository {
         c.id AS compensation_id,
         c.supporter_user_id,
         up.display_name AS supporter_display_name,
+        u.email AS supporter_email,
         COALESCE(c.trees_count, c.trees_requested) AS trees_count,
         COALESCE(c.total_t_co2e, (c.total_co2_kg / 1000.0), c.estimated_total_t_co2e) AS total_t_co2e,
         c.updated_at AS compensated_at
@@ -87,6 +91,9 @@ export class PostgresCompensationHistoryRepository {
       LEFT JOIN user_profiles up
         ON up.user_id = c.supporter_user_id
        AND up.deleted_at IS NULL
+      LEFT JOIN users u
+        ON u.id = c.supporter_user_id
+       AND u.deleted_at IS NULL
       WHERE c.area_id = $1
         AND c.compensation_mode = 'tree_purchase'
         AND c.status = 'paid'
