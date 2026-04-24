@@ -57,6 +57,8 @@ export async function authenticateUser(
     throw new InvalidCredentialsError();
   }
 
+  await deps.users.updateLastLogin(user.id, deps.clock.now());
+
   const roles = await deps.users.getRoles(user.id);
   const now = deps.clock.now();
   const nowSec = Math.floor(now.getTime() / 1000);

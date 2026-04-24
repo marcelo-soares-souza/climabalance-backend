@@ -49,6 +49,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
                 status: user.status,
                 locale: user.locale,
                 email_confirmed_at: user.emailConfirmedAt,
+                last_login_at: user.lastLoginAt,
                 created_at: user.createdAt,
                 roles: await deps.users.getRoles(user.id)
               }))
@@ -76,6 +77,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               status: user.status,
               locale: user.locale,
               email_confirmed_at: user.emailConfirmedAt,
+              last_login_at: user.lastLoginAt,
               created_at: user.createdAt,
               roles: await deps.users.getRoles(user.id)
             }
@@ -155,6 +157,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               status: user.status,
               locale: user.locale,
               email_confirmed_at: user.emailConfirmedAt,
+              last_login_at: user.lastLoginAt,
               created_at: user.createdAt,
               roles: await deps.users.getRoles(user.id)
             }

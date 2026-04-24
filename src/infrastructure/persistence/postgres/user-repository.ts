@@ -13,6 +13,7 @@ function mapUser(row: Record<string, unknown>): User {
     status: row.status as User['status'],
     locale: row.locale as string,
     emailConfirmedAt: row.email_confirmed_at ? new Date(row.email_confirmed_at as string) : null,
+    lastLoginAt: row.last_login_at ? new Date(row.last_login_at as string) : null,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
     deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
@@ -233,6 +234,13 @@ export class PostgresUserRepository implements UserRepository {
       [userId]
     );
     return result.rows.map((row) => row.role_key as string);
+  }
+
+  async updateLastLogin(userId: string, timestamp: Date): Promise<void> {
+    await this.db.query(
+      `UPDATE users SET last_login_at = $1, updated_at = $1 WHERE id = $2`,
+      [timestamp, userId]
+    );
   }
 
   async assignRole(userId: string, roleKey: string): Promise<void> {

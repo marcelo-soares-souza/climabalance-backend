@@ -33,6 +33,7 @@ export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   list(filters: UserFilters): Promise<User[]>;
   softDelete(id: string): Promise<User | null>;
+  updateLastLogin(userId: string, timestamp: Date): Promise<void>;
   upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile>;
   getProfile(userId: string): Promise<UserProfile | null>;
   getRoles(userId: string): Promise<string[]>;

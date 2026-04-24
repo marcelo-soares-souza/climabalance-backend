@@ -8,6 +8,7 @@ export type User = {
   status: UserStatus;
   locale: string;
   emailConfirmedAt?: Date | null;
+  lastLoginAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
