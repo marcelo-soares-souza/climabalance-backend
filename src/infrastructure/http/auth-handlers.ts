@@ -36,6 +36,7 @@ import {
 } from './schemas';
 import { refreshTokenSchema, revokeTokenSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
+import { createHumanCheckChallenge, resolveHumanCheckLocale, verifyHumanCheckChallenge } from './human-check';
 
 export type AuthHandlersDeps = {
   users: UserRepository;
@@ -56,6 +57,41 @@ export type AuthHandlersDeps = {
 
 export function createAuthHandlers(deps: AuthHandlersDeps) {
   return {
+    humanCheck: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const url = new URL(ctx.request.url);
+        const locale = resolveHumanCheckLocale({
+          queryLocale: url.searchParams.get('locale'),
+          acceptLanguage: ctx.request.headers.get('accept-language'),
+        });
+        const challenge = await createHumanCheckChallenge(
+          { locale },
+          {
+            jwtService: deps.jwtService,
+            jwtSecret: deps.config.jwtSecret,
+            tokenGenerator: deps.tokenGenerator,
+            now: deps.clock.now(),
+          }
+        );
+        log.info('auth.human_check.created', { locale: challenge.locale });
+        return jsonResponse(
+          200,
+          {
+            data: {
+              challenge_id: challenge.challengeId,
+              question: challenge.question,
+              locale: challenge.locale,
+            },
+          },
+          logContext
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
     register: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
@@ -66,6 +102,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         }
 
         const validated = parseWithSchema(registerSchema, body);
+        const isHuman = await verifyHumanCheckChallenge(
+          {
+            challengeId: validated.human_challenge_id,
+            answer: validated.human_answer,
+          },
+          {
+            jwtService: deps.jwtService,
+            jwtSecret: deps.config.jwtSecret,
+          }
+        );
+        if (!isHuman) {
+          return errorResponse(400, 'auth.register.humanCheckInvalid', undefined, logContext);
+        }
 
         const result = await registerUser(
           {

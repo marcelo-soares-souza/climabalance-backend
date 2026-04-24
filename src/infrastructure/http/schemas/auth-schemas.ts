@@ -5,6 +5,8 @@ export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   password_confirm: z.string({ required_error: 'required' }),
+  human_challenge_id: z.string({ required_error: 'required' }).min(1, { message: 'required' }),
+  human_answer: z.string({ required_error: 'required' }).trim().min(1, { message: 'required' }).max(200, { message: 'too_long' }),
   locale: localeSchema,
   role_key: z.enum(['individual', 'producer', 'legal_entity'], {
     errorMap: () => ({ message: 'invalid' })

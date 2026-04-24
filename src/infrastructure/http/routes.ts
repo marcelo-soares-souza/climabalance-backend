@@ -79,6 +79,7 @@ export function buildRouter(
   addRoute('GET', '/api/v1/docs', 'public', (ctx) => swaggerUiHandler(ctx));
 
   // Auth routes
+  addRoute('GET', '/api/v1/auth/human-check', 'auth', (ctx) => authHandlers.humanCheck(ctx));
   addRoute('POST', '/api/v1/auth/register', 'auth', (ctx) => authHandlers.register(ctx));
   addRoute('POST', '/api/v1/auth/login', 'auth', (ctx) => authHandlers.login(ctx));
   addRoute('POST', '/api/v1/auth/confirm-email', 'auth', (ctx) => authHandlers.confirmEmail(ctx));
