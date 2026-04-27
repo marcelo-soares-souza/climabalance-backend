@@ -9,7 +9,7 @@ import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { parseJson } from '../../shared/http/request';
-import { jsonResponse } from '../../shared/http/response';
+import { jsonResponse, contentDispositionHeader } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import {
   createAreaSchema,
@@ -569,7 +569,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           headers: {
             'content-type': file.mimeType,
             'cache-control': 'public, max-age=3600',
-            'content-disposition': `inline; filename="${file.fileName}"`,
+            'content-disposition': contentDispositionHeader('inline', file.fileName),
           },
         });
       } catch (error) {

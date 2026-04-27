@@ -21,6 +21,22 @@ export function jsonResponse(status: number, body: unknown, context?: LogContext
   return buildJsonResponse(status, body);
 }
 
+/**
+ * Build a Content-Disposition header value that is safe for HTTP (ASCII-only).
+ *
+ * For clients that support RFC 5987, the international filename is provided
+ * via the `filename*` parameter with UTF-8 percent-encoding.
+ */
+export function contentDispositionHeader(
+  disposition: 'inline' | 'attachment',
+  fileName: string,
+): string {
+  const safe = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
+  const encoded = encodeURIComponent(fileName)
+    .replace(/%20/g, ' ');
+  return `${disposition}; filename="${safe}"; filename*=UTF-8''${encoded}`;
+}
+
 export function errorResponse(
   status: number,
   messageKey: string,

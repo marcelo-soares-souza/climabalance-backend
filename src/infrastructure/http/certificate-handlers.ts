@@ -1,5 +1,5 @@
 import type { HttpContext } from '../../shared/http/router';
-import { jsonResponse } from '../../shared/http/response';
+import { jsonResponse, contentDispositionHeader } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import { buildLogContext } from '../../shared/http/log-context';
 import type { CompensationCertificateRepository } from '../../domain/compensations/repositories/compensation-certificate-repository';
@@ -198,7 +198,7 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
           headers: {
             'content-type': certificate.mimeType || 'application/pdf',
             'content-length': String(bytes.byteLength),
-            'content-disposition': `inline; filename="${certificate.fileName}"`,
+            'content-disposition': contentDispositionHeader('inline', certificate.fileName),
             'cache-control': 'private, max-age=300',
           },
         });
