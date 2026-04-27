@@ -12,6 +12,7 @@ function makePolicies(limit: number): RateLimitPolicies {
     public: { limit, windowSeconds: 60 },
     protected: { limit, windowSeconds: 60 },
     admin: { limit, windowSeconds: 60 },
+    media: { limit, windowSeconds: 60 },
   };
 }
 

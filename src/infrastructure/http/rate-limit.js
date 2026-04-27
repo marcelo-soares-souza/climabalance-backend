@@ -17,6 +17,10 @@ export const defaultRateLimitPolicies = {
         limit: 60,
         windowSeconds: 60,
     },
+    media: {
+        limit: 600,
+        windowSeconds: 60,
+    },
 };
 export class InMemoryRateLimiter {
     policies;

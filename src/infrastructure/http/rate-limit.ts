@@ -2,7 +2,7 @@ import type { Handler, HttpContext } from '../../shared/http/router';
 import { buildLogContext } from '../../shared/http/log-context';
 import { errorResponse } from '../../shared/http/response';
 
-export type RateLimitBucket = 'auth' | 'public' | 'protected' | 'admin';
+export type RateLimitBucket = 'auth' | 'public' | 'protected' | 'admin' | 'media';
 
 export type RateLimitPolicy = {
   limit: number;
@@ -26,6 +26,10 @@ export const defaultRateLimitPolicies: RateLimitPolicies = {
   },
   admin: {
     limit: 60,
+    windowSeconds: 60,
+  },
+  media: {
+    limit: 600,
     windowSeconds: 60,
   },
 };
