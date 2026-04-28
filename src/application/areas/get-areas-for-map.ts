@@ -1,5 +1,6 @@
 import { AreaRepository } from '../../domain/areas/repositories/area-repository';
 import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
+import { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
 import { Biome } from '../../domain/areas/value-objects/biome';
 
 export interface AreaMapItem {
@@ -20,12 +21,14 @@ export interface AreaMapItem {
   pricePerTree?: number;
   defaultHorizonYears?: number;
   committedTreesCount?: number;
+  plantedTreesCount?: number;
   thumbnailUrl?: string;
 }
 
 export interface GetAreasForMapDeps {
   areaRepository: AreaRepository;
   areaMediaRepository: AreaMediaRepository;
+  treePlantingRepository: TreePlantingRepository;
 }
 
 export async function getAreasForMap(
@@ -41,9 +44,15 @@ export async function getAreasForMap(
   const areas = await deps.areaRepository.findAll(repoFilters);
 
   const areaIds = areas.map((a) => a.id);
-  const allMedia = areaIds.length > 0
-    ? await deps.areaMediaRepository.listByAreaIds(areaIds)
-    : [];
+
+  const [allMedia, plantedCountByAreaId] = await Promise.all([
+    areaIds.length > 0
+      ? deps.areaMediaRepository.listByAreaIds(areaIds)
+      : Promise.resolve([]),
+    areaIds.length > 0
+      ? deps.treePlantingRepository.countByAreaIds(areaIds)
+      : Promise.resolve(new Map<string, number>()),
+  ]);
 
   const thumbnailByAreaId = new Map<string, string>();
   const usedAreas = new Set<string>();
@@ -84,6 +93,7 @@ export async function getAreasForMap(
               (area.tCO2ePerTreePerYear * area.defaultHorizonYears)
           )
         : undefined,
+    plantedTreesCount: plantedCountByAreaId.get(area.id) || 0,
     thumbnailUrl: thumbnailByAreaId.get(area.id) || undefined,
   }));
 }

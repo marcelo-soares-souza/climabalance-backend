@@ -13,6 +13,7 @@ export type CreateTreePlantingRecord = {
 export interface TreePlantingRepository {
   findByAreaId(areaId: string, client?: any): Promise<TreePlanting[]>;
   countByAreaId(areaId: string, client?: any): Promise<number>;
+  countByAreaIds(areaIds: string[], client?: any): Promise<Map<string, number>>;
   sumCompensatedTreeCountByAreaId(areaId: string, client?: any): Promise<number>;
   saveBatch(records: CreateTreePlantingRecord[], client?: any): Promise<void>;
   deleteByAreaId(areaId: string, client?: any): Promise<void>;

@@ -30,6 +30,15 @@ const emptyMediaRepository = {
   },
 };
 
+const emptyTreePlantingRepository = {
+  async countByAreaId(_areaId: string): Promise<number> {
+    return 0;
+  },
+  async countByAreaIds(_areaIds: string[]): Promise<Map<string, number>> {
+    return new Map(_areaIds.map((id) => [id, 0]));
+  },
+};
+
 function makeArea(input: {
   id: string;
   status: AreaStatus;
@@ -88,6 +97,7 @@ describe('getAreasForMap', () => {
     const result = await getAreasForMap({
       areaRepository: areaRepository as any,
       areaMediaRepository: emptyMediaRepository as any,
+      treePlantingRepository: emptyTreePlantingRepository as any,
     });
 
     expect(areaRepository.findAllFilters).toEqual({ onlyActive: true });

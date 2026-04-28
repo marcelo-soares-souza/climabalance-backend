@@ -413,6 +413,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           {
             areaRepository: deps.areaRepository,
             areaMediaRepository: deps.areaMediaRepository,
+            treePlantingRepository: deps.treePlantingRepository,
           },
           query
         );
