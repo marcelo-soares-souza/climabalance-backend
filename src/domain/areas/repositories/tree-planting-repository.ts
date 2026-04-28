@@ -15,4 +15,5 @@ export interface TreePlantingRepository {
   countByAreaId(areaId: string, client?: any): Promise<number>;
   sumCompensatedTreeCountByAreaId(areaId: string, client?: any): Promise<number>;
   saveBatch(records: CreateTreePlantingRecord[], client?: any): Promise<void>;
+  deleteByAreaId(areaId: string, client?: any): Promise<void>;
 }

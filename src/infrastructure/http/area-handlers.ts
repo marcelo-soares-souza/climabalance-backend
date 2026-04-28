@@ -38,6 +38,7 @@ import { getAreaCapacity } from '../../application/areas/get-area-capacity';
 import { getPlantedTrees } from '../../application/areas/get-planted-trees';
 import { getPendingTreeCount } from '../../application/areas/get-pending-tree-count';
 import { savePlantedTrees } from '../../application/areas/save-planted-trees';
+import { deletePlantedTrees } from '../../application/areas/delete-planted-trees';
 import { uploadAreaMedia } from '../../application/areas/upload-area-media';
 import { listAreaMedia } from '../../application/areas/list-area-media';
 import { deleteAreaMedia } from '../../application/areas/delete-area-media';
@@ -499,6 +500,31 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         );
 
         return jsonResponse(201, { message_key: 'area.trees_planted' }, logContext);
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * DELETE /api/v1/areas/:id/planted-trees
+     * Delete all planted trees for an area (area owner only)
+     */
+    async deletePlantedTrees(ctx: HttpContext, id: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const auth = requireAuth(ctx);
+        const area = await deps.areaRepository.findById(id);
+        if (!area) {
+          return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+        }
+        if (area.ownerUserId !== auth.userId && !auth.roles.includes('administrator')) {
+          return jsonResponse(403, { message_key: 'auth.forbidden' }, logContext);
+        }
+        await deletePlantedTrees(
+          { treePlantingRepository: deps.treePlantingRepository },
+          id,
+        );
+        return jsonResponse(200, { message_key: 'area.trees_deleted' }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
       }

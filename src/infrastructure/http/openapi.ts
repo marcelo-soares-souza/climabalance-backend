@@ -714,6 +714,16 @@ const routes: ApiRouteDoc[] = [
     successStatus: '201',
     successResponse: 'OkData',
   },
+  {
+    method: 'delete',
+    path: '/api/v1/areas/:id/planted-trees',
+    summary: 'Delete planted trees',
+    description: 'Deletes all planted tree points for an area.',
+    tags: ['Area Planted Trees'],
+    secured: true,
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
 
   {
     method: 'get',

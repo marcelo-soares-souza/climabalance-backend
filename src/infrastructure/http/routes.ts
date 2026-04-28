@@ -151,6 +151,7 @@ export function buildRouter(
   addRoute('GET', '/api/v1/areas/:id/planted-trees', 'public', (ctx) => areaHandlers.getPlantedTrees(ctx, ctx.params.id));
   addRoute('GET', '/api/v1/areas/:id/pending-tree-count', 'protected', withAuth((ctx) => areaHandlers.getPendingTreeCount(ctx, ctx.params.id)));
   addRoute('POST', '/api/v1/areas/:id/planted-trees', 'protected', withAuth((ctx) => areaHandlers.savePlantedTrees(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
+  addRoute('DELETE', '/api/v1/areas/:id/planted-trees', 'protected', withAuth((ctx) => areaHandlers.deletePlantedTrees(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
 
   // Update/Version routes (public for frontend version checking)
   addRoute('GET', '/api/v1/updates/version', 'public', (ctx) => updateHandlers.getVersion(ctx));

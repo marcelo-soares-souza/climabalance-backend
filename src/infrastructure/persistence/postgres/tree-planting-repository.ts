@@ -70,4 +70,11 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
       params,
     );
   }
+
+  async deleteByAreaId(areaId: string): Promise<void> {
+    await this.pool.query(
+      `UPDATE tree_plantings SET deleted_at = NOW(), updated_at = NOW() WHERE area_id = $1 AND deleted_at IS NULL`,
+      [areaId],
+    );
+  }
 }
