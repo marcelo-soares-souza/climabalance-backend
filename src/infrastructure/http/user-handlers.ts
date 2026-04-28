@@ -11,8 +11,9 @@ import { updateUser } from '../../application/users/update-user';
 import { getClimateBalance } from '../../application/users/get-climate-balance';
 import { uuidv7 } from '../../shared/utils/id';
 import { getLogger } from '../../shared/utils/logger';
-import { updateUserSchema, upsertProfileSchema, parseWithSchema } from './schemas';
+import { listUsersQuerySchema, updateUserSchema, upsertProfileSchema, parseWithSchema } from './schemas';
 import { buildLogContext } from '../../shared/http/log-context';
+import { parseQueryWithSchema } from './schemas/validation-helper';
 
 export type UserHandlersDeps = {
   users: UserRepository;
@@ -30,45 +31,45 @@ export type UserHandlersDeps = {
 };
 
 export function createUserHandlers(deps: UserHandlersDeps) {
+  const mapUserSummary = async (
+    user: Awaited<ReturnType<typeof getUser>>,
+    roleMap?: Record<string, string[]>,
+  ) => ({
+    id: user.id,
+    email: user.email,
+    status: user.status,
+    locale: user.locale,
+    email_confirmed_at: user.emailConfirmedAt,
+    last_login_at: user.lastLoginAt,
+    created_at: user.createdAt,
+    roles: roleMap?.[user.id] ?? await deps.users.getRoles(user.id),
+  });
+
   return {
     list: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const url = new URL(ctx.request.url);
-        const status = url.searchParams.get('status') ?? undefined;
-        const search = url.searchParams.get('search') ?? undefined;
-        const sortBy = url.searchParams.get('sort_by') ?? undefined;
-        const sortOrder = url.searchParams.get('sort_order') ?? undefined;
-        const limit = url.searchParams.get('limit');
-        const offset = url.searchParams.get('offset');
+        const query = parseQueryWithSchema(listUsersQuerySchema, ctx.query);
         const users = await listUsers(
           {
-            status,
-            search,
-            sortBy,
-            sortOrder: sortOrder === 'asc' ? 'asc' : sortOrder === 'desc' ? 'desc' : undefined,
-            limit: limit ? Number(limit) : undefined,
-            offset: offset ? Number(offset) : undefined
+            status: query.status,
+            search: query.search,
+            sortBy: query.sort_by,
+            sortOrder: query.sort_order,
+            limit: query.limit,
+            offset: query.offset
           },
           { users: deps.users }
         );
+        const roleMap = deps.users.getRolesByUserIds
+          ? await deps.users.getRolesByUserIds(users.map((user) => user.id))
+          : undefined;
         log.info('user.list', { count: users.length });
         return jsonResponse(
           200,
           {
-            data: await Promise.all(
-              users.map(async (user) => ({
-                id: user.id,
-                email: user.email,
-                status: user.status,
-                locale: user.locale,
-                email_confirmed_at: user.emailConfirmedAt,
-                last_login_at: user.lastLoginAt,
-                created_at: user.createdAt,
-                roles: await deps.users.getRoles(user.id)
-              }))
-            )
+            data: await Promise.all(users.map((user) => mapUserSummary(user, roleMap)))
           },
           logContext
         );
@@ -86,16 +87,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         return jsonResponse(
           200,
           {
-            data: {
-              id: user.id,
-              email: user.email,
-              status: user.status,
-              locale: user.locale,
-              email_confirmed_at: user.emailConfirmedAt,
-              last_login_at: user.lastLoginAt,
-              created_at: user.createdAt,
-              roles: await deps.users.getRoles(user.id)
-            }
+            data: await mapUserSummary(user)
           },
           logContext
         );
@@ -193,16 +185,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         return jsonResponse(
           200,
           {
-            data: {
-              id: user.id,
-              email: user.email,
-              status: user.status,
-              locale: user.locale,
-              email_confirmed_at: user.emailConfirmedAt,
-              last_login_at: user.lastLoginAt,
-              created_at: user.createdAt,
-              roles: await deps.users.getRoles(user.id)
-            }
+            data: await mapUserSummary(user)
           },
           logContext
         );

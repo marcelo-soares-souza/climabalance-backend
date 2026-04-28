@@ -54,6 +54,20 @@ export const createProjectionSchema = z.object({
   horizon_years: z.number().positive().optional()
 });
 
+export const listCalculationsQuerySchema = z.object({
+  status: z.enum(['draft', 'finalized']).optional(),
+  profile_type: z.enum(['individual', 'legal_entity']).optional(),
+  user_email: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+export const emissionFactorsQuerySchema = z.object({
+  version: z.string().trim().min(1).optional(),
+  region: z.string().trim().min(1).optional(),
+  category: z.enum(['energy', 'fuel', 'transport', 'flights', 'scope1', 'scope2', 'scope3']).optional(),
+});
+
 /**
  * Helper to parse with schema
  */

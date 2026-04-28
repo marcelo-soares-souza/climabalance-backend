@@ -1,12 +1,9 @@
 import { Client } from 'pg';
+import { env, optionalEnv } from '../shared/utils/env';
 import { logger } from '../shared/utils/logger';
 
-const databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is required');
-}
-
-const adminDb = process.env.DATABASE_ADMIN_DB ?? 'postgres';
+const databaseUrl = env.databaseUrl;
+const adminDb = optionalEnv('DATABASE_ADMIN_DB') ?? 'postgres';
 const parsed = new URL(databaseUrl);
 const dbName = parsed.pathname.replace('/', '');
 if (!dbName) {

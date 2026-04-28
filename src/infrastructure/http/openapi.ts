@@ -1,4 +1,5 @@
 import type { HttpContext } from '../../shared/http/router';
+import { getRequestOrigin } from '../../shared/http/request';
 import { jsonResponse } from '../../shared/http/response';
 
 type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -1106,13 +1107,21 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
         },
         AuthRefreshRequest: {
           type: 'object',
-          required: ['refresh_token'],
-          properties: { refresh_token: { type: 'string' } },
+          properties: {
+            refresh_token: {
+              type: 'string',
+              description: 'Optional when refresh token is stored in HttpOnly cookie.',
+            },
+          },
         },
         AuthRevokeRequest: {
           type: 'object',
-          required: ['refresh_token'],
-          properties: { refresh_token: { type: 'string' } },
+          properties: {
+            refresh_token: {
+              type: 'string',
+              description: 'Optional when refresh token is stored in HttpOnly cookie.',
+            },
+          },
         },
 
         UserUpdateRequest: {
@@ -1418,14 +1427,12 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
 }
 
 export function openApiJsonHandler(ctx: HttpContext): Response {
-  const url = new URL(ctx.request.url);
-  const serverUrl = url.origin;
+  const serverUrl = getRequestOrigin(ctx.request);
   return jsonResponse(200, buildOpenApiDocument(serverUrl));
 }
 
 export function swaggerUiHandler(ctx: HttpContext): Response {
-  const url = new URL(ctx.request.url);
-  const openApiUrl = `${url.origin}/api/v1/openapi.json`;
+  const openApiUrl = `${getRequestOrigin(ctx.request)}/api/v1/openapi.json`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">

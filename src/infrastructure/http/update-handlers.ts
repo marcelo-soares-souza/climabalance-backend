@@ -1,13 +1,14 @@
 import type { HttpContext } from '../../shared/http/router';
-import { jsonResponse } from '../../shared/http/response';
+import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { logger } from '../../shared/utils/logger';
+import { env } from '../../shared/utils/env';
 
 // Global set to track SSE clients
 const sseClients = new Set<ReadableStreamDefaultController>();
 
 // Build version info (set during deployment)
-const BUILD_VERSION = process.env.BUILD_VERSION || 'development';
-const BUILD_TIMESTAMP = process.env.BUILD_TIMESTAMP || Date.now().toString();
+const BUILD_VERSION = env.buildVersion;
+const BUILD_TIMESTAMP_MS = env.buildTimestampMs;
 
 export interface UpdateHandlersDeps {
   // No dependencies needed for basic version checking
@@ -22,8 +23,8 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
     async getVersion(_ctx: HttpContext): Promise<Response> {
       return jsonResponse(200, {
         buildId: BUILD_VERSION,
-        timestamp: parseInt(BUILD_TIMESTAMP, 10),
-        date: new Date(parseInt(BUILD_TIMESTAMP, 10) * 1000).toISOString()
+        timestamp: BUILD_TIMESTAMP_MS,
+        date: new Date(BUILD_TIMESTAMP_MS).toISOString()
       });
     },
 
@@ -46,7 +47,7 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
           const initialMessage = `data: ${JSON.stringify({
             type: 'connected',
             buildId: BUILD_VERSION,
-            timestamp: BUILD_TIMESTAMP
+            timestamp: BUILD_TIMESTAMP_MS
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(initialMessage));
 
@@ -97,7 +98,7 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
       const { buildId, timestamp } = body;
 
       if (!buildId) {
-        return jsonResponse(400, { error: 'buildId is required' });
+        return errorResponse(400, 'request.validation_failed');
       }
 
       const message = `event: version-update\ndata: ${JSON.stringify({

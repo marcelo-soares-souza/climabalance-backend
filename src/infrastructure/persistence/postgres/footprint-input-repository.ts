@@ -1,13 +1,13 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import type { FootprintInput } from '../../../domain/footprint/entities/footprint-input';
 import type { FootprintInputRepository } from '../../../domain/footprint/repositories/footprint-input-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 export class PostgresFootprintInputRepository implements FootprintInputRepository {
-  constructor(private pool: Pool = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async save(input: FootprintInput, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `INSERT INTO footprint_input (
@@ -31,7 +31,7 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
   }
 
   async saveMany(inputs: FootprintInput[], client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     if (inputs.length === 0) return;
 
@@ -69,7 +69,7 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
   }
 
   async findByCalculationId(calculationId: string): Promise<FootprintInput[]> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT * FROM footprint_input WHERE calculation_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
       [calculationId]
     );
@@ -78,7 +78,7 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
   }
 
   async deleteByCalculationId(calculationId: string, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `UPDATE footprint_input

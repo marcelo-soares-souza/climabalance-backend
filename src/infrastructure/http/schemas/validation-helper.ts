@@ -10,3 +10,10 @@ export function parseWithSchema<T>(schema: z.ZodSchema<T>, data: unknown): T {
 
   return result.data;
 }
+
+export function parseQueryWithSchema<T>(
+  schema: z.ZodSchema<T>,
+  query: URLSearchParams,
+): T {
+  return parseWithSchema(schema, Object.fromEntries(query.entries()));
+}

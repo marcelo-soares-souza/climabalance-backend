@@ -14,9 +14,11 @@ import {
   createCalculationSchema,
   updateCalculationSchema,
   createProjectionSchema,
-  calculateGuestSchema
+  calculateGuestSchema,
+  listCalculationsQuerySchema,
+  emissionFactorsQuerySchema,
 } from './schemas/footprint-schemas';
-import { parseWithSchema } from './schemas/validation-helper';
+import { parseQueryWithSchema, parseWithSchema } from './schemas/validation-helper';
 import { createFootprintCalculation } from '../../application/footprint/create-footprint-calculation';
 import { updateFootprintCalculation } from '../../application/footprint/update-footprint-calculation';
 import { finalizeFootprintCalculation } from '../../application/footprint/finalize-footprint-calculation';
@@ -28,6 +30,7 @@ import { createCompensationProjection } from '../../application/footprint/create
 import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
 import { calculateGuestFootprint } from '../../application/footprint/calculate-guest-footprint';
 import { buildLogContext } from '../../shared/http/log-context';
+import { requireAuth } from '../../shared/http/auth-context';
 
 export interface FootprintHandlersDeps {
   calculationRepository: FootprintCalculationRepository;
@@ -50,6 +53,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
     async create(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createCalculationSchema, body);
 
@@ -61,7 +65,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             clock: deps.clock
           },
           {
-            user_id: ctx.auth!.userId,
+            user_id: auth.userId,
             ...validated
           }
         );
@@ -85,8 +89,9 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async update(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
-      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
+        const auth = requireAuth(ctx);
+        const isAdmin = auth.roles.includes('administrator');
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(updateCalculationSchema, body);
 
@@ -100,7 +105,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           },
           {
             calculation_id: id,
-            user_id: ctx.auth!.userId,
+            user_id: auth.userId,
             isAdmin,
             ...validated
           }
@@ -124,8 +129,9 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async finalize(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
-      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
+        const auth = requireAuth(ctx);
+        const isAdmin = auth.roles.includes('administrator');
         await finalizeFootprintCalculation(
           {
             calculationRepository: deps.calculationRepository,
@@ -134,7 +140,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             clock: deps.clock
           },
           id,
-          ctx.auth!.userId,
+          auth.userId,
           isAdmin
         );
 
@@ -156,8 +162,9 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async get(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
-      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
+        const auth = requireAuth(ctx);
+        const isAdmin = auth.roles.includes('administrator');
         const result = await getFootprintCalculation(
           {
             calculationRepository: deps.calculationRepository,
@@ -165,7 +172,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             breakdownRepository: deps.breakdownRepository
           },
           id,
-          ctx.auth!.userId,
+          auth.userId,
           { is_admin: isAdmin }
         );
 
@@ -181,24 +188,21 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async list(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
-      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
-      const url = new URL(ctx.request.url);
-      const query = {
-        status: url.searchParams.get('status') || undefined,
-        profile_type: url.searchParams.get('profile_type') || undefined,
-        user_email: isAdmin ? url.searchParams.get('user_email') || undefined : undefined,
-        limit: url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined,
-        offset: url.searchParams.get('offset') ? parseInt(url.searchParams.get('offset')!) : undefined
-      };
-
       try {
+        const auth = requireAuth(ctx);
+        const isAdmin = auth.roles.includes('administrator');
+        const query = parseQueryWithSchema(listCalculationsQuerySchema, ctx.query);
         const result = await listFootprintCalculations(
           {
             calculationRepository: deps.calculationRepository
           },
           {
-            user_id: ctx.auth!.userId,
-            ...query,
+            user_id: auth.userId,
+            status: query.status,
+            profile_type: query.profile_type,
+            user_email: isAdmin ? query.user_email : undefined,
+            limit: query.limit,
+            offset: query.offset,
             is_admin: isAdmin
           }
         );
@@ -215,14 +219,15 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async remove(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
-      const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
       try {
+        const auth = requireAuth(ctx);
+        const isAdmin = auth.roles.includes('administrator');
         await deleteFootprintCalculation(
           {
             calculationRepository: deps.calculationRepository
           },
           id,
-          ctx.auth!.userId,
+          auth.userId,
           isAdmin
         );
 
@@ -244,14 +249,8 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
      */
     async getEmissionFactors(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
-      const url = new URL(ctx.request.url);
-      const query = {
-        version: url.searchParams.get('version') || undefined,
-        region: url.searchParams.get('region') || undefined,
-        category: url.searchParams.get('category') || undefined
-      };
-
       try {
+        const query = parseQueryWithSchema(emissionFactorsQuerySchema, ctx.query);
         const result = await getEmissionFactors(
           {
             emissionFactorRepository: deps.emissionFactorRepository
@@ -272,6 +271,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
     async createProjection(ctx: HttpContext, calculationId: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createProjectionSchema, body);
 
@@ -285,7 +285,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           },
           {
             calculation_id: calculationId,
-            user_id: ctx.auth!.userId,
+            user_id: auth.userId,
             ...validated
           }
         );

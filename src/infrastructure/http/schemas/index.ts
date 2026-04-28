@@ -16,7 +16,8 @@ export {
 
 export {
   updateUserSchema,
-  upsertProfileSchema
+  upsertProfileSchema,
+  listUsersQuerySchema
 } from './user-schemas';
 
 export { parseWithSchema } from './validation-helper';

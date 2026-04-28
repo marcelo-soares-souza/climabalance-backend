@@ -30,19 +30,19 @@ class PostgresTransaction implements Transaction {
   }
 
   getFootprintCalculationRepository() {
-    return new PostgresFootprintCalculationRepository(this.client as unknown as Pool);
+    return new PostgresFootprintCalculationRepository(this.client);
   }
 
   getFootprintInputRepository() {
-    return new PostgresFootprintInputRepository(this.client as unknown as Pool);
+    return new PostgresFootprintInputRepository(this.client);
   }
 
   getFootprintBreakdownRepository() {
-    return new PostgresFootprintBreakdownRepository(this.client as unknown as Pool);
+    return new PostgresFootprintBreakdownRepository(this.client);
   }
 
   getCompensationProjectionRepository() {
-    return new PostgresCompensationProjectionRepository(this.client as unknown as Pool);
+    return new PostgresCompensationProjectionRepository(this.client);
   }
 }
 

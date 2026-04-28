@@ -1,6 +1,6 @@
 import type { Handler, HttpContext } from '../../shared/http/router';
 import { env } from '../../shared/utils/env';
-import { verifyJwt } from '../crypto/jwt';
+import { type JwtPayload, verifyJwt } from '../crypto/jwt';
 import { errorResponse } from '../../shared/http/response';
 import { getLogger } from '../../shared/utils/logger';
 import { buildLogContext } from '../../shared/http/log-context';
@@ -11,6 +11,19 @@ function getToken(request: Request): string | null {
   const [type, token] = header.split(' ');
   if (type !== 'Bearer' || !token) return null;
   return token;
+}
+
+function isValidAuthPayload(payload: JwtPayload): boolean {
+  if (!payload.sub || typeof payload.sub !== 'string') {
+    return false;
+  }
+  if (!Array.isArray(payload.roles) || payload.roles.some((role) => typeof role !== 'string')) {
+    return false;
+  }
+  if (payload.iss !== env.jwtIssuer || payload.aud !== env.jwtAudience) {
+    return false;
+  }
+  return true;
 }
 
 export function withAuth(handler: Handler, options?: { roles?: string[] }): Handler {
@@ -24,7 +37,7 @@ export function withAuth(handler: Handler, options?: { roles?: string[] }): Hand
     }
 
     const payload = await verifyJwt(token, env.jwtSecret);
-    if (!payload) {
+    if (!payload || !isValidAuthPayload(payload)) {
       log.warn('auth.invalid_token');
       return errorResponse(401, 'auth.invalid', undefined, logContext);
     }
@@ -53,7 +66,7 @@ export function withOptionalAuth(handler: Handler): Handler {
     }
 
     const payload = await verifyJwt(token, env.jwtSecret);
-    if (!payload) {
+    if (!payload || !isValidAuthPayload(payload)) {
       log.warn('auth.invalid_token');
       return errorResponse(401, 'auth.invalid', undefined, logContext);
     }

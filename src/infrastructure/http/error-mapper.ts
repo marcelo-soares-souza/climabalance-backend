@@ -111,6 +111,10 @@ export function handleError(
       status = 400;
       response = errorResponse(400, 'auth.token_already_used', undefined, context);
       break;
+    case 'auth.required':
+      status = 401;
+      response = errorResponse(401, 'auth.required', undefined, context);
+      break;
     default:
       status = 500;
       response = errorResponse(500, 'server.error', undefined, context);

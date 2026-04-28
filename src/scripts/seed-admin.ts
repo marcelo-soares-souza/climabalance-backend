@@ -1,15 +1,12 @@
 import { pgPool } from '../infrastructure/persistence/postgres/pg-client';
 import { bunPasswordHasher } from '../infrastructure/crypto/password';
 import { uuidv7 } from '../shared/utils/id';
+import { optionalEnv, requiredEnv } from '../shared/utils/env';
 import { logger } from '../shared/utils/logger';
 
-const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@example.com';
-const adminPassword = process.env.ADMIN_PASSWORD;
-const adminLocale = process.env.ADMIN_LOCALE ?? 'pt-BR';
-
-if (!adminPassword) {
-  throw new Error('ADMIN_PASSWORD is required');
-}
+const adminEmail = optionalEnv('ADMIN_EMAIL') ?? 'admin@example.com';
+const adminPassword = requiredEnv('ADMIN_PASSWORD');
+const adminLocale = optionalEnv('ADMIN_LOCALE') ?? 'pt-BR';
 
 const now = new Date();
 const passwordHash = await bunPasswordHasher.hash(adminPassword);

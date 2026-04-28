@@ -37,6 +37,30 @@ import {
 import { refreshTokenSchema, revokeTokenSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
 import { createHumanCheckChallenge, resolveHumanCheckLocale, verifyHumanCheckChallenge } from './human-check';
+import {
+  buildRefreshTokenCookie,
+  buildRefreshTokenCookieCleared,
+  getRefreshTokenFromCookie,
+} from '../../shared/http/cookies';
+
+const authResponseHeaders = {
+  'cache-control': 'no-store',
+  pragma: 'no-cache',
+};
+
+function withRefreshCookie(refreshToken: string, maxAgeSeconds: number): Record<string, string> {
+  return {
+    ...authResponseHeaders,
+    'set-cookie': buildRefreshTokenCookie(refreshToken, maxAgeSeconds),
+  };
+}
+
+function clearRefreshCookieHeaders(): Record<string, string> {
+  return {
+    ...authResponseHeaders,
+    'set-cookie': buildRefreshTokenCookieCleared(),
+  };
+}
 
 export type AuthHandlersDeps = {
   users: UserRepository;
@@ -61,9 +85,8 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const url = new URL(ctx.request.url);
         const locale = resolveHumanCheckLocale({
-          queryLocale: url.searchParams.get('locale'),
+          queryLocale: ctx.query.get('locale'),
           acceptLanguage: ctx.request.headers.get('accept-language'),
         });
         const challenge = await createHumanCheckChallenge(
@@ -191,7 +214,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         });
 
         log.info('auth.login.success', { email: validated.email });
-        return jsonResponse(200, { data: token }, logContext);
+        return jsonResponse(
+          200,
+          {
+            data: {
+              accessToken: token.accessToken,
+              tokenType: token.tokenType,
+              expiresIn: token.expiresIn,
+              refreshExpiresIn: token.refreshExpiresIn,
+            },
+          },
+          logContext,
+          withRefreshCookie(token.refreshToken, token.refreshExpiresIn)
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -323,10 +358,16 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
-        const validated = parseWithSchema(refreshTokenSchema, body);
+        const validated = parseWithSchema(refreshTokenSchema, body ?? {});
+        const refreshToken =
+          validated.refresh_token ?? getRefreshTokenFromCookie(ctx.request);
+
+        if (!refreshToken) {
+          return errorResponse(401, 'auth.invalid_token', undefined, logContext, clearRefreshCookieHeaders());
+        }
 
         const result = await refreshAccessToken(
-          { refreshToken: validated.refresh_token },
+          { refreshToken },
           {
             refreshTokens: deps.refreshTokens,
             users: deps.users,
@@ -340,7 +381,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.refresh.success');
-        return jsonResponse(200, { data: result }, logContext);
+        return jsonResponse(
+          200,
+          {
+            data: {
+              accessToken: result.accessToken,
+              tokenType: result.tokenType,
+              expiresIn: result.expiresIn,
+              refreshExpiresIn: result.refreshExpiresIn,
+            },
+          },
+          logContext,
+          withRefreshCookie(result.refreshToken, result.refreshExpiresIn)
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -355,10 +408,17 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'request.invalid_body', undefined, logContext);
         }
 
-        const validated = parseWithSchema(revokeTokenSchema, body);
+        const validated = parseWithSchema(revokeTokenSchema, body ?? {});
+        const refreshToken =
+          validated.refresh_token ?? getRefreshTokenFromCookie(ctx.request);
+
+        if (!refreshToken) {
+          log.info('auth.revoke.success', { source: 'missing_token_cookie' });
+          return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext, clearRefreshCookieHeaders());
+        }
 
         await revokeRefreshToken(
-          { refreshToken: validated.refresh_token },
+          { refreshToken },
           {
             refreshTokens: deps.refreshTokens,
             hashService: deps.hashService,
@@ -367,7 +427,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.revoke.success');
-        return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext);
+        return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext, clearRefreshCookieHeaders());
       } catch (error) {
         return handleError(error, log, logContext);
       }

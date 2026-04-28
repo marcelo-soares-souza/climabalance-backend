@@ -30,7 +30,17 @@ const sensitiveKeys = new Set([
   'pepper',
   'jwt',
   'api_key',
-  'apiKey'
+  'apiKey',
+  'card_number',
+  'cardnumber',
+  'cardholder_name',
+  'cvv',
+  'cvc',
+  'pan',
+  'file_base64',
+  'base64',
+  'cookie',
+  'set-cookie'
 ]);
 
 function getLogLevel(): LogLevel {
@@ -60,19 +70,11 @@ function maskValue(value: unknown): unknown {
   return '***';
 }
 
-function shouldMaskSensitiveData(): boolean {
-  const env = (process.env.APP_ENV ?? 'local').toLowerCase();
-  return env !== 'local' && env !== 'development' && env !== 'test';
-}
-
 function sanitizeValue(value: unknown, depth = 0): unknown {
   if (depth > 4) return '[REDACTED]';
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
-    if (shouldMaskSensitiveData()) {
-      return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
-    }
-    return value;
+    return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
   }
   if (typeof value !== 'object') return value;
   if (Array.isArray(value)) {
@@ -84,13 +86,16 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
     const normalized = key.toLowerCase();
     const isPassword = normalized.includes('password') || normalized.includes('pepper') || normalized.includes('secret');
     const isToken = normalized.includes('token');
+    const isPayment = normalized.includes('card') || normalized.includes('cvv') || normalized.includes('cvc') || normalized.includes('pan');
+    const isBinaryPayload = normalized.includes('base64');
+    const isCookie = normalized.includes('cookie');
 
-    if (isPassword) {
+    if (isPassword || isPayment || isBinaryPayload || isCookie) {
       sanitized[key] = maskValue(entry);
       continue;
     }
 
-    if (shouldMaskSensitiveData() && (sensitiveKeys.has(normalized) || isToken)) {
+    if (sensitiveKeys.has(normalized) || isToken) {
       sanitized[key] = maskValue(entry);
       continue;
     }

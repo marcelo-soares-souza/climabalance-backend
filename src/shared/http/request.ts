@@ -2,6 +2,10 @@ import { getLogger } from '../utils/logger';
 import { buildLogContext } from './log-context';
 import type { HttpContext } from './router';
 
+export function getRequestOrigin(request: Request): string {
+  return new URL(request.url).origin;
+}
+
 export async function parseJson(
   request: Request,
   ctx?: HttpContext,

@@ -241,6 +241,26 @@ describe('Authorization - withAuth middleware (unit)', () => {
     expect(response.status).toBe(401);
   });
 
+  test('reject request with wrong issuer or audience (401)', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = await signJwt(
+      {
+        sub: 'user-1',
+        roles: ['individual'],
+        iss: 'wrong-issuer',
+        aud: 'wrong-audience',
+        iat: now,
+        exp: now + 300
+      },
+      SECRET
+    );
+    const handler = withAuth(async () => new Response('ok', { status: 200 }));
+
+    const response = await handler(makeCtx(token));
+
+    expect(response.status).toBe(401);
+  });
+
   test('allow request with valid token', async () => {
 const token = await makeToken(['individual']);
     const handler = withAuth(successHandler);

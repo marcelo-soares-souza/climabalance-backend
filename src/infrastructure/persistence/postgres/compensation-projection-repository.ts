@@ -1,13 +1,13 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import type { CompensationProjection } from '../../../domain/footprint/entities/compensation-projection';
 import type { CompensationProjectionRepository } from '../../../domain/footprint/repositories/compensation-projection-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 export class PostgresCompensationProjectionRepository implements CompensationProjectionRepository {
-  constructor(private pool: Pool = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async save(projection: CompensationProjection, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `INSERT INTO compensation_projection (
@@ -30,7 +30,7 @@ export class PostgresCompensationProjectionRepository implements CompensationPro
   }
 
   async findByCalculationId(calculationId: string): Promise<CompensationProjection | null> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT * FROM compensation_projection WHERE calculation_id = $1 AND deleted_at IS NULL LIMIT 1`,
       [calculationId]
     );
@@ -43,7 +43,7 @@ export class PostgresCompensationProjectionRepository implements CompensationPro
   }
 
   async findByAreaId(areaId: string): Promise<CompensationProjection[]> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT * FROM compensation_projection WHERE area_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`,
       [areaId]
     );

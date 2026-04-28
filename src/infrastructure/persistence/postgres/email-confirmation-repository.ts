@@ -1,6 +1,5 @@
-import type { Pool, PoolClient } from 'pg';
 import type { EmailConfirmation, EmailConfirmationRepository } from '../../../domain/user/email-confirmation-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 function mapConfirmation(row: Record<string, unknown>): EmailConfirmation {
   return {
@@ -17,7 +16,7 @@ function mapConfirmation(row: Record<string, unknown>): EmailConfirmation {
 }
 
 export class PostgresEmailConfirmationRepository implements EmailConfirmationRepository {
-  constructor(private db: Pool | PoolClient = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async create(input: EmailConfirmation): Promise<EmailConfirmation> {
     const result = await this.db.query(

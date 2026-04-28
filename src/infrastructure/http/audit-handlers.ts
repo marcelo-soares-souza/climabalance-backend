@@ -1,10 +1,20 @@
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { HttpContext } from '../../shared/http/router';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
+import { jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import { listAuditLog } from '../../application/audit/list-audit-log';
 import { getLogger } from '../../shared/utils/logger';
 import { buildLogContext } from '../../shared/http/log-context';
+import { parseQueryWithSchema } from './schemas/validation-helper';
+import { z } from 'zod';
+
+const listAuditLogQuerySchema = z.object({
+  actor_user_id: z.string().trim().min(1).optional(),
+  entity_type: z.string().trim().min(1).optional(),
+  entity_id: z.string().trim().min(1).optional(),
+  limit: z.coerce.number().int().min(1).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
 
 export type AuditHandlersDeps = {
   auditLog: AuditLogRepository;
@@ -16,35 +26,15 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const url = new URL(ctx.request.url);
-        const actorUserId = url.searchParams.get('actor_user_id') ?? undefined;
-        const entityType = url.searchParams.get('entity_type') ?? undefined;
-        const entityId = url.searchParams.get('entity_id') ?? undefined;
-        const limitRaw = url.searchParams.get('limit');
-        const offsetRaw = url.searchParams.get('offset');
-        const limit = limitRaw ? Number(limitRaw) : undefined;
-        const offset = offsetRaw ? Number(offsetRaw) : undefined;
-
-        const errors: Array<{ field: string; message: string }> = [];
-        if (limitRaw && (Number.isNaN(limit) || (limit ?? 0) <= 0)) {
-          errors.push({ field: 'limit', message: 'invalid' });
-        }
-        if (offsetRaw && (Number.isNaN(offset) || (offset ?? 0) < 0)) {
-          errors.push({ field: 'offset', message: 'invalid' });
-        }
-
-        if (errors.length > 0) {
-          log.warn('audit.list.validation_failed', { errors });
-          return errorResponse(400, 'request.validation_failed', errors, logContext);
-        }
+        const query = parseQueryWithSchema(listAuditLogQuerySchema, ctx.query);
 
         const entries = await listAuditLog(
           {
-            actorUserId,
-            entityType,
-            entityId,
-            limit,
-            offset
+            actorUserId: query.actor_user_id,
+            entityType: query.entity_type,
+            entityId: query.entity_id,
+            limit: query.limit,
+            offset: query.offset
           },
           { auditLog: deps.auditLog }
         );

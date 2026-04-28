@@ -1,12 +1,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
+import { env } from '../../shared/utils/env';
 
 export class LocalCertificateStorage implements CompensationCertificateStorage {
-  constructor(
-    private readonly basePath: string = process.env.CERTIFICATE_STORAGE_PATH ??
-      './storage/certificates'
-  ) {}
+  constructor(private readonly basePath: string = env.certificateStoragePath) {}
 
   async save(params: {
     certificateId: string;

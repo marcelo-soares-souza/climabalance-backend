@@ -1,6 +1,5 @@
-import type { Pool, PoolClient } from 'pg';
 import type { AuditLogEntry, AuditLogFilters, AuditLogRepository, AuditLogSeverity } from '../../../domain/audit/audit-log-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 /**
  * Sanitize sensitive fields from state objects before storing in audit log.
@@ -78,7 +77,7 @@ function mapAuditLog(row: Record<string, unknown>): AuditLogEntry {
 }
 
 export class PostgresAuditLogRepository implements AuditLogRepository {
-  constructor(private db: Pool | PoolClient = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async log(entry: {
     actorUserId: string;

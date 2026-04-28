@@ -1,5 +1,6 @@
 import { getLogger } from '../utils/logger';
 import { uuidv7 } from '../utils/id';
+import { env } from '../utils/env';
 import { errorResponse } from './response';
 import { buildLogContext } from './log-context';
 
@@ -57,10 +58,11 @@ export class Router {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
     const requestId = uuidv7();
-    const clientIp = getClientIp(request) ?? options?.clientIp;
+    const clientIp = options?.clientIp ?? getForwardedClientIp(request);
     const corsHeaders = buildCorsHeaders(request);
 
     if (method === 'OPTIONS') {
+      applySecurityHeaders(corsHeaders);
       return new Response(null, {
         status: 204,
         headers: corsHeaders
@@ -90,6 +92,7 @@ export class Router {
         const response = await route.handler(ctx);
         const headers = new Headers(response.headers);
         headers.set('x-request-id', requestId);
+        applySecurityHeaders(headers);
 
         const log = getLogger({ requestId, userId: ctx.auth?.userId, clientIp });
         log.info('request.completed', {
@@ -116,11 +119,14 @@ export class Router {
       }
     }
 
-    return new Response('Not Found', { status: 404, headers: corsHeaders });
+    return withCors(
+      errorResponse(404, 'common.notFound', undefined, { requestId, clientIp }),
+      corsHeaders
+    );
   }
 }
 
-function getClientIp(request: Request): string | undefined {
+function getForwardedClientIp(request: Request): string | undefined {
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();
@@ -135,21 +141,42 @@ function getClientIp(request: Request): string | undefined {
 
 function buildCorsHeaders(request: Request): Headers {
   const headers = new Headers();
-  const origin = request.headers.get('origin') ?? '*';
+  const origin = request.headers.get('origin');
   const requestHeaders = request.headers.get('access-control-request-headers');
   const requestMethod = request.headers.get('access-control-request-method');
 
-  headers.set('access-control-allow-origin', origin);
+  const allowedOrigin = resolveAllowedOrigin(origin);
+  if (allowedOrigin) {
+    headers.set('access-control-allow-origin', allowedOrigin);
+    headers.set('vary', 'origin');
+    if (allowedOrigin !== '*') {
+      headers.set('access-control-allow-credentials', 'true');
+    }
+  }
   headers.set(
     'access-control-allow-methods',
     requestMethod ?? 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
   );
   headers.set('access-control-allow-headers', requestHeaders ?? 'authorization, content-type');
   headers.set('access-control-max-age', '86400');
-  if (origin !== '*') {
-    headers.set('vary', 'origin');
-  }
   return headers;
+}
+
+function resolveAllowedOrigin(origin: string | null): string | null {
+  if (!origin) {
+    return '*';
+  }
+
+  const allowedOrigins = new Set<string>();
+  for (const candidate of [env.frontendUrl, env.appUrl]) {
+    try {
+      allowedOrigins.add(new URL(candidate).origin);
+    } catch {
+      // Invalid configured origin; fail closed for browser CORS.
+    }
+  }
+
+  return allowedOrigins.has(origin) ? origin : null;
 }
 
 function mergeHeaders(base: Headers, extra: Headers): Headers {
@@ -159,9 +186,18 @@ function mergeHeaders(base: Headers, extra: Headers): Headers {
 }
 
 function withCors(response: Response, corsHeaders: Headers): Response {
+  const headers = mergeHeaders(response.headers, corsHeaders);
+  applySecurityHeaders(headers);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: mergeHeaders(response.headers, corsHeaders)
+    headers
   });
+}
+
+function applySecurityHeaders(headers: Headers): void {
+  headers.set('x-content-type-options', 'nosniff');
+  headers.set('x-frame-options', 'DENY');
+  headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+  headers.set('cross-origin-resource-policy', 'same-site');
 }

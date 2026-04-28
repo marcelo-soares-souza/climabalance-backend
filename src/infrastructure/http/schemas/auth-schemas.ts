@@ -42,9 +42,9 @@ export const resetPasswordSchema = z.object({
 );
 
 export const refreshTokenSchema = z.object({
-  refresh_token: z.string().min(1, { message: 'required' })
+  refresh_token: z.string().min(1, { message: 'required' }).optional()
 });
 
 export const revokeTokenSchema = z.object({
-  refresh_token: z.string().min(1, { message: 'required' })
+  refresh_token: z.string().min(1, { message: 'required' }).optional()
 });

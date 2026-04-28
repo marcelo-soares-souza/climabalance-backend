@@ -39,5 +39,6 @@ export interface UserRepository {
   upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile>;
   getProfile(userId: string): Promise<UserProfile | null>;
   getRoles(userId: string): Promise<string[]>;
+  getRolesByUserIds?(userIds: string[]): Promise<Record<string, string[]>>;
   assignRole(userId: string, roleKey: string): Promise<void>;
 }

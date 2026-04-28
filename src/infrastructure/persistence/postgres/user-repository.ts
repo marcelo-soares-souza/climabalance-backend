@@ -1,8 +1,7 @@
-import type { Pool, PoolClient } from 'pg';
 import type { User, UserProfile } from '../../../domain/user/user';
 import type { CreateUserInput, UpdateUserInput, UserFilters, UserRepository } from '../../../domain/user/user-repository';
-import { pgPool } from './pg-client';
 import { uuidv7 } from '../../../shared/utils/id';
+import type { DbClient } from './db-client';
 
 function mapUser(row: Record<string, unknown>): User {
   return {
@@ -43,7 +42,7 @@ function mapProfile(row: Record<string, unknown>): UserProfile {
 }
 
 export class PostgresUserRepository implements UserRepository {
-  constructor(private db: Pool | PoolClient = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async create(input: CreateUserInput): Promise<User> {
     const now = new Date();
@@ -238,6 +237,32 @@ export class PostgresUserRepository implements UserRepository {
       [userId]
     );
     return result.rows.map((row) => row.role_key as string);
+  }
+
+  async getRolesByUserIds(userIds: string[]): Promise<Record<string, string[]>> {
+    if (userIds.length === 0) return {};
+
+    const result = await this.db.query(
+      `SELECT user_roles.user_id, roles.role_key FROM user_roles
+       JOIN roles ON roles.id = user_roles.role_id
+       WHERE user_roles.user_id = ANY($1)
+         AND user_roles.deleted_at IS NULL
+         AND roles.deleted_at IS NULL`,
+      [userIds]
+    );
+
+    const roleMap: Record<string, string[]> = {};
+    for (const userId of userIds) {
+      roleMap[userId] = [];
+    }
+
+    for (const row of result.rows) {
+      const userId = row.user_id as string;
+      const roleKey = row.role_key as string;
+      roleMap[userId]?.push(roleKey);
+    }
+
+    return roleMap;
   }
 
   async updateLastLogin(userId: string, timestamp: Date): Promise<void> {

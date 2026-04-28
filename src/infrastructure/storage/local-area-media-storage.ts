@@ -1,6 +1,7 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
+import { env } from '../../shared/utils/env';
 
 const extensionByMime: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -21,7 +22,7 @@ function sanitizePathSegment(value: string): string {
 }
 
 export class LocalAreaMediaStorage implements AreaMediaStorage {
-  constructor(private readonly basePath: string = process.env.AREA_MEDIA_STORAGE_PATH ?? './storage/area-media') {}
+  constructor(private readonly basePath: string = env.areaMediaStoragePath) {}
 
   async save(params: {
     mediaId: string;

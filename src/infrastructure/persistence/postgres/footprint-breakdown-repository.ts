@@ -1,13 +1,13 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import type { FootprintBreakdown } from '../../../domain/footprint/entities/footprint-breakdown';
 import type { FootprintBreakdownRepository } from '../../../domain/footprint/repositories/footprint-breakdown-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 export class PostgresFootprintBreakdownRepository implements FootprintBreakdownRepository {
-  constructor(private pool: Pool = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async save(breakdown: FootprintBreakdown, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `INSERT INTO footprint_result_breakdown (
@@ -28,7 +28,7 @@ export class PostgresFootprintBreakdownRepository implements FootprintBreakdownR
   }
 
   async saveMany(breakdowns: FootprintBreakdown[], client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     if (breakdowns.length === 0) return;
 
@@ -63,7 +63,7 @@ export class PostgresFootprintBreakdownRepository implements FootprintBreakdownR
   }
 
   async findByCalculationId(calculationId: string): Promise<FootprintBreakdown[]> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT * FROM footprint_result_breakdown WHERE calculation_id = $1 AND deleted_at IS NULL ORDER BY category`,
       [calculationId]
     );
@@ -72,7 +72,7 @@ export class PostgresFootprintBreakdownRepository implements FootprintBreakdownR
   }
 
   async deleteByCalculationId(calculationId: string, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `UPDATE footprint_result_breakdown

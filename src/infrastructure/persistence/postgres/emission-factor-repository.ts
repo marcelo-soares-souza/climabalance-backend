@@ -1,14 +1,13 @@
-import type { Pool } from 'pg';
 import type { EmissionFactor } from '../../../domain/footprint/entities/emission-factor';
 import type { EmissionFactorRepository } from '../../../domain/footprint/repositories/emission-factor-repository';
 import type { FootprintCategory } from '../../../domain/footprint/value-objects/category';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 export class PostgresEmissionFactorRepository implements EmissionFactorRepository {
-  constructor(private pool: Pool = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async findByVersionAndRegion(version: string, region: string): Promise<EmissionFactor[]> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT *
        FROM emission_factors
        WHERE version = $1
@@ -31,7 +30,7 @@ export class PostgresEmissionFactorRepository implements EmissionFactorRepositor
     // Map category to activity_type pattern
     const activityPattern = this.getCategoryPattern(category);
 
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT *
        FROM emission_factors
        WHERE activity_type LIKE $1
@@ -53,7 +52,7 @@ export class PostgresEmissionFactorRepository implements EmissionFactorRepositor
     version: string,
     region: string
   ): Promise<EmissionFactor | null> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT *
        FROM emission_factors
        WHERE activity_type = $1
@@ -75,7 +74,7 @@ export class PostgresEmissionFactorRepository implements EmissionFactorRepositor
   }
 
   async getLatestVersion(region: string): Promise<string | null> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT version
        FROM emission_factors
        WHERE region = $1

@@ -4,6 +4,7 @@ import type { DataQuality } from '../../domain/footprint/value-objects/data-qual
 import { FootprintCalculatorService } from '../../domain/footprint/services/footprint-calculator.service';
 import { validateProfileType } from '../../domain/footprint/value-objects/profile-type';
 import { validateDataQuality } from '../../domain/footprint/value-objects/data-quality';
+import { Period } from '../../domain/footprint/value-objects/period';
 import { validateInputValue } from '../../domain/footprint/entities/footprint-input';
 import { ValidationError, NotFoundError } from '../../domain/errors';
 

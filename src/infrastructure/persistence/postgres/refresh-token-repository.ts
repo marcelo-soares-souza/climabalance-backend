@@ -1,6 +1,5 @@
-import type { Pool, PoolClient } from 'pg';
 import type { RefreshTokenRepository, RefreshToken } from '../../../domain/user/refresh-token-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 function mapRow(row: Record<string, unknown>): RefreshToken {
   return {
@@ -16,7 +15,7 @@ function mapRow(row: Record<string, unknown>): RefreshToken {
 }
 
 export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
-  constructor(private db: Pool | PoolClient = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async create(input: RefreshToken): Promise<RefreshToken> {
     const result = await this.db.query(

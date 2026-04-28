@@ -72,3 +72,27 @@ test('logger formats json with required fields', () => {
   expect(parsed.client_ip).toBe('192.168.1.10');
   expect(parsed.meta.authorization).toBe('***');
 });
+
+test('logger masks payment and binary payload fields', () => {
+  process.env.LOG_LEVEL = 'debug';
+  process.env.LOG_FORMAT = 'json';
+  process.env.APP_ENV = 'test';
+
+  const { logs, restore } = captureConsole();
+  const logger = getLogger({ requestId: 'req-4' });
+  logger.info('payment.payload', {
+    card_number: '4111111111111111',
+    cvv: '123',
+    file_base64: 'ZmFrZQ==',
+    nested: {
+      cardholder_name: 'User Test'
+    }
+  });
+  restore();
+
+  const parsed = JSON.parse(logs[0].message);
+  expect(parsed.meta.card_number).toBe('***');
+  expect(parsed.meta.cvv).toBe('***');
+  expect(parsed.meta.file_base64).toBe('***');
+  expect(parsed.meta.nested.cardholder_name).toBe('***');
+});

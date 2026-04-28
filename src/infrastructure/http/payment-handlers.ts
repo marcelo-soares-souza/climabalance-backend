@@ -23,6 +23,7 @@ import type { CompensationCertificateStorage } from '../../domain/compensations/
 import type { CompensationCertificatePdfGenerator } from '../../domain/compensations/services/certificate-pdf-generator';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
+import { requireAuth } from '../../shared/http/auth-context';
 
 export interface PaymentHandlersDeps {
   paymentStore: PaymentStore;
@@ -45,6 +46,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(simulateCardPaymentSchema, body);
 
@@ -57,8 +59,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             auditLog: requestAuditLog,
           },
           {
-            actorUserId: ctx.auth!.userId,
-            actorRoles: ctx.auth!.roles,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
             compensationId: validated.compensation_id,
             cardNumber: validated.card_number,
             cardholderName: validated.cardholder_name,
@@ -71,7 +73,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
         const certificate = await ensureCertificateAfterPaidCompensation(
           deps,
           result.compensationId,
-          ctx.auth!.userId,
+          auth.userId,
           requestAuditLog
         );
 
@@ -109,6 +111,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         const result = await getPaymentStatus(
           {
             store: deps.paymentStore,
@@ -117,14 +120,14 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           },
           {
             paymentId,
-            actorUserId: ctx.auth!.userId,
-            actorRoles: ctx.auth!.roles,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
           }
         );
         const certificate = await ensureCertificateAfterPaidCompensation(
           deps,
           result.compensationId,
-          ctx.auth!.userId,
+          auth.userId,
           requestAuditLog
         );
 
@@ -231,6 +234,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(reconcilePaymentsSchema, body ?? {});
 
@@ -242,7 +246,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             auditLog: requestAuditLog,
           },
           {
-            actorUserId: ctx.auth!.userId,
+            actorUserId: auth.userId,
             limit: validated.limit,
           }
         );
@@ -250,7 +254,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           await ensureCertificateAfterPaidCompensation(
             deps,
             compensationId,
-            ctx.auth!.userId,
+            auth.userId,
             requestAuditLog
           );
         }

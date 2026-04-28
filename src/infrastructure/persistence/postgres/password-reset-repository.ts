@@ -1,6 +1,5 @@
-import type { Pool, PoolClient } from 'pg';
 import type { PasswordResetRepository, PasswordResetToken } from '../../../domain/user/password-reset-repository';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 function mapResetToken(row: Record<string, unknown>): PasswordResetToken {
   return {
@@ -17,7 +16,7 @@ function mapResetToken(row: Record<string, unknown>): PasswordResetToken {
 }
 
 export class PostgresPasswordResetRepository implements PasswordResetRepository {
-  constructor(private db: Pool | PoolClient = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async create(input: PasswordResetToken): Promise<PasswordResetToken> {
     const result = await this.db.query(

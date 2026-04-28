@@ -5,20 +5,31 @@ export type ApiError = {
   details?: unknown;
 };
 
-function buildJsonResponse(status: number, body: unknown): Response {
+type ResponseHeaders = Headers | Record<string, string> | Array<[string, string]>;
+
+function buildJsonResponseWithHeaders(
+  status: number,
+  body: unknown,
+  extraHeaders?: ResponseHeaders
+): Response {
+  const headers = new Headers(extraHeaders);
+  headers.set('content-type', 'application/json');
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      'content-type': 'application/json'
-    }
+    headers
   });
 }
 
-export function jsonResponse(status: number, body: unknown, context?: LogContext): Response {
+export function jsonResponse(
+  status: number,
+  body: unknown,
+  context?: LogContext,
+  extraHeaders?: ResponseHeaders
+): Response {
   if (context) {
     getLogger(context).info('response.payload', { status, body });
   }
-  return buildJsonResponse(status, body);
+  return buildJsonResponseWithHeaders(status, body, extraHeaders);
 }
 
 /**
@@ -41,7 +52,8 @@ export function errorResponse(
   status: number,
   messageKey: string,
   details?: unknown,
-  context?: LogContext
+  context?: LogContext,
+  extraHeaders?: ResponseHeaders
 ): Response {
   const error: ApiError = { message_key: messageKey };
   if (details !== undefined) {
@@ -56,5 +68,5 @@ export function errorResponse(
       payload
     });
   }
-  return buildJsonResponse(status, payload);
+  return buildJsonResponseWithHeaders(status, payload, extraHeaders);
 }

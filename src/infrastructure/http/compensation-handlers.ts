@@ -23,6 +23,8 @@ import {
   quoteTreePurchaseCompensation,
 } from '../../application/compensations/quote-tree-purchase-compensation';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
+import { requireAuth } from '../../shared/http/auth-context';
+import { parseQueryWithSchema } from './schemas/validation-helper';
 
 export interface CompensationHandlersDeps {
   areaRepository: AreaRepository;
@@ -43,6 +45,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createCompensationSchema, body);
         const quote = await quoteTreePurchaseCompensation(
@@ -64,7 +67,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             auditLog: requestAuditLog,
           },
           {
-            supporterUserId: ctx.auth!.userId,
+            supporterUserId: auth.userId,
             areaId: validated.area_id,
             calculationId: validated.calculation_id,
             compensationMode: 'tree_purchase',
@@ -115,16 +118,16 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listOwn(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
-        const query = Object.fromEntries(new URL(ctx.request.url).searchParams.entries());
-        const validated = parseWithSchema(listCompensationsQuerySchema, query);
+        const auth = requireAuth(ctx);
+        const validated = parseQueryWithSchema(listCompensationsQuerySchema, ctx.query);
         const result = await listCompensations(
           {
             historyRepository: deps.compensationHistoryRepository,
           },
           {
-            supporterUserId: ctx.auth!.userId,
-            actorUserId: ctx.auth!.userId,
-            actorRoles: ctx.auth!.roles,
+            supporterUserId: auth.userId,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
             status: validated.status,
             limit: validated.limit,
             offset: validated.offset,
@@ -167,16 +170,16 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByUser(ctx: HttpContext, userId: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const query = Object.fromEntries(new URL(ctx.request.url).searchParams.entries());
-        const validated = parseWithSchema(listCompensationsQuerySchema, query);
+        const auth = requireAuth(ctx);
+        const validated = parseQueryWithSchema(listCompensationsQuerySchema, ctx.query);
         const result = await listCompensations(
           {
             historyRepository: deps.compensationHistoryRepository,
           },
           {
             supporterUserId: userId,
-            actorUserId: ctx.auth!.userId,
-            actorRoles: ctx.auth!.roles,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
             status: validated.status,
             limit: validated.limit,
             offset: validated.offset,
@@ -219,8 +222,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByArea(ctx: HttpContext, areaId: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const query = Object.fromEntries(new URL(ctx.request.url).searchParams.entries());
-        const validated = parseWithSchema(listAreaContributionsQuerySchema, query);
+        const validated = parseQueryWithSchema(listAreaContributionsQuerySchema, ctx.query);
         const result = await listAreaContributions(
           {
             historyRepository: deps.compensationHistoryRepository,

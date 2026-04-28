@@ -6,8 +6,22 @@ import type { CompensationCertificateRepository } from '../../domain/compensatio
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
 import type { CompensationCertificatePdfGenerator } from '../../domain/compensations/services/certificate-pdf-generator';
 import type { CompensationHistoryRepository } from '../../domain/compensations/repositories/compensation-history-repository';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../domain/errors';
+import { NotFoundError, ForbiddenError } from '../../domain/errors';
 import { logger } from '../../shared/utils/logger';
+import { parseQueryWithSchema } from './schemas/validation-helper';
+import { z } from 'zod';
+import { requireAuth } from '../../shared/http/auth-context';
+
+const listCertificatesQuerySchema = z.object({
+  status: z.enum(['issued', 'revoked']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+const validateCertificateQuerySchema = z.object({
+  certificate_number: z.string().trim().min(1),
+  hash: z.string().trim().min(1),
+});
 
 export interface CertificateHandlersDeps {
   compensationCertificateRepository: CompensationCertificateRepository;
@@ -25,23 +39,14 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
     async listByUser(ctx: HttpContext, userId: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const url = new URL(ctx.request.url);
-        const statusRaw = url.searchParams.get('status')?.trim().toLowerCase();
-        const status =
-          statusRaw === 'issued' || statusRaw === 'revoked'
-            ? (statusRaw as 'issued' | 'revoked')
-            : undefined;
-        const limitRaw = Number(url.searchParams.get('limit') ?? '20');
-        const offsetRaw = Number(url.searchParams.get('offset') ?? '0');
-        const limit = Number.isFinite(limitRaw) ? Math.trunc(limitRaw) : 20;
-        const offset = Number.isFinite(offsetRaw) ? Math.trunc(offsetRaw) : 0;
+        const query = parseQueryWithSchema(listCertificatesQuerySchema, ctx.query);
 
         const certificates =
           await deps.compensationCertificateRepository.listBySupporterUserId({
             supporterUserId: userId,
-            status,
-            limit,
-            offset,
+            status: query.status,
+            limit: query.limit ?? 20,
+            offset: query.offset ?? 0,
           });
 
         return jsonResponse(200, { data: certificates }, logContext);
@@ -57,16 +62,9 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
     async validate(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
-        const url = new URL(ctx.request.url);
-        const certificateNumber = url.searchParams.get('certificate_number');
-        const hash = url.searchParams.get('hash');
-
-        if (!certificateNumber || !hash) {
-          throw new ValidationError([
-            { field: 'certificate_number', message: 'required' },
-            { field: 'hash', message: 'required' },
-          ]);
-        }
+        const query = parseQueryWithSchema(validateCertificateQuerySchema, ctx.query);
+        const certificateNumber = query.certificate_number;
+        const hash = query.hash;
 
         const certificate =
           await deps.compensationCertificateRepository.findByCertificateNumber(
@@ -109,6 +107,7 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
     async download(ctx: HttpContext, certificateId: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const auth = requireAuth(ctx);
         const certificate = await deps.compensationCertificateRepository.findById(
           certificateId
         );
@@ -116,8 +115,8 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
           throw new NotFoundError('certificate.not_found');
         }
 
-        const isAdmin = ctx.auth!.roles.includes('administrator');
-        const isOwner = ctx.auth!.userId === certificate.supporterUserId;
+        const isAdmin = auth.roles.includes('administrator');
+        const isOwner = auth.userId === certificate.supporterUserId;
         if (!isAdmin && !isOwner) {
           throw new ForbiddenError('auth.forbidden');
         }

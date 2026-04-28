@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import type { FootprintCalculation } from '../../../domain/footprint/entities/footprint-calculation';
 import type {
   FootprintCalculationRepository,
@@ -6,13 +6,13 @@ import type {
 } from '../../../domain/footprint/repositories/footprint-calculation-repository';
 import type { ProfileType } from '../../../domain/footprint/value-objects/profile-type';
 import type { CalculationStatus } from '../../../domain/footprint/value-objects/calculation-status';
-import { pgPool } from './pg-client';
+import type { DbClient } from './db-client';
 
 export class PostgresFootprintCalculationRepository implements FootprintCalculationRepository {
-  constructor(private pool: Pool = pgPool) {}
+  constructor(private readonly db: DbClient) {}
 
   async save(calculation: FootprintCalculation, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `INSERT INTO footprint_calculations (
@@ -43,7 +43,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
   }
 
   async update(calculation: FootprintCalculation, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `UPDATE footprint_calculations
@@ -71,7 +71,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
   }
 
   async findById(id: string): Promise<FootprintCalculation | null> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT * FROM footprint_calculations WHERE id = $1 AND deleted_at IS NULL`,
       [id]
     );
@@ -124,7 +124,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
 
     params.push(limit, offset);
 
-    const result = await this.pool.query(query, params);
+    const result = await this.db.query(query, params);
     return result.rows.map(this.mapRow);
   }
 
@@ -173,12 +173,12 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
 
     params.push(limit, offset);
 
-    const result = await this.pool.query(query, params);
+    const result = await this.db.query(query, params);
     return result.rows.map(this.mapRow);
   }
 
   async findByIdWithUser(id: string): Promise<FootprintCalculationWithUser | null> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT fc.*, u.email AS user_email, up.display_name AS user_name
        FROM footprint_calculations fc
        JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
@@ -195,7 +195,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
   }
 
   async delete(id: string, client?: PoolClient): Promise<void> {
-    const executor = client || this.pool;
+    const executor = client || this.db;
 
     await executor.query(
       `UPDATE footprint_calculations
@@ -206,7 +206,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
   }
 
   async sumFinalizedTCO2eByUser(userId: string): Promise<number> {
-    const result = await this.pool.query(
+    const result = await this.db.query(
       `SELECT COALESCE(SUM(total_t_co2e), 0) AS total
        FROM footprint_calculations
        WHERE user_id = $1

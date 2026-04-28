@@ -2,6 +2,7 @@ import { pgPool } from '../infrastructure/persistence/postgres/pg-client';
 import type { PoolClient } from 'pg';
 import { bunPasswordHasher } from '../infrastructure/crypto/password';
 import { uuidv7 } from '../shared/utils/id';
+import { optionalEnv } from '../shared/utils/env';
 import { logger } from '../shared/utils/logger';
 
 type SeedArea = {
@@ -87,10 +88,10 @@ const seedAreas: SeedArea[] = [
   },
 ];
 
-const ownerIdEnv = process.env.SEED_OWNER_ID;
-const ownerEmail = process.env.SEED_OWNER_EMAIL ?? 'map.seed@example.com';
-const ownerPassword = process.env.SEED_OWNER_PASSWORD ?? 'ChangeMe123!';
-const ownerLocale = process.env.SEED_OWNER_LOCALE ?? 'pt-BR';
+const ownerIdEnv = optionalEnv('SEED_OWNER_ID');
+const ownerEmail = optionalEnv('SEED_OWNER_EMAIL') ?? 'map.seed@example.com';
+const ownerPassword = optionalEnv('SEED_OWNER_PASSWORD') ?? 'ChangeMe123!';
+const ownerLocale = optionalEnv('SEED_OWNER_LOCALE') ?? 'pt-BR';
 
 const now = new Date();
 

@@ -20,7 +20,7 @@ import {
   listAreasQuerySchema,
   getMapAreasQuerySchema,
 } from './schemas/area-schemas';
-import { parseWithSchema } from './schemas/validation-helper';
+import { parseQueryWithSchema, parseWithSchema } from './schemas/validation-helper';
 import { createArea } from '../../application/areas/create-area';
 import { updateArea } from '../../application/areas/update-area';
 import { deleteArea } from '../../application/areas/delete-area';
@@ -41,6 +41,7 @@ import { AreaAuditService } from '../../domain/areas/services/area-audit.service
 import { CarbonStockService } from '../../domain/areas/services/carbon-stock.service';
 import { buildLogContext } from '../../shared/http/log-context';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
+import { requireAuth } from '../../shared/http/auth-context';
 
 export interface AreaHandlersDeps {
   users: UserRepository;
@@ -76,6 +77,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createAreaSchema, body);
 
@@ -87,7 +89,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             auditLog: requestAuditLog,
           },
           {
-            ownerUserId: ctx.auth!.userId,
+            ownerUserId: auth.userId,
             name: validated.name,
             description: validated.description,
             latitude: validated.latitude,
@@ -146,6 +148,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async update(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(updateAreaSchema, body);
 
@@ -155,8 +158,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           {
             areaId: id,
-            userId: ctx.auth!.userId,
-            isAdmin: ctx.auth!.roles.includes('administrator'),
+            userId: auth.userId,
+            isAdmin: auth.roles.includes('administrator'),
             ...validated,
           }
         );
@@ -180,6 +183,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async remove(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const auth = requireAuth(ctx);
         await deleteArea(
           {
             areaRepository: deps.areaRepository,
@@ -189,8 +193,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           {
             areaId: id,
-            userId: ctx.auth!.userId,
-            isAdmin: ctx.auth!.roles.includes('administrator'),
+            userId: auth.userId,
+            isAdmin: auth.roles.includes('administrator'),
           }
         );
 
@@ -213,17 +217,16 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async list(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
-        const url = new URL(ctx.request.url);
-        const queryParams = Object.fromEntries(url.searchParams.entries());
-        const query = parseWithSchema(listAreasQuerySchema, queryParams);
+        const auth = requireAuth(ctx);
+        const query = parseQueryWithSchema(listAreasQuerySchema, ctx.query);
 
         const result = await listAreas(
           {
             areaRepository: deps.areaRepository,
           },
           {
-            userId: ctx.auth!.userId,
-            roles: ctx.auth!.roles,
+            userId: auth.userId,
+            roles: auth.roles,
             ...query,
           }
         );
@@ -242,12 +245,13 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        const auth = requireAuth(ctx);
         await submitAreaForAudit(
           {
             auditService,
           },
           id,
-          ctx.auth!.userId
+          auth.userId
         );
 
         return jsonResponse(
@@ -270,6 +274,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(approveAreaSchema, body);
 
@@ -279,7 +284,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           {
             areaId: id,
-            analystId: ctx.auth!.userId,
+            analystId: auth.userId,
             criteria: validated.criteria,
             notes: validated.notes,
           }
@@ -305,6 +310,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(rejectAreaSchema, body);
 
@@ -313,7 +319,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             auditService,
           },
           id,
-          ctx.auth!.userId,
+          auth.userId,
           validated.reason
         );
 
@@ -337,12 +343,13 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        const auth = requireAuth(ctx);
         await activateArea(
           {
             auditService,
           },
           id,
-          ctx.auth!.userId
+          auth.userId
         );
 
         return jsonResponse(
@@ -365,12 +372,13 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        const auth = requireAuth(ctx);
         await suspendArea(
           {
             auditService,
           },
           id,
-          ctx.auth!.userId
+          auth.userId
         );
 
         return jsonResponse(
@@ -392,9 +400,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async getForMap(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
-        const url = new URL(ctx.request.url);
-        const queryParams = Object.fromEntries(url.searchParams.entries());
-        const query = parseWithSchema(getMapAreasQuerySchema, queryParams);
+        const query = parseQueryWithSchema(getMapAreasQuerySchema, ctx.query);
 
         const result = await getAreasForMap(
           {
@@ -437,6 +443,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx, 35 * 1024 * 1024);
         const validated = parseWithSchema(uploadAreaMediaSchema, body);
 
@@ -451,8 +458,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           {
             areaId: id,
-            actorUserId: ctx.auth!.userId,
-            actorRoles: ctx.auth!.roles,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
             mediaType: validated.media_type,
             description: validated.description,
             mimeType: validated.mime_type,
@@ -519,6 +526,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        const auth = requireAuth(ctx);
         await deleteAreaMedia(
           {
             areaRepository: deps.areaRepository,
@@ -529,8 +537,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           {
             mediaId,
-            actorUserId: ctx.auth!.userId,
-            actorRoles: ctx.auth!.roles,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
           }
         );
 
