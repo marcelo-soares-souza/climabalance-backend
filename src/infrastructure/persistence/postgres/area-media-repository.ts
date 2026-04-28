@@ -78,6 +78,16 @@ export class PostgresAreaMediaRepository implements AreaMediaRepository {
     return result.rows.map((row) => mapRow(row as Record<string, unknown>));
   }
 
+  async listByAreaIds(areaIds: string[]): Promise<AreaMedia[]> {
+    if (areaIds.length === 0) return [];
+    const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(',');
+    const result = await this.pool.query(
+      `SELECT * FROM area_media WHERE area_id IN (${placeholders}) AND deleted_at IS NULL ORDER BY created_at DESC`,
+      areaIds
+    );
+    return result.rows.map((row) => mapRow(row as Record<string, unknown>));
+  }
+
   async softDelete(id: string, deletedAt: Date): Promise<void> {
     await this.pool.query(
       `UPDATE area_media SET deleted_at = $2, updated_at = $2 WHERE id = $1`,

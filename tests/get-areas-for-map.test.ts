@@ -24,6 +24,12 @@ class RecordingAreaRepository {
   }
 }
 
+const emptyMediaRepository = {
+  async listByAreaIds(_areaIds: string[]): Promise<any[]> {
+    return [];
+  },
+};
+
 function makeArea(input: {
   id: string;
   status: AreaStatus;
@@ -81,6 +87,7 @@ describe('getAreasForMap', () => {
 
     const result = await getAreasForMap({
       areaRepository: areaRepository as any,
+      areaMediaRepository: emptyMediaRepository as any,
     });
 
     expect(areaRepository.findAllFilters).toEqual({ onlyActive: true });

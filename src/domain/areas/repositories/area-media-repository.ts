@@ -19,5 +19,6 @@ export interface AreaMediaRepository {
   create(media: AreaMedia, client?: any): Promise<void>;
   findById(id: string, client?: any): Promise<AreaMedia | null>;
   listByAreaId(areaId: string, client?: any): Promise<AreaMedia[]>;
+  listByAreaIds(areaIds: string[], client?: any): Promise<AreaMedia[]>;
   softDelete(id: string, deletedAt: Date, client?: any): Promise<void>;
 }

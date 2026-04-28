@@ -405,6 +405,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         const result = await getAreasForMap(
           {
             areaRepository: deps.areaRepository,
+            areaMediaRepository: deps.areaMediaRepository,
           },
           query
         );
