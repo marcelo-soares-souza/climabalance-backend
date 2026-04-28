@@ -113,11 +113,6 @@ export interface PaymentTransaction {
     status: 'pending' | 'paid' | 'canceled';
     updatedAt: Date;
   }): Promise<void>;
-
-  releaseAreaCommitmentForCompensation(input: {
-    compensationId: string;
-    updatedAt: Date;
-  }): Promise<void>;
 }
 
 /**

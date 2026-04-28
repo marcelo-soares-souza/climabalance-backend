@@ -18,9 +18,9 @@ export class PostgresAreaRepository implements AreaRepository {
         id, owner_user_id, name, description, latitude, longitude,
         biome, state, city, status, audit_status, audit_notes,
         audited_by_user_id, audited_at, total_capacity_t_co2e,
-        committed_t_co2e, t_co2e_per_tree_per_year,
-        created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+        committed_t_co2e, t_co2e_per_tree_per_year, price_per_tree,
+        default_horizon_years, created_at, updated_at, deleted_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
       [
         area.id,
         area.ownerUserId,
@@ -39,6 +39,8 @@ export class PostgresAreaRepository implements AreaRepository {
         area.carbonCapacity?.totalCapacityTCO2e || null,
         area.carbonCapacity?.committedTCO2e || 0,
         area.tCO2ePerTreePerYear || null,
+        area.pricePerTree || null,
+        area.defaultHorizonYears || null,
         area.createdAt,
         area.updatedAt,
         area.deletedAt || null,
@@ -201,8 +203,10 @@ export class PostgresAreaRepository implements AreaRepository {
         total_capacity_t_co2e = $14,
         committed_t_co2e = $15,
         t_co2e_per_tree_per_year = $16,
-        updated_at = $17,
-        deleted_at = $18
+        price_per_tree = $17,
+        default_horizon_years = $18,
+        updated_at = $19,
+        deleted_at = $20
        WHERE id = $1`,
       [
         area.id,
@@ -221,6 +225,8 @@ export class PostgresAreaRepository implements AreaRepository {
         area.carbonCapacity?.totalCapacityTCO2e || null,
         area.carbonCapacity?.committedTCO2e || 0,
         area.tCO2ePerTreePerYear || null,
+        area.pricePerTree || null,
+        area.defaultHorizonYears || null,
         area.updatedAt,
         area.deletedAt || null,
       ]
@@ -299,6 +305,8 @@ export class PostgresAreaRepository implements AreaRepository {
       auditedAt: row.audited_at ? new Date(row.audited_at) : undefined,
       carbonCapacity,
       tCO2ePerTreePerYear: row.t_co2e_per_tree_per_year ? parseFloat(row.t_co2e_per_tree_per_year) : undefined,
+      pricePerTree: row.price_per_tree ? parseFloat(row.price_per_tree) : undefined,
+      defaultHorizonYears: row.default_horizon_years ? parseInt(row.default_horizon_years, 10) : undefined,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
       deletedAt: row.deleted_at ? new Date(row.deleted_at) : undefined,

@@ -37,7 +37,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
   return {
     /**
      * POST /api/v1/compensations
-     * Creates compensation in single atomic transaction and reserves area stock.
+     * Creates a pending tree-planting contribution.
      */
     async create(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
@@ -45,38 +45,16 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
       try {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createCompensationSchema, body);
-        const mode = validated.compensation_mode ?? 'tco2e';
-
-        let totalTCO2e = validated.total_t_co2e ?? 0;
-        let treesCount = validated.trees_count ?? 0;
-        let totalAmount = validated.total_amount ?? 0;
-        let compensationMode: 'tco2e' | 'tree_purchase' = mode;
-        let horizonYears: number | undefined;
-        let treesRequested: number | undefined;
-        let pricePerTree: number | undefined;
-        let estimatedTotalTCO2e: number | undefined;
-
-        if (mode === 'tree_purchase') {
-          const quote = await quoteTreePurchaseCompensation(
-            {
-              areaRepository: deps.areaRepository,
-            },
-            {
-              areaId: validated.area_id,
-              treesRequested: validated.trees_requested!,
-              currency: validated.currency,
-            }
-          );
-
-          totalTCO2e = quote.estimatedTotalTCO2e;
-          treesCount = quote.treesRequested;
-          totalAmount = quote.totalAmount;
-          compensationMode = 'tree_purchase';
-          horizonYears = quote.horizonYears;
-          treesRequested = quote.treesRequested;
-          pricePerTree = quote.pricePerTree;
-          estimatedTotalTCO2e = quote.estimatedTotalTCO2e;
-        }
+        const quote = await quoteTreePurchaseCompensation(
+          {
+            areaRepository: deps.areaRepository,
+          },
+          {
+            areaId: validated.area_id,
+            treesRequested: validated.trees_requested!,
+            currency: validated.currency,
+          }
+        );
 
         const result = await createCompensationAtomic(
           {
@@ -89,14 +67,14 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             supporterUserId: ctx.auth!.userId,
             areaId: validated.area_id,
             calculationId: validated.calculation_id,
-            compensationMode,
-            horizonYears,
-            treesRequested,
-            pricePerTree,
-            estimatedTotalTCO2e,
-            totalTCO2e,
-            treesCount,
-            totalAmount,
+            compensationMode: 'tree_purchase',
+            horizonYears: quote.horizonYears,
+            treesRequested: quote.treesRequested,
+            pricePerTree: quote.pricePerTree,
+            estimatedTotalTCO2e: quote.estimatedTotalTCO2e,
+            totalTCO2e: quote.estimatedTotalTCO2e,
+            treesCount: quote.treesRequested,
+            totalAmount: quote.totalAmount,
             currency: validated.currency,
           }
         );
@@ -115,8 +93,9 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
                 result.estimatedTotalTCO2e ?? result.totalTCO2e,
               total_t_co2e: result.totalTCO2e,
               trees_count: result.treesCount,
+              total_amount: quote.totalAmount,
+              currency: quote.currency,
               status: result.status,
-              remaining_t_co2e: result.remainingTCO2e,
               created_at: result.createdAt,
               certificate: null,
             },
@@ -274,7 +253,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
 
     /**
      * POST /api/v1/compensations/quote
-     * Quotes compensation values for tree-based purchase mode.
+     * Quotes a pending tree-planting contribution.
      */
     async quote(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
@@ -301,14 +280,13 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               compensation_mode: quote.compensationMode,
               horizon_years: quote.horizonYears,
               trees_requested: quote.treesRequested,
-              t_co2e_per_tree_per_year: quote.tCO2ePerTreePerYear,
+              estimated_kg_co2_per_tree_per_year:
+                quote.estimatedKgCO2PerTreePerYear,
               estimated_total_t_co2e: quote.estimatedTotalTCO2e,
-              estimated_total_kg_co2e_20y: quote.estimatedTotalKgCO2e20y,
+              estimated_total_kg_co2e: quote.estimatedTotalKgCO2e,
               price_per_tree: quote.pricePerTree,
               total_amount: quote.totalAmount,
               currency: quote.currency,
-              available_t_co2e: quote.availableTCO2e,
-              has_capacity: quote.hasCapacity,
             },
             message_key: 'compensation.quote_tree_purchase_created',
           },

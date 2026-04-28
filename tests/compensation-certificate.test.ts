@@ -106,8 +106,10 @@ describe('issueCompensationCertificate', () => {
     );
 
     const savedBytes = await storage.read(result.storagePath);
-    const preview = new TextDecoder().decode(savedBytes.slice(0, 8));
+    const preview = new TextDecoder().decode(savedBytes);
     expect(preview.startsWith('%PDF-1.4')).toBe(true);
+    expect(preview).toContain('Tree Planting Contribution Certificate');
+    expect(preview).toContain('Estimated Offset Supported');
   });
 
   test('rejects invalid input values', async () => {

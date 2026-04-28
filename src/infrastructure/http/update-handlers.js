@@ -43,7 +43,7 @@ export function createUpdateHandlers(_deps) {
                         try {
                             controller.enqueue(new TextEncoder().encode(': keepalive\n\n'));
                         }
-                        catch (error) {
+                        catch {
                             clearInterval(keepAliveInterval);
                             sseClients.delete(controller);
                         }
@@ -96,7 +96,7 @@ export function createUpdateHandlers(_deps) {
                     client.enqueue(encodedMessage);
                     notifiedCount++;
                 }
-                catch (error) {
+                catch {
                     // Client disconnected, remove from set
                     sseClients.delete(client);
                 }
@@ -128,7 +128,7 @@ export function broadcastUpdate(buildId, timestamp) {
         try {
             client.enqueue(encodedMessage);
         }
-        catch (error) {
+        catch {
             sseClients.delete(client);
         }
     }

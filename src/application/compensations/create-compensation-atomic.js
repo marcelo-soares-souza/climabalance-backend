@@ -3,7 +3,7 @@ export async function createCompensationAtomic(deps, input) {
     validateInput(input);
     const now = deps.clock.now();
     const compensationId = deps.idGenerator.generate();
-    const compensationMode = input.compensationMode ?? 'tco2e';
+    const compensationMode = input.compensationMode ?? 'tree_purchase';
     const result = await deps.store.runInTransaction(async (tx) => {
         const area = await tx.lockArea(input.areaId);
         if (!area) {
@@ -17,17 +17,6 @@ export async function createCompensationAtomic(deps, input) {
                 },
             ]);
         }
-        const available = Math.max(area.totalCapacityTCO2e - area.committedTCO2e, 0);
-        if (available < input.totalTCO2e) {
-            throw new ValidationError([
-                {
-                    field: 'total_t_co2e',
-                    message: 'insufficient_capacity',
-                },
-            ]);
-        }
-        const newCommitted = area.committedTCO2e + input.totalTCO2e;
-        await tx.updateAreaCommitted(area.id, newCommitted, now);
         await tx.insertCompensation({
             id: compensationId,
             supporterUserId: input.supporterUserId,
@@ -58,7 +47,6 @@ export async function createCompensationAtomic(deps, input) {
             totalTCO2e: input.totalTCO2e,
             treesCount: input.treesCount,
             status: 'pending',
-            remainingTCO2e: Math.max(area.totalCapacityTCO2e - newCommitted, 0),
             createdAt: now,
         };
     });
@@ -76,14 +64,13 @@ export async function createCompensationAtomic(deps, input) {
             estimated_total_t_co2e: result.estimatedTotalTCO2e,
             total_t_co2e: result.totalTCO2e,
             trees_count: result.treesCount,
-            remaining_t_co2e: result.remainingTCO2e,
         },
     });
     return result;
 }
 function validateInput(input) {
     const errors = [];
-    const mode = input.compensationMode ?? 'tco2e';
+    const mode = input.compensationMode ?? 'tree_purchase';
     if (input.totalTCO2e <= 0) {
         errors.push({ field: 'total_t_co2e', message: 'must_be_positive' });
     }
@@ -96,19 +83,17 @@ function validateInput(input) {
     if (!input.currency || input.currency.length !== 3) {
         errors.push({ field: 'currency', message: 'must_be_iso_4217' });
     }
-    if (mode !== 'tco2e' && mode !== 'tree_purchase') {
+    if (mode !== 'tree_purchase') {
         errors.push({ field: 'compensation_mode', message: 'invalid_mode' });
     }
-    if (mode === 'tree_purchase') {
-        if (!input.horizonYears || input.horizonYears <= 0) {
-            errors.push({ field: 'horizon_years', message: 'must_be_positive' });
-        }
-        if (!input.treesRequested || input.treesRequested <= 0) {
-            errors.push({ field: 'trees_requested', message: 'must_be_positive' });
-        }
-        if (!input.pricePerTree || input.pricePerTree <= 0) {
-            errors.push({ field: 'price_per_tree', message: 'must_be_positive' });
-        }
+    if (!input.horizonYears || input.horizonYears <= 0) {
+        errors.push({ field: 'horizon_years', message: 'must_be_positive' });
+    }
+    if (!input.treesRequested || input.treesRequested <= 0) {
+        errors.push({ field: 'trees_requested', message: 'must_be_positive' });
+    }
+    if (!input.pricePerTree || input.pricePerTree <= 0) {
+        errors.push({ field: 'price_per_tree', message: 'must_be_positive' });
     }
     if (errors.length > 0) {
         throw new ValidationError(errors);

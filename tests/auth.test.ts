@@ -15,7 +15,6 @@ process.env.EMAIL_CONFIRM_TTL_MINUTES = '60';
 const { registerUser } = await import('../src/application/auth/register-user');
 const { authenticateUser } = await import('../src/application/auth/authenticate-user');
 const { confirmEmail } = await import('../src/application/auth/confirm-email');
-const { verifyJwt } = await import('../src/infrastructure/crypto/jwt');
 
 import type { User } from '../src/domain/user/user';
 import type { UserProfile } from '../src/domain/user/user';
@@ -127,6 +126,13 @@ class MemoryUserRepository implements UserRepository {
     const list = this.roles.get(userId) ?? [];
     list.push(roleKey);
     this.roles.set(userId, list);
+  }
+
+  async updateLastLogin(id: string, lastLoginAt: Date): Promise<void> {
+    const user = this.users.find((entry) => entry.id === id);
+    if (!user) return;
+    user.lastLoginAt = lastLoginAt;
+    user.updatedAt = lastLoginAt;
   }
 }
 

@@ -1,4 +1,3 @@
-import { Area } from '../entities/area';
 import { AreaCriterion } from '../entities/area-criterion';
 import { AreaRepository } from '../repositories/area-repository';
 import { AreaCriteriaRepository } from '../repositories/area-criteria-repository';

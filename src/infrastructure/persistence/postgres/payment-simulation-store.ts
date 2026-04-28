@@ -174,25 +174,6 @@ class PostgresPaymentTransaction implements PaymentTransaction {
     );
   }
 
-  async releaseAreaCommitmentForCompensation(input: {
-    compensationId: string;
-    updatedAt: Date;
-  }): Promise<void> {
-    await this.client.query(
-      `UPDATE areas AS a
-       SET committed_t_co2e = GREATEST(
-             0,
-             COALESCE(a.committed_t_co2e, 0) -
-             COALESCE(c.total_t_co2e, (c.total_co2_kg / 1000.0), 0)
-           ),
-           updated_at = $2
-       FROM compensations AS c
-       WHERE c.id = $1
-         AND c.area_id = a.id`,
-      [input.compensationId, input.updatedAt]
-    );
-  }
-
   private mapLockedPayment(row: Record<string, unknown>): LockedPaymentRecord {
     const paidAt = row.paid_at;
     return {

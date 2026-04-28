@@ -175,4 +175,55 @@ export class PostgresCompensationHistoryRepository
 
     return mapRow(result.rows[0] as Record<string, unknown>);
   }
+
+  async getPaidContributionSummaryBySupporter(userId: string): Promise<{
+    estimatedOffsetTCO2e: number;
+    totalTreesPurchased: number;
+    totalContributionAmount: number;
+  }> {
+    const result = await this.pool.query(
+      `SELECT
+        COALESCE(
+          SUM(
+            CASE
+              WHEN compensation_mode = 'tree_purchase'
+                THEN COALESCE(estimated_total_t_co2e, total_t_co2e, (total_co2_kg / 1000.0), 0)
+              ELSE 0
+            END
+          ),
+          0
+        ) AS estimated_offset_t_co2e,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN compensation_mode = 'tree_purchase'
+                THEN COALESCE(trees_count, trees_requested, 0)
+              ELSE 0
+            END
+          ),
+          0
+        ) AS total_trees_purchased,
+        COALESCE(
+          SUM(
+            CASE
+              WHEN compensation_mode = 'tree_purchase'
+                THEN total_amount
+              ELSE 0
+            END
+          ),
+          0
+        ) AS total_contribution_amount
+      FROM compensations
+      WHERE supporter_user_id = $1
+        AND status = 'paid'
+        AND deleted_at IS NULL`,
+      [userId]
+    );
+
+    return {
+      estimatedOffsetTCO2e: Number(result.rows[0]?.estimated_offset_t_co2e ?? 0),
+      totalTreesPurchased: Number(result.rows[0]?.total_trees_purchased ?? 0),
+      totalContributionAmount: Number(result.rows[0]?.total_contribution_amount ?? 0),
+    };
+  }
 }

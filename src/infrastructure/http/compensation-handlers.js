@@ -7,45 +7,25 @@ import { handleError } from './error-mapper';
 import { buildLogContext } from '../../shared/http/log-context';
 import { listCompensations } from '../../application/compensations/list-compensations';
 import { listAreaContributions } from '../../application/compensations/list-area-contributions';
-import { issueCompensationCertificate } from '../../application/compensations/issue-compensation-certificate';
 import { quoteTreePurchaseCompensation, } from '../../application/compensations/quote-tree-purchase-compensation';
 export function createCompensationHandlers(deps) {
     return {
         /**
          * POST /api/v1/compensations
-         * Creates compensation in single atomic transaction and reserves area stock.
+         * Creates a pending tree-planting contribution.
          */
         async create(ctx) {
             const logContext = buildLogContext(ctx);
             try {
                 const body = await parseJson(ctx.request, ctx);
                 const validated = parseWithSchema(createCompensationSchema, body);
-                const mode = validated.compensation_mode ?? 'tco2e';
-                let totalTCO2e = validated.total_t_co2e ?? 0;
-                let treesCount = validated.trees_count ?? 0;
-                let totalAmount = validated.total_amount ?? 0;
-                let compensationMode = mode;
-                let horizonYears;
-                let treesRequested;
-                let pricePerTree;
-                let estimatedTotalTCO2e;
-                if (mode === 'tree_purchase') {
-                    const quote = await quoteTreePurchaseCompensation({
-                        areaRepository: deps.areaRepository,
-                    }, {
-                        areaId: validated.area_id,
-                        treesRequested: validated.trees_requested,
-                        currency: validated.currency,
-                    });
-                    totalTCO2e = quote.estimatedTotalTCO2e;
-                    treesCount = quote.treesRequested;
-                    totalAmount = quote.totalAmount;
-                    compensationMode = 'tree_purchase';
-                    horizonYears = quote.horizonYears;
-                    treesRequested = quote.treesRequested;
-                    pricePerTree = quote.pricePerTree;
-                    estimatedTotalTCO2e = quote.estimatedTotalTCO2e;
-                }
+                const quote = await quoteTreePurchaseCompensation({
+                    areaRepository: deps.areaRepository,
+                }, {
+                    areaId: validated.area_id,
+                    treesRequested: validated.trees_requested,
+                    currency: validated.currency,
+                });
                 const result = await createCompensationAtomic({
                     store: deps.compensationStore,
                     idGenerator: deps.idGenerator,
@@ -55,68 +35,16 @@ export function createCompensationHandlers(deps) {
                     supporterUserId: ctx.auth.userId,
                     areaId: validated.area_id,
                     calculationId: validated.calculation_id,
-                    compensationMode,
-                    horizonYears,
-                    treesRequested,
-                    pricePerTree,
-                    estimatedTotalTCO2e,
-                    totalTCO2e,
-                    treesCount,
-                    totalAmount,
+                    compensationMode: 'tree_purchase',
+                    horizonYears: quote.horizonYears,
+                    treesRequested: quote.treesRequested,
+                    pricePerTree: quote.pricePerTree,
+                    estimatedTotalTCO2e: quote.estimatedTotalTCO2e,
+                    totalTCO2e: quote.estimatedTotalTCO2e,
+                    treesCount: quote.treesRequested,
+                    totalAmount: quote.totalAmount,
                     currency: validated.currency,
                 });
-                let certificate = null;
-                try {
-                    const certificateResult = await issueCompensationCertificate({
-                        repository: deps.compensationCertificateRepository,
-                        storage: deps.compensationCertificateStorage,
-                        pdfGenerator: deps.compensationCertificatePdfGenerator,
-                        idGenerator: deps.idGenerator,
-                        clock: deps.clock,
-                        auditLog: deps.auditLog,
-                    }, {
-                        compensationId: result.compensationId,
-                        supporterUserId: ctx.auth.userId,
-                        areaId: result.areaId,
-                        calculationId: validated.calculation_id,
-                        totalTCO2e: result.totalTCO2e,
-                        treesCount: result.treesCount,
-                        totalAmount,
-                        currency: validated.currency,
-                        compensationMode: result.compensationMode,
-                        horizonYears: result.horizonYears,
-                        treesRequested: result.treesRequested,
-                        pricePerTree: result.pricePerTree,
-                        estimatedTotalTCO2e: result.estimatedTotalTCO2e ?? result.totalTCO2e,
-                    });
-                    certificate = {
-                        id: certificateResult.certificateId,
-                        certificate_number: certificateResult.certificateNumber,
-                        authenticity_hash: certificateResult.authenticityHash,
-                        validation_url: certificateResult.validationUrl,
-                        qr_code_data: certificateResult.qrCodeData,
-                        file_id: certificateResult.fileId,
-                        file_name: certificateResult.fileName,
-                        mime_type: certificateResult.mimeType,
-                        issued_at: certificateResult.issuedAt,
-                    };
-                }
-                catch (error) {
-                    try {
-                        await deps.auditLog.log({
-                            actorUserId: ctx.auth.userId,
-                            action: 'compensation.certificate_generation_failed',
-                            entityType: 'compensation',
-                            entityId: result.compensationId,
-                            metadata: {
-                                reason: error instanceof Error ? error.message : String(error),
-                            },
-                        });
-                    }
-                    catch (_auditError) {
-                        // Best effort for failure telemetry.
-                    }
-                }
                 return jsonResponse(201, {
                     data: {
                         compensation_id: result.compensationId,
@@ -128,10 +56,11 @@ export function createCompensationHandlers(deps) {
                         estimated_total_t_co2e: result.estimatedTotalTCO2e ?? result.totalTCO2e,
                         total_t_co2e: result.totalTCO2e,
                         trees_count: result.treesCount,
+                        total_amount: quote.totalAmount,
+                        currency: quote.currency,
                         status: result.status,
-                        remaining_t_co2e: result.remainingTCO2e,
                         created_at: result.createdAt,
-                        certificate,
+                        certificate: null,
                     },
                     message_key: 'compensation.created_pending',
                 }, logContext);
@@ -261,7 +190,7 @@ export function createCompensationHandlers(deps) {
         },
         /**
          * POST /api/v1/compensations/quote
-         * Quotes compensation values for tree-based purchase mode.
+         * Quotes a pending tree-planting contribution.
          */
         async quote(ctx) {
             const logContext = buildLogContext(ctx);
@@ -281,14 +210,12 @@ export function createCompensationHandlers(deps) {
                         compensation_mode: quote.compensationMode,
                         horizon_years: quote.horizonYears,
                         trees_requested: quote.treesRequested,
-                        t_co2e_per_tree_per_year: quote.tCO2ePerTreePerYear,
+                        estimated_kg_co2_per_tree_per_year: quote.estimatedKgCO2PerTreePerYear,
                         estimated_total_t_co2e: quote.estimatedTotalTCO2e,
-                        estimated_total_kg_co2e_20y: quote.estimatedTotalKgCO2e20y,
+                        estimated_total_kg_co2e: quote.estimatedTotalKgCO2e,
                         price_per_tree: quote.pricePerTree,
                         total_amount: quote.totalAmount,
                         currency: quote.currency,
-                        available_t_co2e: quote.availableTCO2e,
-                        has_capacity: quote.hasCapacity,
                     },
                     message_key: 'compensation.quote_tree_purchase_created',
                 }, logContext);

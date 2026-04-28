@@ -74,6 +74,15 @@ const routes: ApiRouteDoc[] = [
   },
 
   {
+    method: 'get',
+    path: '/api/v1/auth/human-check',
+    summary: 'Human check challenge',
+    description: 'Returns a lightweight challenge payload for anti-automation checks.',
+    tags: ['Auth'],
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+  {
     method: 'post',
     path: '/api/v1/auth/register',
     summary: 'Register user',
@@ -187,6 +196,39 @@ const routes: ApiRouteDoc[] = [
     successStatus: '200',
     successResponse: 'OkData',
     includeNotFound: true,
+  },
+  {
+    method: 'get',
+    path: '/api/v1/users/:id/climate-balance',
+    summary: 'Get user climate balance',
+    description:
+      'Returns gross emissions, estimated paid tree-purchase offset, and net tracked balance for user.',
+    tags: ['Users'],
+    secured: true,
+    successStatus: '200',
+    successResponse: 'OkData',
+    includeNotFound: true,
+  },
+  {
+    method: 'get',
+    path: '/api/v1/users/:id/contributions',
+    summary: 'List user contributions',
+    description: 'Lists tree-planting contribution history by user id (self/admin).',
+    tags: ['Contributions'],
+    secured: true,
+    queryParameters: [
+      {
+        name: 'status',
+        description: 'Contribution status filter',
+        schema: {
+          type: 'string',
+          enum: ['pending', 'paid', 'canceled', 'refunded'],
+        },
+      },
+      ...commonListQuery,
+    ],
+    successStatus: '200',
+    successResponse: 'OkList',
   },
   {
     method: 'get',
@@ -674,9 +716,54 @@ const routes: ApiRouteDoc[] = [
 
   {
     method: 'post',
+    path: '/api/v1/contributions',
+    summary: 'Create contribution',
+    description:
+      'Creates a pending tree-planting contribution using project price and impact snapshots.',
+    tags: ['Contributions'],
+    secured: true,
+    requestBodyRef: 'CreateCompensationRequest',
+    successStatus: '201',
+    successResponse: 'CreatedData',
+  },
+  {
+    method: 'post',
+    path: '/api/v1/contributions/quote',
+    summary: 'Quote contribution',
+    description: 'Calculates values for a tree-planting contribution quote.',
+    tags: ['Contributions'],
+    secured: true,
+    requestBodyRef: 'QuoteTreePurchaseRequest',
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+  {
+    method: 'get',
+    path: '/api/v1/contributions',
+    summary: 'List own contributions',
+    description: 'Lists contribution history for current user.',
+    tags: ['Contributions'],
+    secured: true,
+    queryParameters: [
+      {
+        name: 'status',
+        description: 'Contribution status filter',
+        schema: {
+          type: 'string',
+          enum: ['pending', 'paid', 'canceled', 'refunded'],
+        },
+      },
+      ...commonListQuery,
+    ],
+    successStatus: '200',
+    successResponse: 'OkList',
+  },
+  {
+    method: 'post',
     path: '/api/v1/compensations',
     summary: 'Create compensation',
-    description: 'Creates pending compensation and reserves area stock atomically.',
+    description:
+      'Legacy alias for tree-planting contribution creation using project price and impact snapshots.',
     tags: ['Compensations'],
     secured: true,
     requestBodyRef: 'CompensationCreateRequest',
@@ -687,7 +774,7 @@ const routes: ApiRouteDoc[] = [
     method: 'post',
     path: '/api/v1/compensations/quote',
     summary: 'Quote tree purchase compensation',
-    description: 'Calculates values for tree_purchase mode.',
+    description: 'Calculates values for a tree-planting contribution quote.',
     tags: ['Compensations'],
     secured: true,
     requestBodyRef: 'CompensationQuoteRequest',
@@ -1187,14 +1274,11 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
 
         CompensationCreateRequest: {
           type: 'object',
-          required: ['area_id', 'currency'],
+          required: ['area_id', 'trees_requested', 'currency'],
           properties: {
             area_id: uuidLikeSchema,
             calculation_id: uuidLikeSchema,
-            compensation_mode: { type: 'string', enum: ['tco2e', 'tree_purchase'] },
-            total_t_co2e: { type: 'number', exclusiveMinimum: 0 },
-            trees_count: { type: 'integer', minimum: 1 },
-            total_amount: { type: 'number', exclusiveMinimum: 0 },
+            compensation_mode: { type: 'string', enum: ['tree_purchase'] },
             trees_requested: { type: 'integer', minimum: 1 },
             currency: { type: 'string', minLength: 3, maxLength: 3 },
           },

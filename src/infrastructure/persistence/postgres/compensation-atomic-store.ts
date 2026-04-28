@@ -15,9 +15,7 @@ class PostgresCompensationAtomicTransaction
     const result = await this.client.query(
       `SELECT
         id,
-        status,
-        COALESCE(total_capacity_t_co2e, 0) AS total_capacity_t_co2e,
-        COALESCE(committed_t_co2e, 0) AS committed_t_co2e
+        status
       FROM areas
       WHERE id = $1
         AND deleted_at IS NULL
@@ -33,23 +31,7 @@ class PostgresCompensationAtomicTransaction
     return {
       id: String(row.id),
       status: String(row.status),
-      totalCapacityTCO2e: Number(row.total_capacity_t_co2e),
-      committedTCO2e: Number(row.committed_t_co2e),
     };
-  }
-
-  async updateAreaCommitted(
-    areaId: string,
-    committedTCO2e: number,
-    updatedAt: Date
-  ): Promise<void> {
-    await this.client.query(
-      `UPDATE areas
-       SET committed_t_co2e = $2,
-           updated_at = $3
-       WHERE id = $1`,
-      [areaId, committedTCO2e, updatedAt]
-    );
   }
 
   async insertCompensation(record: CompensationCreateRecord): Promise<void> {

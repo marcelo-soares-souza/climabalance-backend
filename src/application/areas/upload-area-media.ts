@@ -69,7 +69,7 @@ export async function uploadAreaMedia(
   try {
     const decoded = Buffer.from(input.fileBase64, 'base64');
     bytes = new Uint8Array(decoded);
-  } catch (_error) {
+  } catch {
     throw new ValidationError([
       {
         field: 'file_base64',

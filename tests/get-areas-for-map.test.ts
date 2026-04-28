@@ -29,6 +29,9 @@ function makeArea(input: {
   status: AreaStatus;
   totalCapacityTCO2e?: number;
   committedTCO2e?: number;
+  tCO2ePerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
 }): Area {
   return new Area({
     id: input.id,
@@ -40,6 +43,9 @@ function makeArea(input: {
       input.totalCapacityTCO2e != null
         ? new CarbonCapacity(input.totalCapacityTCO2e, input.committedTCO2e ?? 0)
         : undefined,
+    tCO2ePerTreePerYear: input.tCO2ePerTreePerYear,
+    pricePerTree: input.pricePerTree,
+    defaultHorizonYears: input.defaultHorizonYears,
     createdAt: new Date('2026-02-07T12:00:00Z'),
     updatedAt: new Date('2026-02-07T12:00:00Z'),
   });
@@ -52,6 +58,9 @@ describe('getAreasForMap', () => {
       status: AreaStatus.ACTIVE,
       totalCapacityTCO2e: 5,
       committedTCO2e: 8,
+      tCO2ePerTreePerYear: 0.025,
+      pricePerTree: 15,
+      defaultHorizonYears: 20,
     });
     const zeroCapacityArea = makeArea({
       id: 'area-without-capacity',
@@ -80,6 +89,10 @@ describe('getAreasForMap', () => {
       'area-without-capacity',
     ]);
     expect(result[0]?.availableTCO2e).toBe(-3);
+    expect(result[0]?.tCO2ePerTreePerYear).toBe(0.025);
+    expect(result[0]?.estimatedKgCO2PerTreePerYear).toBe(25);
+    expect(result[0]?.pricePerTree).toBe(15);
+    expect(result[0]?.defaultHorizonYears).toBe(20);
     expect(result[1]?.availableTCO2e).toBe(0);
   });
 });

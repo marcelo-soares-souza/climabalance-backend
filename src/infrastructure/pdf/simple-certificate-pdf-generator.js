@@ -7,25 +7,25 @@ export class SimpleCertificatePdfGenerator {
 function buildCertificateLines(data) {
     const issuedAt = formatUtcDate(data.issuedAt);
     const amount = `${data.totalAmount.toFixed(2)} ${data.currency.toUpperCase()}`;
-    const mode = data.compensationMode ?? 'tco2e';
+    const mode = data.compensationMode ?? 'tree_purchase';
     const horizon = data.horizonYears ?? 20;
     return [
-        'Carbon Compensation Certificate',
+        'Tree Planting Contribution Certificate',
         'Centro Brasil no Clima',
         '',
         `Certificate Number: ${data.certificateNumber}`,
         `Issued At (UTC): ${issuedAt}`,
         '',
-        `Compensation ID: ${data.compensationId}`,
-        `Compensation Mode: ${mode}`,
+        `Contribution ID: ${data.compensationId}`,
+        `Contribution Mode: ${mode}`,
         `Supporter User ID: ${data.supporterUserId}`,
         `Area ID: ${data.areaId}`,
         `Calculation ID: ${data.calculationId ?? '-'}`,
         '',
-        `Total Compensated: ${data.totalTCO2e.toFixed(6)} tCO2e`,
+        `Estimated Offset Supported: ${data.totalTCO2e.toFixed(6)} tCO2e`,
         `Trees Count: ${data.treesCount}`,
         `Trees Requested: ${data.treesRequested ?? data.treesCount}`,
-        `Capture Horizon: ${horizon} years`,
+        `Projection Horizon: ${horizon} years`,
         `Estimated Total in Horizon: ${(data.estimatedTotalTCO2e ?? data.totalTCO2e).toFixed(6)} tCO2e`,
         `Price per Tree: ${(data.pricePerTree ?? 0).toFixed(2)} ${data.currency.toUpperCase()}`,
         `Total Amount: ${amount}`,
@@ -34,7 +34,7 @@ function buildCertificateLines(data) {
         `Validation URL: ${data.validationUrl ?? '-'}`,
         `QR Payload: ${data.qrCodeData ?? data.validationUrl ?? '-'}`,
         '',
-        'This document certifies the compensation registration in the platform.',
+        'This document certifies a paid tree-planting contribution with estimated climate impact.',
     ];
 }
 function formatUtcDate(value) {

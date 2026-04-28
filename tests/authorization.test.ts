@@ -225,7 +225,7 @@ describe('Authorization - withAuth middleware (unit)', () => {
     };
   }
 
-  const successHandler = async (ctx: any) => new Response(JSON.stringify({ ok: true }), { status: 200 });
+  const successHandler = async (_ctx: any) => new Response(JSON.stringify({ ok: true }), { status: 200 });
 
   test('reject request without token (401)', async () => {
     const handler = withAuth(successHandler);

@@ -14,6 +14,9 @@ export interface AreaMapItem {
   committedTCO2e: number;
   availableTCO2e: number;
   tCO2ePerTreePerYear?: number;
+  estimatedKgCO2PerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
 }
 
 export interface GetAreasForMapDeps {
@@ -45,5 +48,11 @@ export async function getAreasForMap(
     committedTCO2e: area.carbonCapacity?.committedTCO2e || 0,
     availableTCO2e: area.carbonCapacity?.availableTCO2e || 0,
     tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
+    estimatedKgCO2PerTreePerYear:
+      area.tCO2ePerTreePerYear !== undefined
+        ? area.tCO2ePerTreePerYear * 1000
+        : undefined,
+    pricePerTree: area.pricePerTree,
+    defaultHorizonYears: area.defaultHorizonYears,
   }));
 }

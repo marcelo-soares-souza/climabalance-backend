@@ -97,6 +97,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             city: validated.city,
             totalCapacityTCO2e: validated.totalCapacityTCO2e,
             tCO2ePerTreePerYear: validated.tCO2ePerTreePerYear,
+            pricePerTree: validated.pricePerTree,
+            defaultHorizonYears: validated.defaultHorizonYears,
           }
         );
 

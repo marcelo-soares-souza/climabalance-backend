@@ -205,6 +205,19 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
     );
   }
 
+  async sumFinalizedTCO2eByUser(userId: string): Promise<number> {
+    const result = await this.pool.query(
+      `SELECT COALESCE(SUM(total_t_co2e), 0) AS total
+       FROM footprint_calculations
+       WHERE user_id = $1
+         AND status = 'finalized'
+         AND deleted_at IS NULL`,
+      [userId]
+    );
+
+    return Number(result.rows[0]?.total ?? 0);
+  }
+
   private mapRow(row: any): FootprintCalculationWithUser {
     return {
       id: row.id,

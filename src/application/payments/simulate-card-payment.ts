@@ -133,10 +133,6 @@ export async function simulateCardPayment(
         status: 'canceled',
         updatedAt: now,
       });
-      await tx.releaseAreaCommitmentForCompensation({
-        compensationId: compensation.id,
-        updatedAt: now,
-      });
       compensationStatus = 'canceled';
     }
 

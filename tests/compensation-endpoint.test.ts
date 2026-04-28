@@ -21,7 +21,6 @@ import type { CompensationCertificatePdfGenerator } from '../src/domain/compensa
 import type { HttpContext } from '../src/shared/http/router';
 import { Area } from '../src/domain/areas/entities/area';
 import { AreaStatus } from '../src/domain/areas/value-objects/area-status';
-import { CarbonCapacity } from '../src/domain/areas/value-objects/carbon-capacity';
 import { Location } from '../src/domain/areas/value-objects/location';
 
 class InMemoryCompensationStore implements CompensationAtomicStore {
@@ -36,9 +35,6 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
           return null;
         }
         return { ...this.area };
-      },
-      updateAreaCommitted: async (_areaId: string, committedTCO2e: number) => {
-        this.area = { ...this.area, committedTCO2e };
       },
       insertCompensation: async (_record: CompensationCreateRecord) => {},
     };
@@ -225,8 +221,9 @@ describe('POST /api/v1/compensations handler', () => {
     name: 'Area 1',
     location: new Location(-15.7939, -47.8828),
     status: AreaStatus.ACTIVE,
-    carbonCapacity: new CarbonCapacity(10, 1),
     tCO2ePerTreePerYear: 0.00075,
+    pricePerTree: 12,
+    defaultHorizonYears: 20,
     createdAt: new Date('2026-02-07T12:00:00Z'),
     updatedAt: new Date('2026-02-07T12:00:00Z'),
   });
@@ -239,8 +236,6 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository: certificateRepository,
@@ -262,9 +257,8 @@ describe('POST /api/v1/compensations handler', () => {
       buildContext({
         area_id: 'area-1',
         calculation_id: 'calc-1',
-        total_t_co2e: 2.5,
-        trees_count: 120,
-        total_amount: 250,
+        compensation_mode: 'tree_purchase',
+        trees_requested: 120,
         currency: 'brl',
       })
     );
@@ -274,12 +268,11 @@ describe('POST /api/v1/compensations handler', () => {
     expect(payload.message_key).toBe('compensation.created_pending');
     expect(payload.data.compensation_id).toBe('comp-123');
     expect(payload.data.area_id).toBe('area-1');
-    expect(payload.data.total_t_co2e).toBe(2.5);
+    expect(payload.data.total_t_co2e).toBeCloseTo(1.8, 6);
     expect(payload.data.trees_count).toBe(120);
+    expect(payload.data.total_amount).toBe(1440);
     expect(payload.data.status).toBe('pending');
     expect(payload.data.certificate).toBeNull();
-    expect(certificateRepository.files.length).toBe(0);
-    expect(certificateRepository.certificates.length).toBe(0);
   });
 
   test('returns 400 when request is invalid', async () => {
@@ -288,8 +281,6 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository:
@@ -311,9 +302,7 @@ describe('POST /api/v1/compensations handler', () => {
     const response = await handlers.create(
       buildContext({
         area_id: 'area-1',
-        total_t_co2e: -1,
-        trees_count: 120,
-        total_amount: 250,
+        compensation_mode: 'tree_purchase',
         currency: 'BRL',
       })
     );
@@ -329,8 +318,6 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository([
         {
@@ -381,8 +368,6 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository([
         {
@@ -435,8 +420,6 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(
         [],
@@ -483,14 +466,12 @@ describe('POST /api/v1/compensations handler', () => {
     expect(payload.data[0].total_amount).toBeUndefined();
   });
 
-  test('quotes tree purchase compensation for 20-year horizon', async () => {
+  test('quotes tree purchase contribution using project metrics', async () => {
     const handlers = createCompensationHandlers({
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository:
@@ -522,7 +503,8 @@ describe('POST /api/v1/compensations handler', () => {
     expect(payload.data.compensation_mode).toBe('tree_purchase');
     expect(payload.data.horizon_years).toBe(20);
     expect(payload.data.trees_requested).toBe(10);
-    expect(payload.data.estimated_total_kg_co2e_20y).toBe(150);
+    expect(payload.data.estimated_kg_co2_per_tree_per_year).toBe(0.75);
+    expect(payload.data.estimated_total_kg_co2e).toBe(150);
     expect(payload.data.price_per_tree).toBe(12);
     expect(payload.data.total_amount).toBe(120);
   });
@@ -534,8 +516,6 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
-        totalCapacityTCO2e: 10,
-        committedTCO2e: 1,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository:
@@ -573,5 +553,6 @@ describe('POST /api/v1/compensations handler', () => {
     expect(payload.data.price_per_tree).toBe(12);
     expect(payload.data.total_t_co2e).toBeCloseTo(0.15, 6);
     expect(payload.data.trees_count).toBe(10);
+    expect(payload.data.total_amount).toBe(120);
   });
 });

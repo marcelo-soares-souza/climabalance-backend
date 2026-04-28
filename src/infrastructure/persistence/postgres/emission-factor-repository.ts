@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool } from 'pg';
 import type { EmissionFactor } from '../../../domain/footprint/entities/emission-factor';
 import type { EmissionFactorRepository } from '../../../domain/footprint/repositories/emission-factor-repository';
 import type { FootprintCategory } from '../../../domain/footprint/value-objects/category';

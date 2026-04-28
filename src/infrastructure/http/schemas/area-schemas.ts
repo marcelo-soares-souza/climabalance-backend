@@ -16,6 +16,10 @@ export const createAreaSchema = z.object({
   total_capacity_t_co2e: z.number().positive().optional(),
   tCO2ePerTreePerYear: z.number().positive().optional(),
   t_co2e_per_tree_per_year: z.number().positive().optional(),
+  pricePerTree: z.number().positive().optional(),
+  price_per_tree: z.number().positive().optional(),
+  defaultHorizonYears: z.number().int().positive().optional(),
+  default_horizon_years: z.number().int().positive().optional(),
 }).transform((data) => ({
   name: data.name,
   description: data.description,
@@ -26,6 +30,8 @@ export const createAreaSchema = z.object({
   city: data.city,
   totalCapacityTCO2e: data.totalCapacityTCO2e ?? data.total_capacity_t_co2e,
   tCO2ePerTreePerYear: data.tCO2ePerTreePerYear ?? data.t_co2e_per_tree_per_year,
+  pricePerTree: data.pricePerTree ?? data.price_per_tree,
+  defaultHorizonYears: data.defaultHorizonYears ?? data.default_horizon_years,
 }));
 
 export type CreateAreaRequest = z.infer<typeof createAreaSchema>;
@@ -47,6 +53,10 @@ export const updateAreaSchema = z.object({
   total_capacity_t_co2e: z.number().positive().optional(),
   tCO2ePerTreePerYear: z.number().positive().optional(),
   t_co2e_per_tree_per_year: z.number().positive().optional(),
+  pricePerTree: z.number().positive().optional(),
+  price_per_tree: z.number().positive().optional(),
+  defaultHorizonYears: z.number().int().positive().optional(),
+  default_horizon_years: z.number().int().positive().optional(),
 }).transform((data) => ({
   name: data.name,
   description: data.description,
@@ -58,6 +68,8 @@ export const updateAreaSchema = z.object({
   city: data.city,
   totalCapacityTCO2e: data.totalCapacityTCO2e ?? data.total_capacity_t_co2e,
   tCO2ePerTreePerYear: data.tCO2ePerTreePerYear ?? data.t_co2e_per_tree_per_year,
+  pricePerTree: data.pricePerTree ?? data.price_per_tree,
+  defaultHorizonYears: data.defaultHorizonYears ?? data.default_horizon_years,
 }));
 
 export type UpdateAreaRequest = z.infer<typeof updateAreaSchema>;

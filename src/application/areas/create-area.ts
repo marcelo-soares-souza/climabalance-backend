@@ -16,6 +16,8 @@ export interface CreateAreaRequest {
   city?: string;
   totalCapacityTCO2e?: number;
   tCO2ePerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
 }
 
 export interface CreateAreaResponse {
@@ -71,6 +73,8 @@ export async function createArea(
     status: AreaStatus.DRAFT,
     carbonCapacity,
     tCO2ePerTreePerYear: request.tCO2ePerTreePerYear,
+    pricePerTree: request.pricePerTree,
+    defaultHorizonYears: request.defaultHorizonYears,
     createdAt: now,
     updatedAt: now,
   });

@@ -27,6 +27,9 @@ export interface AreaListItem {
   committedTCO2e?: number;
   availableTCO2e?: number;
   tCO2ePerTreePerYear?: number;
+  estimatedKgCO2PerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -81,6 +84,12 @@ export async function listAreas(
     committedTCO2e: area.carbonCapacity?.committedTCO2e,
     availableTCO2e: area.carbonCapacity?.availableTCO2e,
     tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
+    estimatedKgCO2PerTreePerYear:
+      area.tCO2ePerTreePerYear !== undefined
+        ? area.tCO2ePerTreePerYear * 1000
+        : undefined,
+    pricePerTree: area.pricePerTree,
+    defaultHorizonYears: area.defaultHorizonYears,
     createdAt: area.createdAt,
     updatedAt: area.updatedAt,
   }));

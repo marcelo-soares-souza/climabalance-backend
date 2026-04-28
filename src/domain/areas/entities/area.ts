@@ -20,6 +20,8 @@ export interface AreaProps {
   auditedAt?: Date;
   carbonCapacity?: CarbonCapacity;
   tCO2ePerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -45,6 +47,8 @@ export class Area {
   auditedAt?: Date;
   carbonCapacity?: CarbonCapacity;
   tCO2ePerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
   readonly createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -65,6 +69,8 @@ export class Area {
     this.auditedAt = props.auditedAt;
     this.carbonCapacity = props.carbonCapacity;
     this.tCO2ePerTreePerYear = props.tCO2ePerTreePerYear;
+    this.pricePerTree = props.pricePerTree;
+    this.defaultHorizonYears = props.defaultHorizonYears;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.deletedAt = props.deletedAt;
@@ -225,6 +231,8 @@ export class Area {
       city?: string;
       totalCapacityTCO2e?: number;
       tCO2ePerTreePerYear?: number;
+      pricePerTree?: number;
+      defaultHorizonYears?: number;
     },
     options?: { forceEdit?: boolean }
   ): void {
@@ -266,6 +274,20 @@ export class Area {
 
     if (updates.tCO2ePerTreePerYear !== undefined) {
       this.tCO2ePerTreePerYear = updates.tCO2ePerTreePerYear;
+    }
+
+    if (updates.pricePerTree !== undefined) {
+      if (updates.pricePerTree <= 0) {
+        throw new Error('Price per tree must be positive');
+      }
+      this.pricePerTree = updates.pricePerTree;
+    }
+
+    if (updates.defaultHorizonYears !== undefined) {
+      if (updates.defaultHorizonYears <= 0) {
+        throw new Error('Default horizon years must be positive');
+      }
+      this.defaultHorizonYears = updates.defaultHorizonYears;
     }
 
     this.updatedAt = new Date();

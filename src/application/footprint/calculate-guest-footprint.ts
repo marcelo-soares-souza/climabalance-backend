@@ -1,9 +1,7 @@
 import type { EmissionFactorRepository } from '../../domain/footprint/repositories/emission-factor-repository';
 import type { CreateFootprintInputDTO } from '../../domain/footprint/entities/footprint-input';
-import type { ProfileType } from '../../domain/footprint/value-objects/profile-type';
 import type { DataQuality } from '../../domain/footprint/value-objects/data-quality';
 import { FootprintCalculatorService } from '../../domain/footprint/services/footprint-calculator.service';
-import { Period } from '../../domain/footprint/value-objects/period';
 import { validateProfileType } from '../../domain/footprint/value-objects/profile-type';
 import { validateDataQuality } from '../../domain/footprint/value-objects/data-quality';
 import { validateInputValue } from '../../domain/footprint/entities/footprint-input';
@@ -40,9 +38,8 @@ export async function calculateGuestFootprint(
   request: CalculateGuestFootprintRequest
 ): Promise<CalculateGuestFootprintResponse> {
   // 1. Validate request
-  let profileType: ProfileType;
   try {
-    profileType = validateProfileType(request.profile_type) as ProfileType;
+    validateProfileType(request.profile_type);
   } catch (error) {
     throw new ValidationError([
       { field: 'profile_type', message: error instanceof Error ? error.message : 'Invalid profile type' }
@@ -60,9 +57,8 @@ export async function calculateGuestFootprint(
     ]);
   }
 
-  let period: Period;
   try {
-    period = Period.fromStrings(request.period_start, request.period_end);
+    void Period.fromStrings(request.period_start, request.period_end);
   } catch (error) {
     throw new ValidationError([
       { field: 'period', message: error instanceof Error ? error.message : 'Invalid period' }

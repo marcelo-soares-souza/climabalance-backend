@@ -119,7 +119,7 @@ export function isSensitiveOperation(action: string, entityType: string): boolea
  * Parse country code from IP address (simplified version).
  * In production, use a GeoIP service like MaxMind.
  */
-export function parseCountryFromIp(ip: string | null | undefined): string | null {
+export function parseCountryFromIp(_ip: string | null | undefined): string | null {
   // Placeholder - integrate with GeoIP service in production
   // For now, return null (requires external service)
   return null;

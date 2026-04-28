@@ -92,12 +92,6 @@ export async function processPaymentWebhook(
         status: nextCompensationStatus,
         updatedAt: now,
       });
-      if (nextCompensationStatus === 'canceled') {
-        await tx.releaseAreaCommitmentForCompensation({
-          compensationId: payment.compensationId,
-          updatedAt: now,
-        });
-      }
     }
 
     return {

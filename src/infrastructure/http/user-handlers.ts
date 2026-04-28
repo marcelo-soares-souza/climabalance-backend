@@ -8,6 +8,7 @@ import { deleteUser } from '../../application/users/delete-user';
 import { getUser } from '../../application/users/get-user';
 import { listUsers } from '../../application/users/list-users';
 import { updateUser } from '../../application/users/update-user';
+import { getClimateBalance } from '../../application/users/get-climate-balance';
 import { uuidv7 } from '../../shared/utils/id';
 import { getLogger } from '../../shared/utils/logger';
 import { updateUserSchema, upsertProfileSchema, parseWithSchema } from './schemas';
@@ -16,6 +17,16 @@ import { buildLogContext } from '../../shared/http/log-context';
 export type UserHandlersDeps = {
   users: UserRepository;
   passwordHasher: PasswordHasher;
+  calculationRepository: {
+    sumFinalizedTCO2eByUser(userId: string): Promise<number>;
+  };
+  compensationHistoryRepository: {
+    getPaidContributionSummaryBySupporter(userId: string): Promise<{
+      estimatedOffsetTCO2e: number;
+      totalTreesPurchased: number;
+      totalContributionAmount: number;
+    }>;
+  };
 };
 
 export function createUserHandlers(deps: UserHandlersDeps) {
@@ -121,6 +132,33 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               address_postal_code: profile.addressPostalCode,
               address_country: profile.addressCountry
             }
+          },
+          logContext
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    getClimateBalance: async (ctx: HttpContext, userId: string) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const balance = await getClimateBalance(userId, {
+          calculationRepository: deps.calculationRepository,
+          compensationHistoryRepository: deps.compensationHistoryRepository,
+        });
+        log.info('user.climate_balance.get', { user_id: userId });
+        return jsonResponse(
+          200,
+          {
+            data: {
+              gross_emissions_t_co2e: balance.grossEmissionsTCO2e,
+              estimated_offset_t_co2e: balance.estimatedOffsetTCO2e,
+              net_balance_t_co2e: balance.netBalanceTCO2e,
+              total_trees_purchased: balance.totalTreesPurchased,
+              total_contribution_amount: balance.totalContributionAmount,
+            },
           },
           logContext
         );

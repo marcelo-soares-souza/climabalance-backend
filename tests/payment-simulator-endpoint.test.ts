@@ -136,7 +136,6 @@ class InMemoryPaymentStore implements PaymentStore {
           status: input.status,
         });
       },
-      releaseAreaCommitmentForCompensation: async () => {},
     };
 
     return work(tx);

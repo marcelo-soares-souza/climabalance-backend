@@ -28,14 +28,15 @@ class MemoryUserRepository implements UserRepository {
     this.users.push(user);
     return user;
   }
-  async update(input: any): Promise<User | null> { return null; }
+  async update(_input: any): Promise<User | null> { return null; }
   async findById(id: string): Promise<User | null> { return this.users.find((u) => u.id === id) ?? null; }
   async findByEmail(email: string): Promise<User | null> { return this.users.find((u) => u.email === email) ?? null; }
   async list(_f: UserFilters): Promise<User[]> { return this.users; }
-  async softDelete(id: string): Promise<User | null> { return null; }
-  async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> { return {} as any; }
-  async getProfile(userId: string): Promise<UserProfile | null> { return null; }
+  async softDelete(_id: string): Promise<User | null> { return null; }
+  async upsertProfile(_userId: string, _profile: Partial<UserProfile>): Promise<UserProfile> { return {} as any; }
+  async getProfile(_userId: string): Promise<UserProfile | null> { return null; }
   async getRoles(userId: string): Promise<string[]> { return this.roles.get(userId) ?? []; }
+  async updateLastLogin(_userId: string, _lastLoginAt: Date): Promise<void> {}
   async assignRole(userId: string, roleKey: string): Promise<void> {
     const list = this.roles.get(userId) ?? [];
     list.push(roleKey);

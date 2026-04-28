@@ -93,6 +93,8 @@ export function buildRouter(
   addRoute('GET', '/api/v1/users', 'admin', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
   addRoute('GET', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/climate-balance', 'protected', withAuthOrSelf((ctx) => userHandlers.getClimateBalance(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/contributions', 'protected', withAuthOrSelf((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/compensations', 'protected', withAuthOrSelf((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/certificates', 'protected', withAuthOrSelf((ctx) => certificateHandlers.listByUser(ctx, ctx.params.id)));
   addRoute('PATCH', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
@@ -151,6 +153,24 @@ export function buildRouter(
   addRoute('POST', '/api/v1/updates/notify', 'admin', withAuth((ctx) => updateHandlers.notifyUpdate(ctx), { roles: ['administrator'] }));
 
   // Compensation routes
+  addRoute(
+    'POST',
+    '/api/v1/contributions',
+    'protected',
+    withAuth((ctx) => compensationHandlers.create(ctx))
+  );
+  addRoute(
+    'POST',
+    '/api/v1/contributions/quote',
+    'protected',
+    withAuth((ctx) => compensationHandlers.quote(ctx))
+  );
+  addRoute(
+    'GET',
+    '/api/v1/contributions',
+    'protected',
+    withAuth((ctx) => compensationHandlers.listOwn(ctx))
+  );
   addRoute(
     'POST',
     '/api/v1/compensations',

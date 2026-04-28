@@ -16,6 +16,8 @@ export interface UpdateAreaRequest {
   city?: string;
   totalCapacityTCO2e?: number;
   tCO2ePerTreePerYear?: number;
+  pricePerTree?: number;
+  defaultHorizonYears?: number;
   status?: string;
 }
 
@@ -48,6 +50,9 @@ export async function updateArea(
     updates.totalCapacityTCO2e = request.totalCapacityTCO2e;
   if (request.tCO2ePerTreePerYear !== undefined)
     updates.tCO2ePerTreePerYear = request.tCO2ePerTreePerYear;
+  if (request.pricePerTree !== undefined) updates.pricePerTree = request.pricePerTree;
+  if (request.defaultHorizonYears !== undefined)
+    updates.defaultHorizonYears = request.defaultHorizonYears;
 
   if (request.latitude !== undefined && request.longitude !== undefined) {
     updates.location = new Location(request.latitude, request.longitude);

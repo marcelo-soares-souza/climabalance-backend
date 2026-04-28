@@ -102,12 +102,6 @@ export async function reconcilePendingPayments(
           status: nextCompensationStatus,
           updatedAt: now,
         });
-        if (nextCompensationStatus === 'canceled') {
-          await tx.releaseAreaCommitmentForCompensation({
-            compensationId: locked.compensationId,
-            updatedAt: now,
-          });
-        }
       }
     });
 

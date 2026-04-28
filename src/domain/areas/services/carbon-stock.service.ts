@@ -1,4 +1,3 @@
-import { Area } from '../entities/area';
 import { AreaRepository } from '../repositories/area-repository';
 
 export interface CarbonStockServiceDeps {

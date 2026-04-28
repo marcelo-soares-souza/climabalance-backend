@@ -21,14 +21,12 @@ export type QuoteTreePurchaseCompensationResult = {
   compensationMode: 'tree_purchase';
   horizonYears: number;
   treesRequested: number;
-  tCO2ePerTreePerYear: number;
+  estimatedKgCO2PerTreePerYear: number;
   estimatedTotalTCO2e: number;
-  estimatedTotalKgCO2e20y: number;
+  estimatedTotalKgCO2e: number;
   pricePerTree: number;
   totalAmount: number;
   currency: string;
-  availableTCO2e: number;
-  hasCapacity: boolean;
 };
 
 export async function quoteTreePurchaseCompensation(
@@ -56,12 +54,17 @@ export async function quoteTreePurchaseCompensation(
 
   const tCO2ePerTreePerYear =
     area.tCO2ePerTreePerYear ?? DEFAULT_T_CO2E_PER_TREE_PER_YEAR;
+  const estimatedKgCO2PerTreePerYear = tCO2ePerTreePerYear * 1000;
+  const horizonYears = area.defaultHorizonYears ?? TREE_PURCHASE_HORIZON_YEARS;
   const estimatedTotalTCO2e =
-    input.treesRequested * tCO2ePerTreePerYear * TREE_PURCHASE_HORIZON_YEARS;
-  const estimatedTotalKgCO2e20y = estimatedTotalTCO2e * 1000;
+    input.treesRequested * tCO2ePerTreePerYear * horizonYears;
+  const estimatedTotalKgCO2e = estimatedTotalTCO2e * 1000;
   const currency = input.currency.trim().toUpperCase();
 
   const resolvedPrice =
+    (currency === 'BRL' && area.pricePerTree != null && area.pricePerTree > 0
+      ? area.pricePerTree
+      : null) ??
     deps.treePriceResolver?.(currency, area.id) ??
     DEFAULT_PRICE_BY_CURRENCY[currency] ??
     null;
@@ -75,25 +78,17 @@ export async function quoteTreePurchaseCompensation(
     ]);
   }
 
-  const availableTCO2e = area.carbonCapacity?.availableTCO2e ?? 0;
-  const hasCapacity = availableTCO2e >= estimatedTotalTCO2e;
-
-  // No validation: allow purchases beyond available capacity
-  // hasCapacity is returned for informational purposes only
-
   return {
     areaId: area.id,
     compensationMode: 'tree_purchase',
-    horizonYears: TREE_PURCHASE_HORIZON_YEARS,
+    horizonYears,
     treesRequested: input.treesRequested,
-    tCO2ePerTreePerYear,
+    estimatedKgCO2PerTreePerYear,
     estimatedTotalTCO2e,
-    estimatedTotalKgCO2e20y,
+    estimatedTotalKgCO2e,
     pricePerTree: resolvedPrice,
     totalAmount: input.treesRequested * resolvedPrice,
     currency,
-    availableTCO2e,
-    hasCapacity,
   };
 }
 

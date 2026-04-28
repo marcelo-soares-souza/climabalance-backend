@@ -7,7 +7,7 @@ export type CreateCompensationAtomicInput = {
   supporterUserId: string;
   areaId: string;
   calculationId?: string;
-  compensationMode?: 'tco2e' | 'tree_purchase';
+  compensationMode?: 'tree_purchase';
   horizonYears?: number;
   treesRequested?: number;
   pricePerTree?: number;
@@ -24,7 +24,7 @@ export type CreateCompensationAtomicInput = {
 export type CreateCompensationAtomicResult = {
   compensationId: string;
   areaId: string;
-  compensationMode: 'tco2e' | 'tree_purchase';
+  compensationMode: 'tree_purchase';
   horizonYears?: number;
   treesRequested?: number;
   pricePerTree?: number;
@@ -32,7 +32,6 @@ export type CreateCompensationAtomicResult = {
   totalTCO2e: number;
   treesCount: number;
   status: 'pending';
-  remainingTCO2e: number;
   createdAt: Date;
 };
 
@@ -42,8 +41,6 @@ export type CreateCompensationAtomicResult = {
 export type CompensationAreaSnapshot = {
   id: string;
   status: string;
-  totalCapacityTCO2e: number;
-  committedTCO2e: number;
 };
 
 /**
@@ -54,7 +51,7 @@ export type CompensationCreateRecord = {
   supporterUserId: string;
   areaId: string;
   calculationId?: string;
-  compensationMode: 'tco2e' | 'tree_purchase';
+  compensationMode: 'tree_purchase';
   horizonYears?: number;
   treesRequested?: number;
   pricePerTree?: number;
@@ -74,11 +71,6 @@ export type CompensationCreateRecord = {
  */
 export interface CompensationAtomicTransaction {
   lockArea(areaId: string): Promise<CompensationAreaSnapshot | null>;
-  updateAreaCommitted(
-    areaId: string,
-    committedTCO2e: number,
-    updatedAt: Date
-  ): Promise<void>;
   insertCompensation(record: CompensationCreateRecord): Promise<void>;
 }
 
@@ -92,7 +84,7 @@ export interface CompensationAtomicStore {
 }
 
 /**
- * Creates compensation and reserves area capacity within a single transaction.
+ * Creates a pending tree-planting contribution within a single transaction.
  */
 export async function createCompensationAtomic(
   deps: {
@@ -115,7 +107,7 @@ export async function createCompensationAtomic(
 
   const now = deps.clock.now();
   const compensationId = deps.idGenerator.generate();
-  const compensationMode = input.compensationMode ?? 'tco2e';
+  const compensationMode = input.compensationMode ?? 'tree_purchase';
 
   const result = await deps.store.runInTransaction(async (tx) => {
     const area = await tx.lockArea(input.areaId);
@@ -131,10 +123,6 @@ export async function createCompensationAtomic(
         },
       ]);
     }
-
-    // Allow over-commitment: no validation against available capacity
-    const newCommitted = area.committedTCO2e + input.totalTCO2e;
-    await tx.updateAreaCommitted(area.id, newCommitted, now);
 
     await tx.insertCompensation({
       id: compensationId,
@@ -167,7 +155,6 @@ export async function createCompensationAtomic(
       totalTCO2e: input.totalTCO2e,
       treesCount: input.treesCount,
       status: 'pending' as const,
-      remainingTCO2e: Math.max(area.totalCapacityTCO2e - newCommitted, 0),
       createdAt: now,
     };
   });
@@ -186,7 +173,6 @@ export async function createCompensationAtomic(
       estimated_total_t_co2e: result.estimatedTotalTCO2e,
       total_t_co2e: result.totalTCO2e,
       trees_count: result.treesCount,
-      remaining_t_co2e: result.remainingTCO2e,
     },
   });
 
@@ -198,7 +184,7 @@ export async function createCompensationAtomic(
  */
 function validateInput(input: CreateCompensationAtomicInput): void {
   const errors: Array<{ field: string; message: string }> = [];
-  const mode = input.compensationMode ?? 'tco2e';
+  const mode = input.compensationMode ?? 'tree_purchase';
 
   if (input.totalTCO2e <= 0) {
     errors.push({ field: 'total_t_co2e', message: 'must_be_positive' });
@@ -212,19 +198,17 @@ function validateInput(input: CreateCompensationAtomicInput): void {
   if (!input.currency || input.currency.length !== 3) {
     errors.push({ field: 'currency', message: 'must_be_iso_4217' });
   }
-  if (mode !== 'tco2e' && mode !== 'tree_purchase') {
+  if (mode !== 'tree_purchase') {
     errors.push({ field: 'compensation_mode', message: 'invalid_mode' });
   }
-  if (mode === 'tree_purchase') {
-    if (!input.horizonYears || input.horizonYears <= 0) {
-      errors.push({ field: 'horizon_years', message: 'must_be_positive' });
-    }
-    if (!input.treesRequested || input.treesRequested <= 0) {
-      errors.push({ field: 'trees_requested', message: 'must_be_positive' });
-    }
-    if (!input.pricePerTree || input.pricePerTree <= 0) {
-      errors.push({ field: 'price_per_tree', message: 'must_be_positive' });
-    }
+  if (!input.horizonYears || input.horizonYears <= 0) {
+    errors.push({ field: 'horizon_years', message: 'must_be_positive' });
+  }
+  if (!input.treesRequested || input.treesRequested <= 0) {
+    errors.push({ field: 'trees_requested', message: 'must_be_positive' });
+  }
+  if (!input.pricePerTree || input.pricePerTree <= 0) {
+    errors.push({ field: 'price_per_tree', message: 'must_be_positive' });
   }
 
   if (errors.length > 0) {
