@@ -63,6 +63,24 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
     return Number((result.rows[0] as Record<string, unknown>)?.total ?? 0);
   }
 
+  async sumCompensatedTreeCountByAreaIds(areaIds: string[]): Promise<Map<string, number>> {
+    if (areaIds.length === 0) return new Map();
+    const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(',');
+    const result = await this.pool.query(
+      `SELECT area_id, COALESCE(SUM(trees_count), 0)::int AS total FROM compensations WHERE area_id IN (${placeholders}) AND status = 'paid' AND deleted_at IS NULL GROUP BY area_id`,
+      areaIds,
+    );
+    const map = new Map<string, number>();
+    for (const areaId of areaIds) {
+      map.set(areaId, 0);
+    }
+    for (const row of result.rows) {
+      const r = row as Record<string, unknown>;
+      map.set(String(r.area_id), Number(r.total));
+    }
+    return map;
+  }
+
   async saveBatch(records: CreateTreePlantingRecord[]): Promise<void> {
     if (records.length === 0) return;
 

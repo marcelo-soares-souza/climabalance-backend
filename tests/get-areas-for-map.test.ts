@@ -37,6 +37,9 @@ const emptyTreePlantingRepository = {
   async countByAreaIds(_areaIds: string[]): Promise<Map<string, number>> {
     return new Map(_areaIds.map((id) => [id, 0]));
   },
+  async sumCompensatedTreeCountByAreaIds(_areaIds: string[]): Promise<Map<string, number>> {
+    return new Map(_areaIds.map((id) => [id, 0]));
+  },
 };
 
 function makeArea(input: {

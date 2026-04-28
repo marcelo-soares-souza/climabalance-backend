@@ -22,6 +22,7 @@ export interface AreaMapItem {
   defaultHorizonYears?: number;
   committedTreesCount?: number;
   plantedTreesCount?: number;
+  totalCompensatedTreesCount?: number;
   thumbnailUrl?: string;
 }
 
@@ -45,12 +46,15 @@ export async function getAreasForMap(
 
   const areaIds = areas.map((a) => a.id);
 
-  const [allMedia, plantedCountByAreaId] = await Promise.all([
+  const [allMedia, plantedCountByAreaId, compensatedCountByAreaId] = await Promise.all([
     areaIds.length > 0
       ? deps.areaMediaRepository.listByAreaIds(areaIds)
       : Promise.resolve([]),
     areaIds.length > 0
       ? deps.treePlantingRepository.countByAreaIds(areaIds)
+      : Promise.resolve(new Map<string, number>()),
+    areaIds.length > 0
+      ? deps.treePlantingRepository.sumCompensatedTreeCountByAreaIds(areaIds)
       : Promise.resolve(new Map<string, number>()),
   ]);
 
@@ -94,6 +98,7 @@ export async function getAreasForMap(
           )
         : undefined,
     plantedTreesCount: plantedCountByAreaId.get(area.id) || 0,
+    totalCompensatedTreesCount: compensatedCountByAreaId.get(area.id) || 0,
     thumbnailUrl: thumbnailByAreaId.get(area.id) || undefined,
   }));
 }
