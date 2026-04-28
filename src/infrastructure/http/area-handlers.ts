@@ -448,7 +448,6 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async getPendingTreeCount(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
-        requireAuth(ctx);
         const result = await getPendingTreeCount(
           { treePlantingRepository: deps.treePlantingRepository },
           id,
