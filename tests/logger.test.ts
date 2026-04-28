@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 
-const { getLogger } = await import('../src/shared/utils/logger');
+const { getLogger, serializeError } = await import('../src/shared/utils/logger');
+const { summarizeBodyForLog } = await import('../src/shared/http/log-summary');
 
 function captureConsole() {
   const original = {
@@ -51,6 +52,8 @@ test('logger formats text with required fields and redacts', () => {
   expect(output).toContain('request_id=req-2');
   expect(output).toContain('user_id=user-2');
   expect(output).toContain('client_ip=10.0.0.1');
+  expect(output).toContain('service=backend');
+  expect(output).toContain('env=production');
   expect(output).toContain('"password":"***"');
   expect(output).toContain('"token":"***"');
 });
@@ -67,6 +70,9 @@ test('logger formats json with required fields', () => {
 
   const parsed = JSON.parse(logs[0].message);
   expect(parsed.level).toBe('warn');
+  expect(parsed.event).toBe('auth.failed');
+  expect(parsed.service).toBe('backend');
+  expect(parsed.environment).toBe('production');
   expect(parsed.request_id).toBe('req-3');
   expect(parsed.user_id).toBe('user-3');
   expect(parsed.client_ip).toBe('192.168.1.10');
@@ -95,4 +101,39 @@ test('logger masks payment and binary payload fields', () => {
   expect(parsed.meta.cvv).toBe('***');
   expect(parsed.meta.file_base64).toBe('***');
   expect(parsed.meta.nested.cardholder_name).toBe('***');
+});
+
+test('serializeError keeps structured error metadata', () => {
+  const error = Object.assign(new Error('boom'), {
+    code: 'ERR_TEST',
+    detail: 'details',
+    constraint: 'constraint_name'
+  });
+
+  const serialized = serializeError(error);
+
+  expect(serialized.name).toBe('Error');
+  expect(serialized.message).toBe('boom');
+  expect(serialized.code).toBe('ERR_TEST');
+  expect(serialized.detail).toBe('details');
+  expect(serialized.constraint).toBe('constraint_name');
+  expect(serialized.stack).toBeDefined();
+});
+
+test('summarizeBodyForLog reduces nested payloads to debug-friendly summaries', () => {
+  const summary = summarizeBodyForLog({
+    id: 'comp-1',
+    status: 'pending',
+    items: [{ id: 'a' }, { id: 'b' }],
+    data: {
+      total_count: 2,
+      records: [{ id: 'a' }, { id: 'b' }]
+    }
+  }) as Record<string, unknown>;
+
+  expect(summary.type).toBe('object');
+  expect(summary.identifiers).toEqual({ id: 'comp-1' });
+  expect(summary.fields).toEqual({ status: 'pending' });
+  expect(summary.array_lengths).toEqual({ items: 2 });
+  expect(summary.data).toBeDefined();
 });

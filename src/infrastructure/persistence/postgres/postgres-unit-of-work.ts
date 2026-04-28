@@ -8,7 +8,7 @@ import { PostgresFootprintCalculationRepository } from './footprint-calculation-
 import { PostgresFootprintInputRepository } from './footprint-input-repository';
 import { PostgresFootprintBreakdownRepository } from './footprint-breakdown-repository';
 import { PostgresCompensationProjectionRepository } from './compensation-projection-repository';
-import { logger } from '../../../shared/utils/logger';
+import { logger, serializeError } from '../../../shared/utils/logger';
 
 class PostgresTransaction implements Transaction {
   constructor(private client: PoolClient) {}
@@ -51,42 +51,45 @@ export class PostgresUnitOfWork implements UnitOfWork {
 
   async execute<T>(work: (transaction: Transaction) => Promise<T>): Promise<T> {
     let client: PoolClient | null = null;
+    const startedAt = Date.now();
 
     try {
-      logger.debug('transaction.acquiring_client');
+      logger.debug('database.transaction.client_acquiring');
       client = await this.pool.connect();
-      logger.debug('transaction.client_acquired');
+      logger.debug('database.transaction.client_acquired');
 
-      logger.debug('transaction.begin');
+      logger.debug('database.transaction.begin');
       await client.query('BEGIN');
 
       const transaction = new PostgresTransaction(client);
       const result = await work(transaction);
 
-      logger.debug('transaction.commit');
+      logger.debug('database.transaction.commit');
       await client.query('COMMIT');
-      logger.info('transaction.completed');
+      logger.info('database.transaction.completed', {
+        duration_ms: Date.now() - startedAt
+      });
 
       return result;
     } catch (error) {
       if (client) {
-        logger.warn('transaction.rollback', {
-          error: error instanceof Error ? error.message : String(error)
+        logger.warn('database.transaction.rollback', {
+          duration_ms: Date.now() - startedAt,
+          error: serializeError(error)
         });
         await client.query('ROLLBACK');
       }
 
-      logger.error('transaction.failed', {
-        message: error instanceof Error ? error.message : String(error),
-        code: error instanceof Error && 'code' in error ? (error as any).code : undefined,
-        stack: error instanceof Error ? error.stack : undefined
+      logger.error('database.transaction.failed', {
+        duration_ms: Date.now() - startedAt,
+        error: serializeError(error)
       });
 
       throw error;
     } finally {
       if (client) {
         client.release();
-        logger.debug('transaction.client_released');
+        logger.debug('database.transaction.client_released');
       }
     }
   }

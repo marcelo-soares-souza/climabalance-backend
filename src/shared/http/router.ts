@@ -3,6 +3,8 @@ import { uuidv7 } from '../utils/id';
 import { env } from '../utils/env';
 import { errorResponse } from './response';
 import { buildLogContext } from './log-context';
+import { parseContentLength, summarizeQueryForLog } from './log-summary';
+import { serializeError } from '../utils/logger';
 
 export type HttpContext = {
   request: Request;
@@ -10,6 +12,7 @@ export type HttpContext = {
   query: URLSearchParams;
   requestId: string;
   clientIp?: string;
+  routePath?: string;
   body?: unknown;
   auth?: {
     userId: string;
@@ -62,6 +65,13 @@ export class Router {
     const corsHeaders = buildCorsHeaders(request);
 
     if (method === 'OPTIONS') {
+      getLogger({ requestId, clientIp }).debug('request.completed', {
+        method,
+        path: url.pathname,
+        route: 'preflight',
+        status: 204,
+        duration_ms: 0
+      });
       applySecurityHeaders(corsHeaders);
       return new Response(null, {
         status: 204,
@@ -84,21 +94,38 @@ export class Router {
         params,
         query: url.searchParams,
         requestId,
-        clientIp
+        clientIp,
+        routePath: route.path
       };
 
-      const logger = getLogger({ requestId, clientIp });
+      const startedAt = Date.now();
+      const requestLogger = getLogger({ requestId, clientIp });
+      requestLogger.info('request.started', {
+        method,
+        path: url.pathname,
+        route: route.path,
+        query: summarizeQueryForLog(url.searchParams),
+        content_type: request.headers.get('content-type') ?? undefined,
+        content_length: parseContentLength(request.headers.get('content-length')),
+        user_agent: request.headers.get('user-agent') ?? undefined
+      });
       try {
         const response = await route.handler(ctx);
         const headers = new Headers(response.headers);
         headers.set('x-request-id', requestId);
         applySecurityHeaders(headers);
 
+        const durationMs = Date.now() - startedAt;
         const log = getLogger({ requestId, userId: ctx.auth?.userId, clientIp });
-        log.info('request.completed', {
+        const completionLevel = response.status >= 500 ? 'error' : response.status >= 400 ? 'warn' : 'info';
+        log[completionLevel]('request.completed', {
           method,
+          route: route.path,
           path: url.pathname,
-          status: response.status
+          status: response.status,
+          duration_ms: durationMs,
+          response_content_type: headers.get('content-type') ?? undefined,
+          response_content_length: parseContentLength(headers.get('content-length'))
         });
 
         return new Response(response.body, {
@@ -107,10 +134,13 @@ export class Router {
           headers: mergeHeaders(headers, corsHeaders)
         });
       } catch (error) {
-        logger.error('request.unhandled_error', {
+        const durationMs = Date.now() - startedAt;
+        requestLogger.error('request.unhandled_error', {
           method,
+          route: route.path,
           path: url.pathname,
-          error: error instanceof Error ? error.message : 'unknown'
+          duration_ms: durationMs,
+          error: serializeError(error)
         });
         return withCors(
           errorResponse(500, 'server.error', undefined, buildLogContext(ctx)),
@@ -119,6 +149,13 @@ export class Router {
       }
     }
 
+    getLogger({ requestId, clientIp }).warn('request.completed', {
+      method,
+      path: url.pathname,
+      route: 'unmatched',
+      status: 404,
+      duration_ms: 0
+    });
     return withCors(
       errorResponse(404, 'common.notFound', undefined, { requestId, clientIp }),
       corsHeaders

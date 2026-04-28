@@ -8,6 +8,7 @@ export type LogContext = {
 };
 
 type LogMeta = Record<string, unknown>;
+const serviceName = 'backend';
 
 const levelOrder: Record<LogLevel, number> = {
   debug: 10,
@@ -60,6 +61,14 @@ function shouldLog(level: LogLevel): boolean {
   return levelOrder[level] >= levelOrder[getLogLevel()];
 }
 
+function getEnvironment(): string {
+  return process.env.APP_ENV ?? 'local';
+}
+
+function getBuildVersion(): string {
+  return process.env.BUILD_VERSION ?? 'development';
+}
+
 function maskValue(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
@@ -71,7 +80,7 @@ function maskValue(value: unknown): unknown {
 }
 
 function sanitizeValue(value: unknown, depth = 0): unknown {
-  if (depth > 4) return '[REDACTED]';
+  if (depth > 6) return '[REDACTED]';
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
     return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
@@ -108,7 +117,7 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
 function formatText(params: {
   timestamp: string;
   level: LogLevel;
-  msg: string;
+  event: string;
   requestId?: string;
   userId?: string;
   clientIp?: string;
@@ -119,13 +128,13 @@ function formatText(params: {
   const clientIp = params.clientIp ?? '-';
   const meta = params.meta ? sanitizeValue(params.meta) : undefined;
   const metaText = meta ? ` ${JSON.stringify(meta)}` : '';
-  return `${params.timestamp} ${params.level.toUpperCase()} ${params.msg} request_id=${requestId} user_id=${userId} client_ip=${clientIp}${metaText}`;
+  return `${params.timestamp} ${params.level.toUpperCase()} ${params.event} service=${serviceName} env=${getEnvironment()} build=${getBuildVersion()} request_id=${requestId} user_id=${userId} client_ip=${clientIp}${metaText}`;
 }
 
 function formatJson(params: {
   timestamp: string;
   level: LogLevel;
-  msg: string;
+  event: string;
   requestId?: string;
   userId?: string;
   clientIp?: string;
@@ -134,7 +143,11 @@ function formatJson(params: {
   return JSON.stringify({
     timestamp: params.timestamp,
     level: params.level,
-    msg: params.msg,
+    event: params.event,
+    msg: params.event,
+    service: serviceName,
+    environment: getEnvironment(),
+    build_version: getBuildVersion(),
     request_id: params.requestId ?? null,
     user_id: params.userId ?? null,
     client_ip: params.clientIp ?? null,
@@ -157,9 +170,36 @@ export function log(level: LogLevel, msg: string, meta?: LogMeta, context?: LogC
   const timestamp = new Date().toISOString();
   const format = getLogFormat();
   const output = format === 'json'
-    ? formatJson({ timestamp, level, msg, requestId: context?.requestId, userId: context?.userId, clientIp: context?.clientIp, meta })
-    : formatText({ timestamp, level, msg, requestId: context?.requestId, userId: context?.userId, clientIp: context?.clientIp, meta });
+    ? formatJson({ timestamp, level, event: msg, requestId: context?.requestId, userId: context?.userId, clientIp: context?.clientIp, meta })
+    : formatText({ timestamp, level, event: msg, requestId: context?.requestId, userId: context?.userId, clientIp: context?.clientIp, meta });
   write(level, output);
+}
+
+export function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const meta: Record<string, unknown> = {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    };
+
+    if ('code' in error) {
+      meta.code = (error as { code?: unknown }).code;
+    }
+    if ('detail' in error) {
+      meta.detail = (error as { detail?: unknown }).detail;
+    }
+    if ('constraint' in error) {
+      meta.constraint = (error as { constraint?: unknown }).constraint;
+    }
+
+    return meta;
+  }
+
+  return {
+    name: 'UnknownError',
+    message: String(error)
+  };
 }
 
 export function getLogger(context?: LogContext) {

@@ -1,6 +1,6 @@
 import { errorResponse } from '../../shared/http/response';
 import type { ReturnTypeLogger, LogContext } from '../../shared/utils/logger';
-import { getLogger } from '../../shared/utils/logger';
+import { getLogger, serializeError } from '../../shared/utils/logger';
 import { DomainError } from '../../domain/errors';
 
 function resolveLogger(logger?: ReturnTypeLogger, context?: LogContext) {
@@ -37,10 +37,7 @@ export function handleError(
     if (dbCode) {
       log.error('database.error', {
         code: dbCode,
-        message: dbError.message,
-        detail: dbError.detail,
-        constraint: dbError.constraint,
-        stack: dbError.stack
+        error: serializeError(dbError)
       });
 
       // Connection errors
@@ -122,9 +119,15 @@ export function handleError(
   }
 
   if (status >= 500) {
-    log.error('request.failed', { error: message });
+    log.error('request.failed', {
+      status,
+      error: serializeError(error)
+    });
   } else {
-    log.warn('request.rejected', { error: message, status });
+    log.warn('request.rejected', {
+      status,
+      error: serializeError(error)
+    });
   }
 
   return response;

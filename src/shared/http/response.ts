@@ -1,4 +1,5 @@
 import { getLogger, type LogContext } from '../utils/logger';
+import { summarizeBodyForLog } from './log-summary';
 
 export type ApiError = {
   message_key: string;
@@ -27,7 +28,10 @@ export function jsonResponse(
   extraHeaders?: ResponseHeaders
 ): Response {
   if (context) {
-    getLogger(context).info('response.payload', { status, body });
+    getLogger(context).debug('response.body_summary', {
+      status,
+      body_summary: summarizeBodyForLog(body)
+    });
   }
   return buildJsonResponseWithHeaders(status, body, extraHeaders);
 }
@@ -61,11 +65,12 @@ export function errorResponse(
   }
   const payload = { error };
   if (context) {
-    getLogger(context).warn('response.error', {
+    const logger = getLogger(context);
+    const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
+    logger[level]('response.error', {
       status,
       message_key: messageKey,
-      details,
-      payload
+      details_summary: summarizeBodyForLog(details)
     });
   }
   return buildJsonResponseWithHeaders(status, payload, extraHeaders);

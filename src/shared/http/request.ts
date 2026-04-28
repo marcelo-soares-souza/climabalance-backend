@@ -1,6 +1,7 @@
 import { getLogger } from '../utils/logger';
 import { buildLogContext } from './log-context';
 import type { HttpContext } from './router';
+import { parseContentLength, summarizeBodyForLog } from './log-summary';
 
 export function getRequestOrigin(request: Request): string {
   return new URL(request.url).origin;
@@ -43,8 +44,11 @@ function logPayload(payload: unknown, request: Request, ctx?: HttpContext): unkn
   const metadata = {
     method: request.method,
     path: url.pathname,
-    body: payload
+    route: ctx.routePath,
+    content_type: request.headers.get('content-type') ?? undefined,
+    content_length: parseContentLength(request.headers.get('content-length')),
+    body_summary: summarizeBodyForLog(payload)
   };
-  getLogger(buildLogContext(ctx)).info('request.payload', metadata);
+  getLogger(buildLogContext(ctx)).debug('request.body_parsed', metadata);
   return payload;
 }
