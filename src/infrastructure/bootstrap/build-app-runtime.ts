@@ -21,6 +21,7 @@ import { PostgresCompensationProjectionRepository } from '../persistence/postgre
 import { PostgresAreaRepository } from '../persistence/postgres/area-repository';
 import { PostgresAreaCriteriaRepository } from '../persistence/postgres/area-criteria-repository';
 import { PostgresAreaMediaRepository } from '../persistence/postgres/area-media-repository';
+import { PostgresTreePlantingRepository } from '../persistence/postgres/tree-planting-repository';
 import { PostgresCompensationAtomicStore } from '../persistence/postgres/compensation-atomic-store';
 import { PostgresCompensationHistoryRepository } from '../persistence/postgres/compensation-history-repository';
 import { PostgresCompensationCertificateRepository } from '../persistence/postgres/compensation-certificate-repository';
@@ -97,6 +98,7 @@ export function buildAppRuntime() {
   const areaRepository = new PostgresAreaRepository(pgPool);
   const areaCriteriaRepository = new PostgresAreaCriteriaRepository(pgPool);
   const areaMediaRepository = new PostgresAreaMediaRepository(pgPool);
+  const treePlantingRepository = new PostgresTreePlantingRepository(pgPool);
   const compensationStore = new PostgresCompensationAtomicStore(pgPool);
   const compensationHistoryRepository = new PostgresCompensationHistoryRepository(pgPool);
   const compensationCertificateRepository = new PostgresCompensationCertificateRepository(pgPool);
@@ -118,6 +120,7 @@ export function buildAppRuntime() {
     areaCriteriaRepository,
     areaMediaRepository,
     areaMediaStorage,
+    treePlantingRepository,
     compensationStore,
     compensationHistoryRepository,
     compensationCertificateRepository,

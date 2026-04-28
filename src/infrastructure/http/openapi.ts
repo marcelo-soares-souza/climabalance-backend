@@ -687,6 +687,36 @@ const routes: ApiRouteDoc[] = [
 
   {
     method: 'get',
+    path: '/api/v1/areas/:id/planted-trees',
+    summary: 'List planted trees',
+    description: 'Returns all planted tree points for an area.',
+    tags: ['Area Planted Trees'],
+    successStatus: '200',
+    successResponse: 'OkList',
+  },
+  {
+    method: 'get',
+    path: '/api/v1/areas/:id/pending-tree-count',
+    summary: 'Get pending tree planting count',
+    description: 'Returns the count of trees pending planting for an area.',
+    tags: ['Area Planted Trees'],
+    secured: true,
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+  {
+    method: 'post',
+    path: '/api/v1/areas/:id/planted-trees',
+    summary: 'Save planted trees',
+    description: 'Saves a batch of planted tree points for an area.',
+    tags: ['Area Planted Trees'],
+    secured: true,
+    successStatus: '201',
+    successResponse: 'OkData',
+  },
+
+  {
+    method: 'get',
     path: '/api/v1/updates/version',
     summary: 'Get build version',
     description: 'Returns backend build version and timestamp.',

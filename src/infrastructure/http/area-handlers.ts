@@ -3,11 +3,13 @@ import type { AreaRepository } from '../../domain/areas/repositories/area-reposi
 import type { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
 import type { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
+import type { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { UnitOfWork } from '../persistence/unit-of-work';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
+import { z } from 'zod';
 import { parseJson } from '../../shared/http/request';
 import { jsonResponse, contentDispositionHeader } from '../../shared/http/response';
 import { handleError } from './error-mapper';
@@ -33,6 +35,9 @@ import { activateArea } from '../../application/areas/activate-area';
 import { suspendArea } from '../../application/areas/suspend-area';
 import { getAreasForMap } from '../../application/areas/get-areas-for-map';
 import { getAreaCapacity } from '../../application/areas/get-area-capacity';
+import { getPlantedTrees } from '../../application/areas/get-planted-trees';
+import { getPendingTreeCount } from '../../application/areas/get-pending-tree-count';
+import { savePlantedTrees } from '../../application/areas/save-planted-trees';
 import { uploadAreaMedia } from '../../application/areas/upload-area-media';
 import { listAreaMedia } from '../../application/areas/list-area-media';
 import { deleteAreaMedia } from '../../application/areas/delete-area-media';
@@ -49,6 +54,7 @@ export interface AreaHandlersDeps {
   areaCriteriaRepository: AreaCriteriaRepository;
   areaMediaRepository: AreaMediaRepository;
   areaMediaStorage: AreaMediaStorage;
+  treePlantingRepository: TreePlantingRepository;
   auditLog: Pick<AuditLogRepository, 'log'>;
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
@@ -411,6 +417,88 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         );
 
         return jsonResponse(200, { data: result }, logContext);
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * GET /api/v1/areas/:id/planted-trees
+     * List planted tree points for an area (public)
+     */
+    async getPlantedTrees(ctx: HttpContext, id: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const result = await getPlantedTrees(
+          { treePlantingRepository: deps.treePlantingRepository },
+          id,
+        );
+        return jsonResponse(200, { data: result }, logContext);
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * GET /api/v1/areas/:id/pending-tree-count
+     * Get pending tree planting count for the area owner
+     */
+    async getPendingTreeCount(ctx: HttpContext, id: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        requireAuth(ctx);
+        const result = await getPendingTreeCount(
+          { treePlantingRepository: deps.treePlantingRepository },
+          id,
+        );
+        return jsonResponse(200, { data: result }, logContext);
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * POST /api/v1/areas/:id/planted-trees
+     * Save batch of planted tree points (area owner only)
+     */
+    async savePlantedTrees(ctx: HttpContext, id: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const auth = requireAuth(ctx);
+        const body = await parseJson(ctx.request, ctx);
+        const { points } = parseWithSchema(
+          z.object({
+            points: z
+              .array(
+                z.object({
+                  latitude: z.number().min(-90).max(90),
+                  longitude: z.number().min(-180).max(180),
+                }),
+              )
+              .min(1)
+              .max(10000),
+          }),
+          body,
+        );
+
+        const area = await deps.areaRepository.findById(id);
+        if (!area) {
+          return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+        }
+        if (area.ownerUserId !== auth.userId && !auth.roles.includes('administrator')) {
+          return jsonResponse(403, { message_key: 'auth.forbidden' }, logContext);
+        }
+
+        await savePlantedTrees(
+          {
+            treePlantingRepository: deps.treePlantingRepository,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+          },
+          { areaId: id, plantedByUserId: auth.userId, points },
+        );
+
+        return jsonResponse(201, { message_key: 'area.trees_planted' }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
