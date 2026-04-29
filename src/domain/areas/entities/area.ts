@@ -11,6 +11,7 @@ export interface AreaProps {
   description?: string;
   location: Location;
   biome?: Biome;
+  countryCode?: string;
   state?: string;
   city?: string;
   status: AreaStatus;
@@ -38,6 +39,7 @@ export class Area {
   description?: string;
   location: Location;
   biome?: Biome;
+  countryCode?: string;
   state?: string;
   city?: string;
   status: AreaStatus;
@@ -60,6 +62,7 @@ export class Area {
     this.description = props.description;
     this.location = props.location;
     this.biome = props.biome;
+    this.countryCode = props.countryCode;
     this.state = props.state;
     this.city = props.city;
     this.status = props.status;
@@ -227,6 +230,7 @@ export class Area {
       description?: string;
       location?: Location;
       biome?: Biome;
+      countryCode?: string;
       state?: string;
       city?: string;
       totalCapacityTCO2e?: number;
@@ -257,6 +261,10 @@ export class Area {
 
     if (updates.biome !== undefined) {
       this.biome = updates.biome;
+    }
+
+    if (updates.countryCode !== undefined) {
+      this.countryCode = updates.countryCode;
     }
 
     if (updates.state !== undefined) {

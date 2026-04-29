@@ -2,6 +2,7 @@ import { AreaRepository } from '../../domain/areas/repositories/area-repository'
 import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
 import { Biome } from '../../domain/areas/value-objects/biome';
+import { AreaStatus } from '../../domain/areas/value-objects/area-status';
 
 export interface AreaMapItem {
   id: string;
@@ -9,6 +10,7 @@ export interface AreaMapItem {
   latitude: number;
   longitude: number;
   biome?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   description?: string;
@@ -34,12 +36,16 @@ export interface GetAreasForMapDeps {
 
 export async function getAreasForMap(
   deps: GetAreasForMapDeps,
-  filters?: { biome?: string }
+  filters?: { biome?: string; status?: string }
 ): Promise<AreaMapItem[]> {
-  const repoFilters: any = { onlyActive: true };
+  const repoFilters: any = {};
+
+  if (filters?.status) {
+    repoFilters.status = AreaStatus.fromString(filters.status);
+  }
 
   if (filters?.biome) {
-    repoFilters.biome = Biome.fromString(filters.biome);
+    repoFilters.biome = new Biome(filters.biome);
   }
 
   const areas = await deps.areaRepository.findAll(repoFilters);
@@ -74,6 +80,7 @@ export async function getAreasForMap(
     latitude: area.location.latitude,
     longitude: area.location.longitude,
     biome: area.biome?.toString(),
+    countryCode: area.countryCode,
     state: area.state,
     city: area.city,
     description: area.description,

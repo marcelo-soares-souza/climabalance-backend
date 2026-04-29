@@ -12,6 +12,7 @@ export interface UpdateAreaRequest {
   latitude?: number;
   longitude?: number;
   biome?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   totalCapacityTCO2e?: number;
@@ -44,6 +45,7 @@ export async function updateArea(
 
   if (request.name !== undefined) updates.name = request.name;
   if (request.description !== undefined) updates.description = request.description;
+  if (request.countryCode !== undefined) updates.countryCode = request.countryCode;
   if (request.state !== undefined) updates.state = request.state;
   if (request.city !== undefined) updates.city = request.city;
   if (request.totalCapacityTCO2e !== undefined)
@@ -59,7 +61,7 @@ export async function updateArea(
   }
 
   if (request.biome !== undefined) {
-    updates.biome = Biome.fromString(request.biome);
+    updates.biome = new Biome(request.biome);
   }
 
   area.update(updates, { forceEdit: isAdmin });

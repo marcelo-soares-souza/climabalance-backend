@@ -8,6 +8,7 @@ import { createUpdateHandlers } from './update-handlers';
 import { createCompensationHandlers } from './compensation-handlers';
 import { createCertificateHandlers } from './certificate-handlers';
 import { createPaymentHandlers } from './payment-handlers';
+import { createLocationHandlers } from './location-handlers';
 import { openApiJsonHandler, swaggerUiHandler } from './openapi';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
@@ -60,6 +61,7 @@ export function buildRouter(
   const compensationHandlers = createCompensationHandlers(deps);
   const certificateHandlers = createCertificateHandlers(deps);
   const paymentHandlers = createPaymentHandlers(deps);
+  const locationHandlers = createLocationHandlers();
 
   const addRoute = (
     method: string,
@@ -101,6 +103,10 @@ export function buildRouter(
   addRoute('PATCH', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
   addRoute('PUT', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
+
+  // Location routes
+  addRoute('GET', '/api/v1/locations/states', 'public', (ctx) => locationHandlers.listStates(ctx));
+  addRoute('GET', '/api/v1/locations/cities', 'public', (ctx) => locationHandlers.listCities(ctx));
 
   // Audit routes
   addRoute('GET', '/api/v1/audit-log', 'admin', withAuth(async (ctx) => auditHandlers.list(ctx), { roles: ['administrator'] }));

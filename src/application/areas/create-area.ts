@@ -12,6 +12,7 @@ export interface CreateAreaRequest {
   latitude: number;
   longitude: number;
   biome?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   totalCapacityTCO2e?: number;
@@ -51,7 +52,7 @@ export async function createArea(
   const location = new Location(request.latitude, request.longitude);
 
   // Parse biome if provided
-  const biome = request.biome ? Biome.fromString(request.biome) : undefined;
+  const biome = request.biome ? new Biome(request.biome) : undefined;
 
   // Create carbon capacity if provided
   const carbonCapacity =
@@ -68,6 +69,7 @@ export async function createArea(
     description: request.description,
     location,
     biome,
+    countryCode: request.countryCode,
     state: request.state,
     city: request.city,
     status: AreaStatus.DRAFT,

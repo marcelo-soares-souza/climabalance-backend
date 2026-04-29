@@ -50,7 +50,7 @@ function createArea(overrides: Partial<{
     name: overrides.name || 'Test Area',
     location: new Location(-15.7939, -47.8828),
     status: overrides.status || AreaStatus.ACTIVE,
-    biome: overrides.biome || Biome.fromString('cerrado'),
+    biome: overrides.biome || new Biome('cerrado'),
     carbonCapacity: new CarbonCapacity(100, 0),
     createdAt: new Date(),
     updatedAt: new Date(),

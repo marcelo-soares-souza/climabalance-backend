@@ -102,6 +102,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             latitude: validated.latitude,
             longitude: validated.longitude,
             biome: validated.biome,
+            countryCode: validated.countryCode,
             state: validated.state,
             city: validated.city,
             totalCapacityTCO2e: validated.totalCapacityTCO2e,

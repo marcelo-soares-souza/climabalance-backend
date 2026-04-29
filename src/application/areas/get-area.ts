@@ -12,6 +12,7 @@ export interface GetAreaResponse {
   latitude: number;
   longitude: number;
   biome?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   status: string;
@@ -79,6 +80,7 @@ export async function getArea(
     latitude: area.location.latitude,
     longitude: area.location.longitude,
     biome: area.biome?.toString(),
+    countryCode: area.countryCode,
     state: area.state,
     city: area.city,
     status: area.status.toString(),

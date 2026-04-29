@@ -20,6 +20,7 @@ export interface AreaListItem {
   latitude: number;
   longitude: number;
   biome?: string;
+  countryCode?: string;
   state?: string;
   city?: string;
   status: string;
@@ -58,7 +59,7 @@ export async function listAreas(
   }
 
   if (request.biome) {
-    filters.biome = Biome.fromString(request.biome);
+    filters.biome = new Biome(request.biome);
   }
 
   if (request.ownerUserId) {
@@ -77,6 +78,7 @@ export async function listAreas(
     latitude: area.location.latitude,
     longitude: area.location.longitude,
     biome: area.biome?.toString(),
+    countryCode: area.countryCode,
     state: area.state,
     city: area.city,
     status: area.status.toString(),

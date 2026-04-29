@@ -9,7 +9,9 @@ export const createAreaSchema = z.object({
   description: z.string().max(2000).optional(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  biome: z.enum(['cerrado', 'amazonia', 'mata_atlantica', 'caatinga', 'pampa', 'pantanal']).optional(),
+  countryCode: z.string().length(2).optional(),
+  country_code: z.string().length(2).optional(),
+  biome: z.string().max(100).optional(),
   state: z.string().max(50).optional(),
   city: z.string().max(100).optional(),
   totalCapacityTCO2e: z.number().positive().optional(),
@@ -25,6 +27,7 @@ export const createAreaSchema = z.object({
   description: data.description,
   latitude: data.latitude,
   longitude: data.longitude,
+  countryCode: data.countryCode ?? data.country_code,
   biome: data.biome,
   state: data.state,
   city: data.city,
@@ -45,8 +48,10 @@ export const updateAreaSchema = z.object({
   description: z.string().max(2000).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  countryCode: z.string().length(2).optional(),
+  country_code: z.string().length(2).optional(),
   status: z.enum(['draft', 'pending_audit', 'approved', 'active', 'rejected', 'suspended']).optional(),
-  biome: z.enum(['cerrado', 'amazonia', 'mata_atlantica', 'caatinga', 'pampa', 'pantanal']).optional(),
+  biome: z.string().max(100).optional(),
   state: z.string().max(50).optional(),
   city: z.string().max(100).optional(),
   totalCapacityTCO2e: z.number().positive().optional(),
@@ -63,6 +68,7 @@ export const updateAreaSchema = z.object({
   latitude: data.latitude,
   longitude: data.longitude,
   status: data.status,
+  countryCode: data.countryCode ?? data.country_code,
   biome: data.biome,
   state: data.state,
   city: data.city,
@@ -147,7 +153,7 @@ export type UploadAreaMediaRequest = z.infer<typeof uploadAreaMediaSchema>;
 export const listAreasQuerySchema = z.object({
   status: z.enum(['draft', 'pending_audit', 'approved', 'active', 'rejected', 'suspended']).optional(),
   ownerUserId: z.string().uuid().optional(),
-  biome: z.enum(['cerrado', 'amazonia', 'mata_atlantica', 'caatinga', 'pampa', 'pantanal']).optional(),
+  biome: z.string().max(100).optional(),
   onlyActive: z.string().transform((val) => val === 'true').optional(),
   limit: z.string().transform((val) => parseInt(val, 10)).optional(),
   offset: z.string().transform((val) => parseInt(val, 10)).optional(),
@@ -159,7 +165,8 @@ export type ListAreasQuery = z.infer<typeof listAreasQuerySchema>;
  * Schema for getting areas for map with optional filter
  */
 export const getMapAreasQuerySchema = z.object({
-  biome: z.enum(['cerrado', 'amazonia', 'mata_atlantica', 'caatinga', 'pampa', 'pantanal']).optional(),
+  biome: z.string().max(100).optional(),
+  status: z.enum(['draft', 'pending_audit', 'approved', 'active', 'rejected', 'suspended']).optional(),
 });
 
 export type GetMapAreasQuery = z.infer<typeof getMapAreasQuerySchema>;
