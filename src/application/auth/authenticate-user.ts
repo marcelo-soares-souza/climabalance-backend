@@ -17,6 +17,7 @@ export type AuthenticateInput = {
   email: string;
   password: string;
   fingerprint?: string;
+  userAgent?: string;
 };
 
 export type AuthenticateResult = {
@@ -80,7 +81,7 @@ export async function authenticateUser(
     expiresAt: refreshExpiresAt,
     createdAt: now,
     updatedAt: now,
-    fingerprint: input.fingerprint || null,
+    fingerprintHash: input.fingerprint ? await deps.hashService.sha256(input.fingerprint) : null,
   });
 
   return {
