@@ -106,7 +106,6 @@ describe('getAreasForMap', () => {
     expect(result.map((item) => item.id)).toEqual([
       'area-overcommitted',
       'area-without-capacity',
-      'area-suspended',
     ]);
     expect(result[0]?.availableTCO2e).toBe(-3);
     expect(result[0]?.tCO2ePerTreePerYear).toBe(0.025);

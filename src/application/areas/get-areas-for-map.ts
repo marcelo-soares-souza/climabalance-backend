@@ -38,7 +38,7 @@ export async function getAreasForMap(
   deps: GetAreasForMapDeps,
   filters?: { biome?: string; status?: string }
 ): Promise<AreaMapItem[]> {
-  const repoFilters: any = {};
+  const repoFilters: any = { onlyActive: true };
 
   if (filters?.status) {
     repoFilters.status = AreaStatus.fromString(filters.status);
