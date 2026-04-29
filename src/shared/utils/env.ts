@@ -106,10 +106,10 @@ export const env: Env = {
     return requiredEnv('JWT_SECRET');
   },
   get jwtIssuer() {
-    return process.env.JWT_ISSUER ?? 'centrobrasilnoclima';
+    return process.env.JWT_ISSUER ?? 'climabalance';
   },
   get jwtAudience() {
-    return process.env.JWT_AUDIENCE ?? 'centrobrasilnoclima-api';
+    return process.env.JWT_AUDIENCE ?? 'climabalance-api';
   },
   get jwtTtlSeconds() {
     return numberEnv('JWT_TTL_SECONDS', 900);

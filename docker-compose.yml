@@ -6,11 +6,11 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: centrobrasilnoclima
+      POSTGRES_DB: climabalance
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d centrobrasilnoclima"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d climabalance"]
       interval: 5s
       timeout: 5s
       retries: 10
