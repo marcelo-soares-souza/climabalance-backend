@@ -150,7 +150,7 @@ const routes: ApiRouteDoc[] = [
     description: 'Changes the authenticated user password by verifying old password.',
     tags: ['Users'],
     secured: true,
-    requestBodyRef: 'AuthPasswordResetRequest',
+    requestBodyRef: 'AuthChangePasswordRequest',
     successStatus: '200',
     successResponse: 'OkData',
   },
@@ -1087,6 +1087,7 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
       { name: 'Compensations' },
       { name: 'Certificates' },
       { name: 'Payments' },
+      { name: 'Locations' },
     ],
     components: {
       securitySchemes: {
@@ -1170,6 +1171,15 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
           properties: {
             email: { type: 'string', format: 'email' },
             locale: { type: 'string', enum: ['pt-BR', 'es', 'en', 'fr'] },
+          },
+        },
+        AuthChangePasswordRequest: {
+          type: 'object',
+          required: ['old_password', 'new_password', 'new_password_confirm'],
+          properties: {
+            old_password: { type: 'string', minLength: 1 },
+            new_password: { type: 'string', minLength: 8 },
+            new_password_confirm: { type: 'string', minLength: 8 },
           },
         },
         AuthPasswordResetConfirmRequest: {
