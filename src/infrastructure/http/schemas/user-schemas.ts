@@ -23,7 +23,7 @@ export const updateUserSchema = z.object({
 export const listUsersQuerySchema = z.object({
   status: userStatusSchema.optional(),
   search: optionalTrimmedString(200),
-  sort_by: z.enum(['email', 'status', 'created_at', 'last_login_at']).optional(),
+  sort_by: z.enum(['email', 'status', 'created_at', 'updated_at', 'last_login_at']).optional(),
   sort_order: z.enum(['asc', 'desc']).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),

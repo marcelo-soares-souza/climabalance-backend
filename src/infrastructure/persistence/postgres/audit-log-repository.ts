@@ -256,7 +256,7 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
        FROM audit_log al
        LEFT JOIN users u ON u.id = al.actor_user_id
        WHERE ${conditions.join(' AND ')}
-       ORDER BY al.created_at DESC
+       ORDER BY al.updated_at DESC, al.created_at DESC
        LIMIT $${index++} OFFSET $${index++}`,
       values
     );

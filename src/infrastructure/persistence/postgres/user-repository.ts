@@ -128,8 +128,8 @@ export class PostgresUserRepository implements UserRepository {
       values.push(`%${filters.search}%`);
     }
 
-    const allowedSortColumns = ['email', 'status', 'created_at', 'last_login_at'];
-    const sortBy = filters.sortBy && allowedSortColumns.includes(filters.sortBy) ? filters.sortBy : 'created_at';
+    const allowedSortColumns = ['email', 'status', 'created_at', 'updated_at', 'last_login_at'];
+    const sortBy = filters.sortBy && allowedSortColumns.includes(filters.sortBy) ? filters.sortBy : 'updated_at';
     const sortOrder = filters.sortOrder === 'asc' ? 'ASC' : 'DESC';
 
     const limit = filters.limit ?? 50;

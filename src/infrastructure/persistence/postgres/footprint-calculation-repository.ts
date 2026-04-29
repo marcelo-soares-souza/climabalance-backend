@@ -117,7 +117,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
       LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
       WHERE ${conditions.join(' AND ')}
-      ORDER BY fc.created_at DESC
+      ORDER BY fc.updated_at DESC, fc.created_at DESC
       LIMIT $${paramIndex}
       OFFSET $${paramIndex + 1}
     `;
@@ -166,7 +166,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
       LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
       WHERE ${conditions.join(' AND ')}
-      ORDER BY fc.created_at DESC
+      ORDER BY fc.updated_at DESC, fc.created_at DESC
       LIMIT $${paramIndex}
       OFFSET $${paramIndex + 1}
     `;

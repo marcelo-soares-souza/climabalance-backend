@@ -65,7 +65,7 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT * FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC',
+      'SELECT * FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC',
       [ownerUserId]
     );
 
@@ -98,7 +98,7 @@ export class PostgresAreaRepository implements AreaRepository {
       query += ` AND status = 'active'`;
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY updated_at DESC, created_at DESC';
 
     if (filters?.limit) {
       query += ` LIMIT $${paramIndex++}`;
@@ -135,7 +135,7 @@ export class PostgresAreaRepository implements AreaRepository {
       params.push(filters.biome.toString());
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY updated_at DESC, created_at DESC';
 
     const result = await db.query(query, params);
 
@@ -151,7 +151,7 @@ export class PostgresAreaRepository implements AreaRepository {
          AND latitude BETWEEN $1 AND $2
          AND longitude BETWEEN $3 AND $4
          AND status = 'active'
-       ORDER BY created_at DESC`,
+       ORDER BY updated_at DESC, created_at DESC`,
       [bounds.minLat, bounds.maxLat, bounds.minLng, bounds.maxLng]
     );
 

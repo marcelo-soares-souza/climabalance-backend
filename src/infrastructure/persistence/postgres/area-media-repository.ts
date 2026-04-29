@@ -72,7 +72,7 @@ export class PostgresAreaMediaRepository implements AreaMediaRepository {
 
   async listByAreaId(areaId: string): Promise<AreaMedia[]> {
     const result = await this.pool.query(
-      `SELECT * FROM area_media WHERE area_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`,
+      `SELECT * FROM area_media WHERE area_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC`,
       [areaId]
     );
     return result.rows.map((row) => mapRow(row as Record<string, unknown>));
@@ -82,7 +82,7 @@ export class PostgresAreaMediaRepository implements AreaMediaRepository {
     if (areaIds.length === 0) return [];
     const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(',');
     const result = await this.pool.query(
-      `SELECT * FROM area_media WHERE area_id IN (${placeholders}) AND deleted_at IS NULL ORDER BY created_at DESC`,
+      `SELECT * FROM area_media WHERE area_id IN (${placeholders}) AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC`,
       areaIds
     );
     return result.rows.map((row) => mapRow(row as Record<string, unknown>));

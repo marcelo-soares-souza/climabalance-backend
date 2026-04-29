@@ -98,7 +98,7 @@ export class PostgresCompensationHistoryRepository
       FROM compensations c
       LEFT JOIN areas a ON a.id = c.area_id
       WHERE ${where.join(' AND ')}
-      ORDER BY c.created_at DESC
+      ORDER BY c.updated_at DESC, c.created_at DESC
       LIMIT $${limitParam}
       OFFSET $${offsetParam}`,
       params
