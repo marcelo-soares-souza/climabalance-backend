@@ -23,7 +23,7 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
 
   async findByAreaId(areaId: string): Promise<TreePlanting[]> {
     const result = await this.pool.query(
-      `SELECT * FROM tree_plantings WHERE area_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC`,
+      `SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM tree_plantings WHERE area_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC`,
       [areaId],
     );
     return result.rows.map((row) => mapRow(row as Record<string, unknown>));
@@ -87,7 +87,7 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
     const values = records
       .map((_, i) => {
         const base = i * 7;
-        return `($${base + 1},$${base + 2},$${base + 3},$${base + 4},$${base + 5},$${base + 6},$${base + 7})`;
+        return `($${base + 1},$${base + 2},$${base + 3},ST_SetSRID(ST_MakePoint($${base + 5},$${base + 4}), 4326),$${base + 6},$${base + 7})`;
       })
       .join(',');
 
@@ -102,7 +102,7 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
     ]);
 
     await this.pool.query(
-      `INSERT INTO tree_plantings (id, area_id, planted_by_user_id, latitude, longitude, created_at, updated_at) VALUES ${values}`,
+      `INSERT INTO tree_plantings (id, area_id, planted_by_user_id, location, created_at, updated_at) VALUES ${values}`,
       params,
     );
   }

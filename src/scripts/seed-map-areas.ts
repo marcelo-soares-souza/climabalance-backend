@@ -177,8 +177,9 @@ async function upsertArea(
 
     addSet(ownerColumn, ownerUserId);
     addSet('description', area.description);
-    addSet('latitude', area.latitude);
-    addSet('longitude', area.longitude);
+    values.push(area.latitude);
+    values.push(area.longitude);
+    setClauses.push(`location = ST_SetSRID(ST_MakePoint($${values.length}, $${values.length - 1}), 4326)`);
     addSet('biome', area.biome);
     if (hasState) addSet('state', area.state);
     if (hasCity) addSet('city', area.city);
@@ -205,8 +206,7 @@ async function upsertArea(
     ownerColumn,
     nameColumn,
     'description',
-    'latitude',
-    'longitude',
+    'location',
     'biome',
   ];
   if (hasState) insertColumns.push('state');
@@ -236,7 +236,17 @@ async function upsertArea(
   if (hasTco2e) insertValues.push(area.tCO2ePerTreePerYear);
   insertValues.push(now, now);
 
-  const placeholders = insertValues.map((_, index) => `$${index + 1}`).join(', ');
+  const placeholders = [];
+  let paramIdx = 1;
+  for (const col of insertColumns) {
+    if (col === 'location') {
+      placeholders.push(`ST_SetSRID(ST_MakePoint($${paramIdx + 1}, $${paramIdx}), 4326)`);
+      paramIdx += 2;
+    } else {
+      placeholders.push(`$${paramIdx}`);
+      paramIdx += 1;
+    }
+  }
   await client.query(
     `INSERT INTO areas (${insertColumns.join(', ')}) VALUES (${placeholders})`,
     insertValues

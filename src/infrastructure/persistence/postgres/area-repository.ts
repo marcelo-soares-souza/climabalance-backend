@@ -15,12 +15,12 @@ export class PostgresAreaRepository implements AreaRepository {
 
     await db.query(
       `INSERT INTO areas (
-        id, owner_user_id, name, description, latitude, longitude,
+        id, owner_user_id, name, description, location,
         biome, country_code, state, city, status, audit_status, audit_notes,
         audited_by_user_id, audited_at, total_capacity_t_co2e,
         committed_t_co2e, t_co2e_per_tree_per_year, price_per_tree,
         default_horizon_years, created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+      ) VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($6, $5), 4326), $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
       [
         area.id,
         area.ownerUserId,
@@ -53,7 +53,7 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT * FROM areas WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE id = $1 AND deleted_at IS NULL',
       [id]
     );
 
@@ -66,7 +66,7 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT * FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC',
+      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC',
       [ownerUserId]
     );
 
@@ -76,7 +76,7 @@ export class PostgresAreaRepository implements AreaRepository {
   async findAll(filters?: AreaFilters, client?: PoolClient): Promise<Area[]> {
     const db = client || this.pool;
 
-    let query = 'SELECT * FROM areas WHERE deleted_at IS NULL';
+    let query = 'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE deleted_at IS NULL';
     const params: any[] = [];
     let paramIndex = 1;
 
@@ -120,7 +120,8 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     let query = `
-      SELECT * FROM areas
+      SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude
+      FROM areas
       WHERE deleted_at IS NULL
         AND status = 'active'
         AND (
@@ -147,13 +148,16 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      `SELECT * FROM areas
+      `SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude
+       FROM areas
        WHERE deleted_at IS NULL
-         AND latitude BETWEEN $1 AND $2
-         AND longitude BETWEEN $3 AND $4
          AND status = 'active'
+         AND ST_Within(
+           location,
+           ST_MakeEnvelope($1, $2, $3, $4, 4326)
+         )
        ORDER BY updated_at DESC, created_at DESC`,
-      [bounds.minLat, bounds.maxLat, bounds.minLng, bounds.maxLng]
+      [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat]
     );
 
     return result.rows.map((row) => this.mapRowToArea(row));
@@ -169,14 +173,18 @@ export class PostgresAreaRepository implements AreaRepository {
 
     const result = await db.query(
       `SELECT *,
-        (6371 * acos(
-          cos(radians($1)) * cos(radians(latitude)) *
-          cos(radians(longitude) - radians($2)) +
-          sin(radians($1)) * sin(radians(latitude))
-        )) AS distance_km
+        ST_X(location::geometry) AS longitude,
+        ST_Y(location::geometry) AS latitude,
+        ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)) / 1000 AS distance_km
        FROM areas
-       WHERE deleted_at IS NULL AND status = 'active'
-       ORDER BY distance_km
+       WHERE deleted_at IS NULL
+         AND status = 'active'
+         AND ST_DWithin(
+           location,
+           ST_SetSRID(ST_MakePoint($2, $1), 4326),
+           500000
+         )
+       ORDER BY location <-> ST_SetSRID(ST_MakePoint($2, $1), 4326)
        LIMIT $3`,
       [latitude, longitude, limit]
     );
@@ -191,8 +199,7 @@ export class PostgresAreaRepository implements AreaRepository {
       `UPDATE areas SET
         name = $2,
         description = $3,
-        latitude = $4,
-        longitude = $5,
+        location = ST_SetSRID(ST_MakePoint($5, $4), 4326),
         biome = $6,
         country_code = $7,
         state = $8,

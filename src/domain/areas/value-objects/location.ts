@@ -63,6 +63,18 @@ export class Location {
     return degrees * (Math.PI / 180);
   }
 
+  toWkt(): string {
+    return `SRID=4326;POINT(${this.longitude} ${this.latitude})`;
+  }
+
+  static fromWkt(wkt: string): Location {
+    const match = wkt.replace('SRID=4326;', '').match(/POINT\(([^ ]+) ([^)]+)\)/);
+    if (!match) {
+      throw new Error(`Invalid WKT point: ${wkt}`);
+    }
+    return new Location(parseFloat(match[2]), parseFloat(match[1]));
+  }
+
   toJSON() {
     return {
       latitude: this.latitude,
