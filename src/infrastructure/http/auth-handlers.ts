@@ -38,6 +38,7 @@ import {
 import { refreshTokenSchema, revokeTokenSchema, changePasswordSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
 import { createHumanCheckChallenge, resolveHumanCheckLocale, verifyHumanCheckChallenge } from './human-check';
+import { checkLoginLockout, recordLoginAttempt } from './rate-limit';
 import {
   buildRefreshTokenCookie,
   buildRefreshTokenCookieCleared,
@@ -185,22 +186,43 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         }
 
         const validated = parseWithSchema(loginSchema, body);
+        const fingerprint = ctx.request.headers.get('x-device-fingerprint') || undefined;
+
+        const lockout = await checkLoginLockout(validated.email);
+        if (lockout.blocked) {
+          log.warn('auth.login.locked', { email: validated.email });
+          return errorResponse(429, 'auth.login.locked', { retry_after_seconds: lockout.retryAfterSeconds }, logContext);
+        }
 
         log.debug('auth.login.attempt', { email: validated.email });
-        const { userId, ...token } = await authenticateUser(
-          { email: validated.email, password: validated.password },
-          {
-            users: deps.users,
-            refreshTokens: deps.refreshTokens,
-            passwordHasher: deps.passwordHasher,
-            jwtService: deps.jwtService,
-            hashService: deps.hashService,
-            tokenGenerator: deps.tokenGenerator,
-            idGenerator: deps.idGenerator,
-            clock: deps.clock,
-            config: deps.config
-          }
-        );
+        let userId: string;
+        let token: any;
+        try {
+          const result = await authenticateUser(
+            {
+              email: validated.email,
+              password: validated.password,
+              fingerprint,
+            },
+            {
+              users: deps.users,
+              refreshTokens: deps.refreshTokens,
+              passwordHasher: deps.passwordHasher,
+              jwtService: deps.jwtService,
+              hashService: deps.hashService,
+              tokenGenerator: deps.tokenGenerator,
+              idGenerator: deps.idGenerator,
+              clock: deps.clock,
+              config: deps.config
+            }
+          );
+          userId = result.userId;
+          token = result;
+          await recordLoginAttempt(validated.email, true);
+        } catch (error) {
+          await recordLoginAttempt(validated.email, false);
+          throw error;
+        }
 
         await deps.auditLog.log({
           actorUserId: userId,
@@ -401,8 +423,11 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(401, 'auth.invalid_token', undefined, logContext, clearRefreshCookieHeaders());
         }
 
+        const fingerprint = ctx.request.headers.get('x-device-fingerprint') || undefined;
+        const userAgent = ctx.request.headers.get('user-agent') || undefined;
+
         const result = await refreshAccessToken(
-          { refreshToken },
+          { refreshToken, fingerprint, userAgent },
           {
             refreshTokens: deps.refreshTokens,
             users: deps.users,
@@ -411,7 +436,8 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             tokenGenerator: deps.tokenGenerator,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            config: deps.config
+            config: deps.config,
+            auditLog: deps.auditLog,
           }
         );
 
@@ -466,6 +492,57 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       } catch (error) {
         return handleError(error, log, logContext);
       }
-    }
+    },
+
+    listSessions: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const userId = ctx.auth!.userId;
+        const tokens = await deps.refreshTokens.findActiveByUserId(userId);
+        const data = tokens.map((t) => ({
+          id: t.id,
+          createdAt: t.createdAt.toISOString(),
+          expiresAt: t.expiresAt.toISOString(),
+          userAgent: t.userAgent || null,
+          hasFingerprint: !!t.fingerprintHash,
+        }));
+        return jsonResponse(200, { data }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    revokeSession: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const sessionId = ctx.params.id;
+        const userId = ctx.auth!.userId;
+        const tokens = await deps.refreshTokens.findActiveByUserId(userId);
+        const token = tokens.find((t) => t.id === sessionId);
+        if (!token) {
+          return errorResponse(404, 'auth.session_not_found', undefined, logContext);
+        }
+        await deps.refreshTokens.revoke(sessionId, deps.clock.now());
+        log.info('auth.session_revoked', { session_id: sessionId });
+        return jsonResponse(200, { message_key: 'auth.session_revoked' }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    revokeAllSessions: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const userId = ctx.auth!.userId;
+        await deps.refreshTokens.revokeAllByUserId(userId, deps.clock.now());
+        log.info('auth.all_sessions_revoked', { user_id: userId });
+        return jsonResponse(200, { message_key: 'auth.all_sessions_revoked' }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
   };
 }

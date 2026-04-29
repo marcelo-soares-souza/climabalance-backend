@@ -16,6 +16,8 @@ export type Env = {
   passwordResetTtlMinutes: number;
   refreshTokenTtlDays: number;
   refreshCookieName: string;
+  valkeyUrl: string;
+  jwtKeys: string;
   refreshCookieDomain?: string;
   refreshCookiePath: string;
   refreshCookieSameSite: 'lax' | 'strict' | 'none';
@@ -131,6 +133,12 @@ export const env: Env = {
   },
   get refreshCookieName() {
     return process.env.REFRESH_COOKIE_NAME ?? 'cb_refresh_token';
+  },
+  get valkeyUrl() {
+    return process.env.VALKEY_URL ?? 'redis://localhost:6379';
+  },
+  get jwtKeys() {
+    return process.env.JWT_KEYS ?? '';
   },
   get refreshCookieDomain() {
     return optionalEnv('REFRESH_COOKIE_DOMAIN');

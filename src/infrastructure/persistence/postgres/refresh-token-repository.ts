@@ -8,6 +8,8 @@ function mapRow(row: Record<string, unknown>): RefreshToken {
     tokenHash: row.token_hash as string,
     expiresAt: new Date(row.expires_at as string),
     revokedAt: row.revoked_at ? new Date(row.revoked_at as string) : null,
+    fingerprintHash: (row.fingerprint_hash as string) ?? null,
+    userAgent: (row.user_agent as string) ?? null,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
     deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
@@ -20,14 +22,17 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
   async create(input: RefreshToken): Promise<RefreshToken> {
     const result = await this.db.query(
       `INSERT INTO refresh_tokens (
-        id, user_id, token_hash, expires_at, revoked_at, created_at, updated_at, deleted_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        id, user_id, token_hash, expires_at, revoked_at,
+        fingerprint_hash, user_agent, created_at, updated_at, deleted_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [
         input.id,
         input.userId,
         input.tokenHash,
         input.expiresAt,
         input.revokedAt ?? null,
+        input.fingerprintHash ?? null,
+        input.userAgent ?? null,
         input.createdAt,
         input.updatedAt,
         input.deletedAt ?? null,
@@ -43,6 +48,17 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
     );
     if (result.rowCount === 0) return null;
     return mapRow(result.rows[0]);
+  }
+
+  async findActiveByUserId(userId: string): Promise<RefreshToken[]> {
+    const result = await this.db.query(
+      `SELECT * FROM refresh_tokens
+       WHERE user_id = $1 AND revoked_at IS NULL
+         AND expires_at > NOW() AND deleted_at IS NULL
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+    return result.rows.map(mapRow);
   }
 
   async revoke(id: string, revokedAt: Date): Promise<void> {

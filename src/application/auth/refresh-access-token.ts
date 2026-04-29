@@ -6,10 +6,13 @@ import type { TokenGenerator } from '../../domain/services/token-generator';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { InvalidTokenError, TokenExpiredError } from '../../domain/errors';
 
 export type RefreshAccessTokenInput = {
   refreshToken: string;
+  fingerprint?: string;
+  userAgent?: string;
 };
 
 export type RefreshAccessTokenResult = {
@@ -31,6 +34,7 @@ export async function refreshAccessToken(
     idGenerator: IdGenerator;
     clock: Clock;
     config: Config;
+    auditLog?: Pick<AuditLogRepository, 'log'>;
   }
 ): Promise<RefreshAccessTokenResult> {
   const tokenHash = await deps.hashService.sha256(input.refreshToken);
@@ -40,8 +44,24 @@ export async function refreshAccessToken(
     throw new InvalidTokenError('refresh token not found');
   }
 
+  // Reuse detection: if already revoked, revoke ALL tokens for this user
   if (stored.revokedAt) {
-    throw new InvalidTokenError('refresh token revoked');
+    const now = deps.clock.now();
+    await deps.refreshTokens.revokeAllByUserId(stored.userId, now);
+    if (deps.auditLog) {
+      await deps.auditLog.log({
+        actorUserId: stored.userId,
+        action: 'auth.refresh_reuse_detected',
+        entityType: 'refresh_token',
+        entityId: stored.id,
+        ctx: {} as any,
+        success: false,
+        httpStatus: 401,
+        severity: 'critical',
+        category: ['security'],
+      });
+    }
+    throw new InvalidTokenError('refresh token reuse detected');
   }
 
   const now = deps.clock.now();
@@ -49,14 +69,37 @@ export async function refreshAccessToken(
     throw new TokenExpiredError(stored.expiresAt);
   }
 
-  // Revoke the old refresh token (rotation)
+  // Fingerprint verification
+  if (stored.fingerprintHash && input.fingerprint) {
+    const inputFingerprintHash = await deps.hashService.sha256(input.fingerprint);
+    if (stored.fingerprintHash !== inputFingerprintHash) {
+      await deps.refreshTokens.revokeAllByUserId(stored.userId, now);
+      if (deps.auditLog) {
+        await deps.auditLog.log({
+          actorUserId: stored.userId,
+          action: 'auth.fingerprint_mismatch',
+          entityType: 'refresh_token',
+          entityId: stored.id,
+          ctx: {} as any,
+          success: false,
+          httpStatus: 401,
+          severity: 'critical',
+          category: ['security'],
+        });
+      }
+      throw new InvalidTokenError('fingerprint mismatch');
+    }
+  }
+
+  // Revoke old token (rotation)
   await deps.refreshTokens.revoke(stored.id, now);
 
   // Get user roles for new access token
   const roles = await deps.users.getRoles(stored.userId);
 
-  // Issue new access token
+  // Issue new access token with jti
   const nowSec = Math.floor(now.getTime() / 1000);
+  const jti = deps.idGenerator.generate();
   const accessPayload = {
     sub: stored.userId,
     roles,
@@ -64,6 +107,7 @@ export async function refreshAccessToken(
     aud: deps.config.jwtAudience,
     iat: nowSec,
     exp: nowSec + deps.config.jwtTtlSeconds,
+    jti,
   };
   const accessToken = await deps.jwtService.sign(accessPayload, deps.config.jwtSecret);
 
@@ -80,6 +124,8 @@ export async function refreshAccessToken(
     expiresAt: refreshExpiresAt,
     createdAt: now,
     updatedAt: now,
+    fingerprintHash: stored.fingerprintHash,
+    userAgent: input.userAgent || stored.userAgent,
   });
 
   return {

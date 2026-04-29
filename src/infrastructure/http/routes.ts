@@ -91,6 +91,9 @@ export function buildRouter(
   addRoute('POST', '/api/v1/users/change-password', 'protected', withAuth((ctx) => authHandlers.changePassword(ctx)));
   addRoute('POST', '/api/v1/auth/refresh', 'auth', (ctx) => authHandlers.refresh(ctx));
   addRoute('POST', '/api/v1/auth/revoke', 'auth', (ctx) => authHandlers.revoke(ctx));
+  addRoute('GET', '/api/v1/auth/sessions', 'protected', withAuth((ctx) => authHandlers.listSessions(ctx)));
+  addRoute('DELETE', '/api/v1/auth/sessions/:id', 'protected', withAuth((ctx) => authHandlers.revokeSession(ctx)));
+  addRoute('DELETE', '/api/v1/auth/sessions', 'protected', withAuth((ctx) => authHandlers.revokeAllSessions(ctx)));
 
   // User routes
   addRoute('GET', '/api/v1/users', 'admin', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));

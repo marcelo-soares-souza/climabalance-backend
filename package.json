@@ -16,6 +16,7 @@
     "test": "bun test tests src/**/*.test.ts"
   },
   "dependencies": {
+    "ioredis": "^5.10.1",
     "nodemailer": "^7.0.13",
     "pg": "^8.20.0",
     "zod": "^4.3.6"

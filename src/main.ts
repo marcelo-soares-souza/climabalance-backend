@@ -1,5 +1,6 @@
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { buildAppRuntime } from './infrastructure/bootstrap/build-app-runtime';
+import { connectValkey } from './infrastructure/cache/valkey-client';
 import { logger } from './shared/utils/logger';
 
 // Verify database connectivity on startup
@@ -33,6 +34,7 @@ logger.debug('startup.runtime.initialized');
 async function main() {
   try {
     await verifyDatabaseConnection();
+    await connectValkey();
 
     logger.info('startup.server.starting', { port: runtime.port, url: runtime.url });
     Bun.serve({

@@ -16,6 +16,7 @@ import {
 export type AuthenticateInput = {
   email: string;
   password: string;
+  fingerprint?: string;
 };
 
 export type AuthenticateResult = {
@@ -42,38 +43,31 @@ export async function authenticateUser(
   }
 ): Promise<AuthenticateResult> {
   const user = await deps.users.findByEmail(input.email);
-  if (!user || user.deletedAt) {
-    throw new InvalidCredentialsError();
-  }
-  if (!user.emailConfirmedAt) {
-    throw new EmailNotConfirmedError(input.email);
-  }
-  if (user.status !== 'active') {
-    throw new UserNotActiveError(user.id);
-  }
+  if (!user || user.deletedAt) throw new InvalidCredentialsError();
+  if (!user.emailConfirmedAt) throw new EmailNotConfirmedError(input.email);
+  if (user.status !== 'active') throw new UserNotActiveError(user.id);
 
   const valid = await deps.passwordHasher.verify(input.password, user.passwordHash);
-  if (!valid) {
-    throw new InvalidCredentialsError();
-  }
+  if (!valid) throw new InvalidCredentialsError();
 
   await deps.users.updateLastLogin(user.id, deps.clock.now());
 
   const roles = await deps.users.getRoles(user.id);
   const now = deps.clock.now();
   const nowSec = Math.floor(now.getTime() / 1000);
+  const jti = deps.idGenerator.generate();
   const payload = {
     sub: user.id,
     roles,
     iss: deps.config.jwtIssuer,
     aud: deps.config.jwtAudience,
     iat: nowSec,
-    exp: nowSec + deps.config.jwtTtlSeconds
+    exp: nowSec + deps.config.jwtTtlSeconds,
+    jti,
   };
 
   const accessToken = await deps.jwtService.sign(payload, deps.config.jwtSecret);
 
-  // Issue refresh token
   const rawRefreshToken = deps.tokenGenerator.generate();
   const refreshTokenHash = await deps.hashService.sha256(rawRefreshToken);
   const refreshTtlSeconds = deps.config.refreshTokenTtlDays * 86400;
@@ -86,6 +80,7 @@ export async function authenticateUser(
     expiresAt: refreshExpiresAt,
     createdAt: now,
     updatedAt: now,
+    fingerprint: input.fingerprint || null,
   });
 
   return {
