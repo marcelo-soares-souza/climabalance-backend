@@ -45,6 +45,15 @@ export const refreshTokenSchema = z.object({
   refresh_token: z.string().min(1, { message: 'required' }).optional()
 });
 
+export const changePasswordSchema = z.object({
+  old_password: z.string().min(1, { message: 'required' }).max(200, { message: 'too_long' }),
+  new_password: passwordSchema,
+  new_password_confirm: z.string().min(1, { message: 'required' })
+}).refine(
+  (data) => data.new_password === data.new_password_confirm,
+  { message: 'mismatch', path: ['new_password_confirm'] }
+);
+
 export const revokeTokenSchema = z.object({
   refresh_token: z.string().min(1, { message: 'required' }).optional()
 });

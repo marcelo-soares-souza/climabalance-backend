@@ -24,6 +24,7 @@ import { registerUser } from '../../application/auth/register-user';
 import { resendConfirmationEmail } from '../../application/auth/resend-confirmation-email';
 import { requestPasswordReset } from '../../application/auth/request-password-reset';
 import { resetPassword } from '../../application/auth/reset-password';
+import { changePassword } from '../../application/auth/change-password';
 import { getLogger } from '../../shared/utils/logger';
 import {
   registerSchema,
@@ -34,7 +35,7 @@ import {
   resetPasswordSchema,
   parseWithSchema
 } from './schemas';
-import { refreshTokenSchema, revokeTokenSchema } from './schemas/auth-schemas';
+import { refreshTokenSchema, revokeTokenSchema, changePasswordSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
 import { createHumanCheckChallenge, resolveHumanCheckLocale, verifyHumanCheckChallenge } from './human-check';
 import {
@@ -344,6 +345,40 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
 
         log.info('auth.password_reset.success');
         return jsonResponse(200, { message_key: 'auth.password_reset_success' }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    changePassword: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const body = await parseJson(ctx.request, ctx);
+        if (typeof body !== 'object' || body === null) {
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        }
+
+        if (!ctx.auth?.userId) {
+          return errorResponse(401, 'auth.unauthorized', undefined, logContext);
+        }
+
+        const validated = parseWithSchema(changePasswordSchema, body);
+
+        await changePassword(
+          {
+            userId: ctx.auth.userId,
+            oldPassword: validated.old_password,
+            newPassword: validated.new_password,
+          },
+          {
+            users: deps.users,
+            passwordHasher: deps.passwordHasher,
+          }
+        );
+
+        log.info('auth.password_changed');
+        return jsonResponse(200, { message_key: 'auth.password_changed' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
       }

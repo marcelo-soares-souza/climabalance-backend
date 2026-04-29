@@ -86,6 +86,7 @@ export function buildRouter(
   addRoute('POST', '/api/v1/auth/confirm-email/resend', 'auth', (ctx) => authHandlers.resendConfirmationEmail(ctx));
   addRoute('POST', '/api/v1/auth/password-reset/request', 'auth', (ctx) => authHandlers.requestPasswordReset(ctx));
   addRoute('POST', '/api/v1/auth/password-reset/confirm', 'auth', (ctx) => authHandlers.resetPassword(ctx));
+  addRoute('POST', '/api/v1/users/change-password', 'protected', withAuth((ctx) => authHandlers.changePassword(ctx)));
   addRoute('POST', '/api/v1/auth/refresh', 'auth', (ctx) => authHandlers.refresh(ctx));
   addRoute('POST', '/api/v1/auth/revoke', 'auth', (ctx) => authHandlers.revoke(ctx));
 
