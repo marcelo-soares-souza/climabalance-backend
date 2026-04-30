@@ -146,7 +146,8 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             email: validated.email,
             password: validated.password,
             locale: validated.locale,
-            roleKey: validated.role_key
+            roleKey: validated.role_key,
+            displayName: validated.name
           },
           {
             users: deps.users,

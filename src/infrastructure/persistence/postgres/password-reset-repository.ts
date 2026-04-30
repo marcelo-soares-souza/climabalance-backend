@@ -49,7 +49,7 @@ export class PostgresPasswordResetRepository implements PasswordResetRepository 
 
   async markUsed(id: string, usedAt: Date): Promise<PasswordResetToken | null> {
     const result = await this.db.query(
-      `UPDATE password_reset_tokens SET used_at = $1, updated_at = $1 WHERE id = $2 RETURNING *`,
+      `UPDATE password_reset_tokens SET used_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL RETURNING *`,
       [usedAt, id]
     );
     if (result.rowCount === 0) return null;

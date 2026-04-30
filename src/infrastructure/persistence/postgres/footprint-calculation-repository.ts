@@ -54,8 +54,8 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
            data_quality = $6,
            status = $7,
            finalized_at = $8,
-           updated_at = $9
-       WHERE id = $1`,
+            updated_at = $9
+        WHERE id = $1 AND deleted_at IS NULL`,
       [
         calculation.id,
         calculation.period_start,

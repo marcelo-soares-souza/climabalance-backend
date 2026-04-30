@@ -33,6 +33,7 @@ class MemoryUserRepository implements UserRepository {
   async findByEmail(email: string): Promise<User | null> { return this.users.find((u) => u.email === email) ?? null; }
   async list(_f: UserFilters): Promise<User[]> { return this.users; }
   async softDelete(_id: string): Promise<User | null> { return null; }
+  async cascadeSoftDelete(_userId: string): Promise<void> {}
   async upsertProfile(_userId: string, _profile: Partial<UserProfile>): Promise<UserProfile> { return {} as any; }
   async getProfile(_userId: string): Promise<UserProfile | null> { return null; }
   async getRoles(userId: string): Promise<string[]> { return this.roles.get(userId) ?? []; }

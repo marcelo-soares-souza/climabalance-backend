@@ -1,3 +1,4 @@
+import type { Pool } from 'pg';
 import type { User, UserProfile } from '../../../domain/user/user';
 import type { CreateUserInput, UpdateUserInput, UserFilters, UserRepository } from '../../../domain/user/user-repository';
 import { uuidv7 } from '../../../shared/utils/id';
@@ -95,7 +96,7 @@ export class PostgresUserRepository implements UserRepository {
     values.push(input.id);
 
     const result = await this.db.query(
-      `UPDATE users SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`,
+      `UPDATE users SET ${fields.join(', ')} WHERE id = $${index} AND deleted_at IS NULL RETURNING *`,
       values
     );
     if (result.rowCount === 0) return null;
@@ -109,7 +110,10 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const result = await this.db.query(`SELECT * FROM users WHERE email = $1`, [email]);
+    const result = await this.db.query(
+      `SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
+      [email]
+    );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
@@ -151,6 +155,65 @@ export class PostgresUserRepository implements UserRepository {
     );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
+  }
+
+  async cascadeSoftDelete(userId: string): Promise<void> {
+    const now = new Date();
+    const client = this.db instanceof Pool ? await this.db.connect() : this.db;
+
+    try {
+      if (this.db instanceof Pool) await client.query('BEGIN');
+
+      await client.query(`UPDATE user_profiles SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE user_roles SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE email_confirmations SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE password_reset_tokens SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE refresh_tokens SET deleted_at = $1, updated_at = $1, revoked_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE footprint_calculations SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE area_media SET deleted_at = $1, updated_at = $1 WHERE uploaded_by_user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(`UPDATE tree_plantings SET deleted_at = $1, updated_at = $1 WHERE planted_by_user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+
+      await client.query(
+        `UPDATE compensations SET deleted_at = $1, updated_at = $1 WHERE supporter_user_id = $2 AND deleted_at IS NULL`,
+        [now, userId]
+      );
+
+      const areasResult = await client.query(
+        `SELECT id FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL`,
+        [userId]
+      );
+      const areaIds = areasResult.rows.map((r: Record<string, unknown>) => r.id as string);
+
+      if (areaIds.length > 0) {
+        await client.query(
+          `UPDATE areas SET deleted_at = $1, updated_at = $1 WHERE id = ANY($2::text[]) AND deleted_at IS NULL`,
+          [now, areaIds]
+        );
+        await client.query(
+          `UPDATE tree_plantings SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
+          [now, areaIds]
+        );
+        await client.query(
+          `UPDATE area_media SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
+          [now, areaIds]
+        );
+        await client.query(
+          `UPDATE area_criteria SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
+          [now, areaIds]
+        );
+        await client.query(
+          `UPDATE compensations SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
+          [now, areaIds]
+        );
+      }
+
+      if (this.db instanceof Pool) await client.query('COMMIT');
+    } catch (error) {
+      if (this.db instanceof Pool) await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      if (this.db instanceof Pool) client.release();
+    }
   }
 
   async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> {
@@ -217,7 +280,7 @@ export class PostgresUserRepository implements UserRepository {
     values.push(existing.id);
 
     const result = await this.db.query(
-      `UPDATE user_profiles SET ${fields.join(', ')} WHERE id = $${index} RETURNING *`,
+      `UPDATE user_profiles SET ${fields.join(', ')} WHERE id = $${index} AND deleted_at IS NULL RETURNING *`,
       values
     );
     return mapProfile(result.rows[0]);
@@ -267,7 +330,7 @@ export class PostgresUserRepository implements UserRepository {
 
   async updateLastLogin(userId: string, timestamp: Date): Promise<void> {
     await this.db.query(
-      `UPDATE users SET last_login_at = $1, updated_at = $1 WHERE id = $2`,
+      `UPDATE users SET last_login_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL`,
       [timestamp, userId]
     );
   }

@@ -122,6 +122,9 @@ class MemoryUserRepository implements UserRepository {
     return this.roles.get(userId) ?? [];
   }
 
+  async cascadeSoftDelete(_userId: string): Promise<void> {
+  }
+
   async assignRole(userId: string, roleKey: string): Promise<void> {
     const list = this.roles.get(userId) ?? [];
     list.push(roleKey);

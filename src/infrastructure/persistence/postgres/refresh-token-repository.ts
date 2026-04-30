@@ -63,7 +63,7 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
 
   async revoke(id: string, revokedAt: Date): Promise<void> {
     await this.db.query(
-      `UPDATE refresh_tokens SET revoked_at = $1, updated_at = $1 WHERE id = $2`,
+      `UPDATE refresh_tokens SET revoked_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL`,
       [revokedAt, id]
     );
   }

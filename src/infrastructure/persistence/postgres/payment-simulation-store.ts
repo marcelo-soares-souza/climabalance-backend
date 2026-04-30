@@ -155,7 +155,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
        SET status = $2,
            paid_at = $3,
            updated_at = $4
-       WHERE id = $1`,
+       WHERE id = $1 AND deleted_at IS NULL`,
       [input.paymentId, input.status, input.paidAt ?? null, input.updatedAt]
     );
   }
@@ -169,7 +169,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
       `UPDATE compensations
        SET status = $2,
            updated_at = $3
-       WHERE id = $1`,
+       WHERE id = $1 AND deleted_at IS NULL`,
       [input.compensationId, input.status, input.updatedAt]
     );
   }

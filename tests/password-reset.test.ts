@@ -78,6 +78,8 @@ class MemoryUserRepository implements UserRepository {
     return user;
   }
 
+  async cascadeSoftDelete(_userId: string): Promise<void> {}
+
   async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> {
     const existing = this.profiles.get(userId);
     const now = new Date();

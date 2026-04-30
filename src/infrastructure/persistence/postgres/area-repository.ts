@@ -216,7 +216,7 @@ export class PostgresAreaRepository implements AreaRepository {
         default_horizon_years = $19,
         updated_at = $20,
         deleted_at = $21
-       WHERE id = $1`,
+       WHERE id = $1 AND deleted_at IS NULL`,
       [
         area.id,
         area.name,

@@ -11,7 +11,7 @@ const optionalTrimmedString = (max: number) =>
       return trimmed === '' ? undefined : trimmed;
     },
     z.string().max(max, { message: 'too_long' }).optional()
-  );
+  ).optional();
 
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),

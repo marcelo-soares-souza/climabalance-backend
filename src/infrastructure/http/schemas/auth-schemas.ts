@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { emailSchema, passwordSchema, localeSchema, tokenSchema } from './common-schemas';
 
 export const registerSchema = z.object({
+  name: z.string().trim().min(1, { message: 'required' }).max(200, { message: 'too_long' }),
   email: emailSchema,
   password: passwordSchema,
   password_confirm: z.string().min(1, { message: 'required' }),

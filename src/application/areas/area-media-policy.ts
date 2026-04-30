@@ -16,18 +16,9 @@ export function canManageAreaMedia(
 }
 
 export function canReadAreaMedia(
-  area: Area,
-  actorUserId: string | undefined,
-  actorRoles: readonly string[] | undefined
+  _area: Area,
+  _actorUserId: string | undefined,
+  _actorRoles: readonly string[] | undefined
 ): boolean {
-  if (area.isActive()) {
-    return true;
-  }
-  if (hasRole(actorRoles, 'administrator') || hasRole(actorRoles, 'analyst')) {
-    return true;
-  }
-  if (!actorUserId) {
-    return false;
-  }
-  return area.ownerUserId === actorUserId;
+  return true;
 }

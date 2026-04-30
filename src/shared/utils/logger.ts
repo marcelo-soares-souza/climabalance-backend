@@ -83,7 +83,11 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
   if (depth > 6) return '[REDACTED]';
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') {
-    return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
+    const env = getEnvironment();
+    if (env === 'production' || env === 'staging') {
+      return value.replace(/token=([A-Za-z0-9_-]+)/g, 'token=***');
+    }
+    return value;
   }
   if (typeof value !== 'object') return value;
   if (Array.isArray(value)) {

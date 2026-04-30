@@ -49,7 +49,7 @@ export class PostgresEmailConfirmationRepository implements EmailConfirmationRep
 
   async markConfirmed(id: string, confirmedAt: Date): Promise<EmailConfirmation | null> {
     const result = await this.db.query(
-      `UPDATE email_confirmations SET confirmed_at = $1, updated_at = $1 WHERE id = $2 RETURNING *`,
+      `UPDATE email_confirmations SET confirmed_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL RETURNING *`,
       [confirmedAt, id]
     );
     if (result.rowCount === 0) return null;

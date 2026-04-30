@@ -15,6 +15,7 @@ export type RegisterUserInput = {
   password: string;
   locale?: string;
   roleKey?: string;
+  displayName?: string;
 };
 
 export type RegisterUserResult = {
@@ -61,6 +62,13 @@ export async function registerUser(
     });
 
     await usersRepo.assignRole(user.id, input.roleKey ?? 'individual');
+
+    if (input.displayName) {
+      await usersRepo.upsertProfile(user.id, {
+        id: deps.idGenerator.generate(),
+        displayName: input.displayName
+      });
+    }
 
     const rawToken = deps.tokenGenerator.generate();
     const tokenHash = await deps.hashService.sha256(rawToken);
