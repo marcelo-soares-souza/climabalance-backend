@@ -19,6 +19,8 @@ import { PostgresFootprintInputRepository } from '../persistence/postgres/footpr
 import { PostgresFootprintBreakdownRepository } from '../persistence/postgres/footprint-breakdown-repository';
 import { PostgresCompensationProjectionRepository } from '../persistence/postgres/compensation-projection-repository';
 import { PostgresAreaRepository } from '../persistence/postgres/area-repository';
+import { PostgresJobRepository } from '../persistence/postgres/job-repository';
+import { startJobWorker } from '../jobs/worker';
 import { PostgresAreaCriteriaRepository } from '../persistence/postgres/area-criteria-repository';
 import { PostgresAreaMediaRepository } from '../persistence/postgres/area-media-repository';
 import { PostgresTreePlantingRepository } from '../persistence/postgres/tree-planting-repository';
@@ -104,6 +106,13 @@ export function buildAppRuntime() {
   const compensationCertificateRepository = new PostgresCompensationCertificateRepository(pgPool);
   const paymentStore = new PostgresPaymentStore(pgPool);
   const unitOfWork = new PostgresUnitOfWork(pgPool);
+  const jobRepository = new PostgresJobRepository(pgPool);
+
+  startJobWorker(jobRepository, {
+    users: userRepository,
+    emailSender,
+    frontendUrl: env.frontendUrl,
+  });
 
   const router = buildRouter({
     users: userRepository,
@@ -137,6 +146,7 @@ export function buildAppRuntime() {
     idGenerator,
     clock,
     config,
+    jobQueue: jobRepository,
   });
 
   return {

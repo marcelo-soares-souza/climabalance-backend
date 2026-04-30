@@ -12,6 +12,7 @@ import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
+import type { JobQueue } from '../../domain/jobs/job-queue';
 import type { HttpContext } from '../../shared/http/router';
 import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
@@ -79,6 +80,7 @@ export type AuthHandlersDeps = {
   idGenerator: IdGenerator;
   clock: Clock;
   config: Config;
+  jobQueue: JobQueue;
 };
 
 export function createAuthHandlers(deps: AuthHandlersDeps) {
@@ -164,6 +166,12 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.register.created', { user_id: result.id, email: result.email });
+
+        await deps.jobQueue.enqueue('user.registered', {
+          email: result.email,
+          roleKey: validated.role_key ?? 'individual',
+        }).catch(() => {});
+
         return jsonResponse(
           201,
           {

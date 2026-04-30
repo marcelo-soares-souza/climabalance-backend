@@ -46,6 +46,7 @@ import { getAreaMediaFile } from '../../application/areas/get-area-media-file';
 import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
 import { CarbonStockService } from '../../domain/areas/services/carbon-stock.service';
 import { buildLogContext } from '../../shared/http/log-context';
+import type { JobQueue } from '../../domain/jobs/job-queue';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 import { requireAuth } from '../../shared/http/auth-context';
 
@@ -60,6 +61,7 @@ export interface AreaHandlersDeps {
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
   clock: Clock;
+  jobQueue: JobQueue;
 }
 
 export function createAreaHandlers(deps: AreaHandlersDeps) {
@@ -112,6 +114,13 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           }
         );
 
+        const owner = await deps.users.findById(auth.userId);
+        await deps.jobQueue.enqueue('area.created', {
+          areaId: result.id,
+          areaName: result.name,
+          producerEmail: owner?.email ?? '',
+        }).catch(() => {});
+
         return jsonResponse(
           201,
           {
@@ -127,7 +136,6 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
 
     /**
      * GET /api/v1/areas/:id
-     * Get a specific area with details
      */
     async get(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
@@ -254,6 +262,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const auditService = createAuditService(ctx);
       try {
         const auth = requireAuth(ctx);
+        const area = await deps.areaRepository.findById(id);
         await submitAreaForAudit(
           {
             auditService,
@@ -261,6 +270,14 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           id,
           auth.userId
         );
+
+        if (area) {
+          await deps.jobQueue.enqueue('area.audit_requested', {
+            areaId: id,
+            areaName: area.name,
+            producerEmail: auth.userId,
+          }).catch(() => {});
+        }
 
         return jsonResponse(
           200,
@@ -276,7 +293,6 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
 
     /**
      * POST /api/v1/areas/:id/approve
-     * Approve area with criteria (analyst only)
      */
     async approve(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
@@ -285,6 +301,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(approveAreaSchema, body);
+
+        const area = await deps.areaRepository.findById(id);
 
         await approveArea(
           {
@@ -297,6 +315,15 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             notes: validated.notes,
           }
         );
+
+        if (area) {
+          const owner = await deps.users.findById(area.ownerUserId);
+          await deps.jobQueue.enqueue('area.approved', {
+            areaId: id,
+            areaName: area.name,
+            producerEmail: owner?.email ?? '',
+          }).catch(() => {});
+        }
 
         return jsonResponse(
           200,

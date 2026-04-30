@@ -22,6 +22,9 @@ import type { CompensationCertificateRepository } from '../../domain/compensatio
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
 import type { CompensationCertificatePdfGenerator } from '../../domain/compensations/services/certificate-pdf-generator';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
+import type { JobQueue } from '../../domain/jobs/job-queue';
+import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import type { UserRepository } from '../../domain/user/user-repository';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 import { requireAuth } from '../../shared/http/auth-context';
 
@@ -34,6 +37,9 @@ export interface PaymentHandlersDeps {
   idGenerator: IdGenerator;
   clock: Clock;
   auditLog: Pick<AuditLogRepository, 'log'>;
+  jobQueue?: JobQueue;
+  areaRepository?: AreaRepository;
+  users?: UserRepository;
 }
 
 export function createPaymentHandlers(deps: PaymentHandlersDeps) {
@@ -251,12 +257,30 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           }
         );
         for (const compensationId of result.paidCompensationIds) {
-          await ensureCertificateAfterPaidCompensation(
+          const certificate = await ensureCertificateAfterPaidCompensation(
             deps,
             compensationId,
             auth.userId,
             requestAuditLog
           );
+
+          if (certificate && deps.jobQueue && deps.areaRepository && deps.users) {
+            const comp = await deps.paymentStore.getCompensationForCertificate(compensationId);
+            if (comp) {
+              const area = await deps.areaRepository.findById(comp.areaId);
+              if (area) {
+                const owner = await deps.users.findById(area.ownerUserId);
+                await deps.jobQueue.enqueue('area.contribution_received', {
+                  areaId: comp.areaId,
+                  areaName: area.name,
+                  producerEmail: owner?.email ?? '',
+                  amount: comp.totalAmount,
+                  currency: comp.currency,
+                  treesCount: comp.treesCount,
+                }).catch(() => {});
+              }
+            }
+          }
         }
 
         return jsonResponse(
