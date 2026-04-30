@@ -198,15 +198,9 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const user = await deleteUser(userId, { users: deps.users });
+        await deleteUser(userId, { users: deps.users });
         log.warn('user.deleted', { user_id: userId });
-        return jsonResponse(
-          200,
-          {
-            data: { id: user.id, deleted_at: user.deletedAt }
-          },
-          logContext
-        );
+        return jsonResponse(200, { data: { id: userId } }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
       }

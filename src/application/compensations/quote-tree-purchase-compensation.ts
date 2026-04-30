@@ -62,7 +62,7 @@ export async function quoteTreePurchaseCompensation(
   const currency = input.currency.trim().toUpperCase();
 
   const resolvedPrice =
-    (currency === 'BRL' && area.pricePerTree != null && area.pricePerTree > 0
+    (area.pricePerTree != null && area.pricePerTree > 0
       ? area.pricePerTree
       : null) ??
     deps.treePriceResolver?.(currency, area.id) ??

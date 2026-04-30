@@ -988,6 +988,16 @@ const routes: ApiRouteDoc[] = [
     successStatus: '200',
     successResponse: 'OkData',
   },
+  {
+    method: 'get' as const,
+    path: '/api/v1/stats/global',
+    summary: 'Global platform statistics',
+    description: 'Returns total areas, trees planted, and CO2 captured.',
+    tags: ['Stats'],
+    secured: false,
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
 ];
 
 export const OPENAPI_ROUTE_SIGNATURES = routes.map(

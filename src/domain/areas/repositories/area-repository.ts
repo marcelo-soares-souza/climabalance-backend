@@ -83,4 +83,9 @@ export interface AreaRepository {
    * Count areas with filters
    */
   count(filters?: AreaFilters, client?: any): Promise<number>;
+
+  /**
+   * Get global platform stats
+   */
+  getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }>;
 }

@@ -57,6 +57,10 @@ class MemoryAreaRepository implements AreaRepository {
   async count(): Promise<number> {
     return this.areas.size;
   }
+
+  async getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }> {
+    return { totalAreas: 0, totalTreesPlanted: 0, totalCO2Captured: 0 };
+  }
 }
 
 class MemoryAreaMediaRepository implements AreaMediaRepository {

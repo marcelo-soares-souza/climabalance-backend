@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import { Pool } from 'pg';
 import type { User, UserProfile } from '../../../domain/user/user';
 import type { CreateUserInput, UpdateUserInput, UserFilters, UserRepository } from '../../../domain/user/user-repository';
 import { uuidv7 } from '../../../shared/utils/id';

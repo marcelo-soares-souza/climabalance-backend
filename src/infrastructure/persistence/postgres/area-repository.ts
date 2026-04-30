@@ -285,6 +285,22 @@ export class PostgresAreaRepository implements AreaRepository {
     return parseInt(result.rows[0].count, 10);
   }
 
+  async getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }> {
+    const result = await this.pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM areas WHERE deleted_at IS NULL AND status = 'active') AS total_areas,
+        COALESCE(SUM(c.trees_count), 0)::int AS total_trees_planted,
+        COALESCE(SUM(c.total_t_co2e), 0) AS total_co2_captured
+      FROM compensations c
+      WHERE c.deleted_at IS NULL AND c.status = 'paid'
+    `);
+    return {
+      totalAreas: parseInt(result.rows[0].total_areas, 10),
+      totalTreesPlanted: parseInt(result.rows[0].total_trees_planted, 10),
+      totalCO2Captured: parseFloat(result.rows[0].total_co2_captured),
+    };
+  }
+
   private mapRowToArea(row: any): Area {
     const location = new Location(
       parseFloat(row.latitude),

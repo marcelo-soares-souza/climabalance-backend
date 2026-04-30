@@ -9,6 +9,8 @@ import { createCompensationHandlers } from './compensation-handlers';
 import { createCertificateHandlers } from './certificate-handlers';
 import { createPaymentHandlers } from './payment-handlers';
 import { createLocationHandlers } from './location-handlers';
+import { createStatsHandlers } from './stats-handlers';
+import type { StatsHandlersDeps } from './stats-handlers';
 import { openApiJsonHandler, swaggerUiHandler } from './openapi';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
@@ -48,8 +50,9 @@ export function buildRouter(
     UpdateHandlersDeps &
     CompensationHandlersDeps &
     CertificateHandlersDeps &
-    PaymentHandlersDeps
-): Router {
+    PaymentHandlersDeps &
+    StatsHandlersDeps
+  ): Router {
   const router = new Router();
   const rateLimiter = new InMemoryRateLimiter();
   const authHandlers = createAuthHandlers(deps);
@@ -62,6 +65,7 @@ export function buildRouter(
   const certificateHandlers = createCertificateHandlers(deps);
   const paymentHandlers = createPaymentHandlers(deps);
   const locationHandlers = createLocationHandlers();
+  const statsHandlers = createStatsHandlers(deps);
 
   const addRoute = (
     method: string,
@@ -223,6 +227,8 @@ export function buildRouter(
     'protected',
     withAuth((ctx) => paymentHandlers.simulate(ctx))
   );
+  addRoute('GET', '/api/v1/stats/global', 'public', (ctx) => statsHandlers.global(ctx));
+
   addRoute(
     'GET',
     '/api/v1/payments/:id/status',
