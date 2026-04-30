@@ -82,6 +82,7 @@ export async function authenticateUser(
     createdAt: now,
     updatedAt: now,
     fingerprintHash: input.fingerprint ? await deps.hashService.sha256(input.fingerprint) : null,
+    userAgent: input.userAgent || null,
   });
 
   return {

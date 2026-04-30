@@ -187,6 +187,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
 
         const validated = parseWithSchema(loginSchema, body);
         const fingerprint = ctx.request.headers.get('x-device-fingerprint') || undefined;
+        const userAgent = ctx.request.headers.get('user-agent') || undefined;
 
         const lockout = await checkLoginLockout(validated.email);
         if (lockout.blocked) {
@@ -203,6 +204,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
               email: validated.email,
               password: validated.password,
               fingerprint,
+              userAgent,
             },
             {
               users: deps.users,
