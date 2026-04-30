@@ -17,8 +17,8 @@ export async function handleUserRegistered(
     admins.map((email) =>
       deps.emailSender.send({
         to: email,
-        subject: 'Novo usuário registrado',
-        text: `Um novo usuário se registrou na plataforma.\n\nE-mail: ${payload.email}\nTipo: ${payload.roleKey}\n\nAcesse o painel administrativo para mais detalhes.`,
+        subject: 'New user registered',
+        text: `A new user has registered on the platform.\n\nEmail: ${payload.email}\nType: ${payload.roleKey}\n\nAccess the admin panel for details.`,
       })
     )
   );
@@ -34,8 +34,8 @@ export async function handleAreaCreated(
     admins.map((email) =>
       deps.emailSender.send({
         to: email,
-        subject: 'Nova área cadastrada',
-        text: `Uma nova área foi cadastrada na plataforma.\n\nÁrea: ${payload.areaName}\nProdutor: ${payload.producerEmail}\n\nAcesse: ${deps.frontendUrl}/areas/${payload.areaId}`,
+        subject: 'New area registered',
+        text: `A new area has been registered on the platform.\n\nArea: ${payload.areaName}\nProducer: ${payload.producerEmail}\n\nAccess: ${deps.frontendUrl}/areas/${payload.areaId}`,
       })
     )
   );
@@ -51,8 +51,8 @@ export async function handleAuditRequested(
     admins.map((email) =>
       deps.emailSender.send({
         to: email,
-        subject: 'Área aguarda auditoria',
-        text: `A área "${payload.areaName}" foi submetida para auditoria.\n\nProdutor: ${payload.producerEmail}\n\nAcesse: ${deps.frontendUrl}/audit/area/${payload.areaId}`,
+        subject: 'Area pending audit',
+        text: `The area "${payload.areaName}" has been submitted for audit.\n\nProducer: ${payload.producerEmail}\n\nAccess: ${deps.frontendUrl}/audit/area/${payload.areaId}`,
       })
     )
   );
@@ -64,8 +64,8 @@ export async function handleAreaApproved(
 ): Promise<void> {
   await deps.emailSender.send({
     to: payload.producerEmail,
-    subject: 'Área aprovada',
-    text: `Sua área "${payload.areaName}" foi aprovada na plataforma!\n\nAgora ela está visível para apoiadores no mapa.\n\nAcesse: ${deps.frontendUrl}/areas/${payload.areaId}`,
+    subject: 'Area approved',
+    text: `Your area "${payload.areaName}" has been approved!\n\nIt is now visible to supporters on the map.\n\nAccess: ${deps.frontendUrl}/areas/${payload.areaId}`,
   });
 }
 
@@ -75,8 +75,8 @@ export async function handleContributionReceived(
 ): Promise<void> {
   await deps.emailSender.send({
     to: payload.producerEmail,
-    subject: 'Contribuição recebida',
-    text: `Sua área "${payload.areaName}" recebeu uma contribuição!\n\nValor: ${payload.amount.toFixed(2)} ${payload.currency}\nÁrvores: ${payload.treesCount}\n\nAcesse: ${deps.frontendUrl}/areas/${payload.areaId}`,
+    subject: 'Contribution received',
+    text: `Your area "${payload.areaName}" has received a contribution!\n\nAmount: ${payload.amount.toFixed(2)} ${payload.currency}\nTrees: ${payload.treesCount}\n\nAccess: ${deps.frontendUrl}/areas/${payload.areaId}`,
   });
 }
 
