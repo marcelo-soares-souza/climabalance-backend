@@ -6,8 +6,8 @@ import { ForbiddenError } from '../../domain/errors';
 
 export type ListCompensationsInput = {
   supporterUserId: string;
-  actorUserId: string;
-  actorRoles: string[];
+  actorUserId?: string;
+  actorRoles?: string[];
   status?: CompensationHistoryItem['status'];
   limit?: number;
   offset?: number;
@@ -19,10 +19,12 @@ export async function listCompensations(
   },
   input: ListCompensationsInput
 ): Promise<CompensationHistoryItem[]> {
-  const isAdmin = input.actorRoles.includes('administrator');
-  const isSelf = input.actorUserId === input.supporterUserId;
-  if (!isAdmin && !isSelf) {
-    throw new ForbiddenError('auth.forbidden');
+  if (input.actorUserId && input.actorRoles) {
+    const isAdmin = input.actorRoles.includes('administrator');
+    const isSelf = input.actorUserId === input.supporterUserId;
+    if (!isAdmin && !isSelf) {
+      throw new ForbiddenError('auth.forbidden');
+    }
   }
 
   const limit = normalizeLimit(input.limit);

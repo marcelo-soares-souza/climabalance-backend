@@ -101,12 +101,12 @@ export function buildRouter(
 
   // User routes
   addRoute('GET', '/api/v1/users', 'admin', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
-  addRoute('GET', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.get(ctx, ctx.params.id)));
-  addRoute('GET', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
-  addRoute('GET', '/api/v1/users/:id/climate-balance', 'protected', withAuthOrSelf((ctx) => userHandlers.getClimateBalance(ctx, ctx.params.id)));
-  addRoute('GET', '/api/v1/users/:id/contributions', 'protected', withAuthOrSelf((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
-  addRoute('GET', '/api/v1/users/:id/compensations', 'protected', withAuthOrSelf((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
-  addRoute('GET', '/api/v1/users/:id/certificates', 'protected', withAuthOrSelf((ctx) => certificateHandlers.listByUser(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id', 'public', withOptionalAuth((ctx) => userHandlers.get(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/profile', 'public', withOptionalAuth((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/climate-balance', 'public', withOptionalAuth((ctx) => userHandlers.getClimateBalance(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/contributions', 'public', withOptionalAuth((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/compensations', 'public', withOptionalAuth((ctx) => compensationHandlers.listByUser(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/certificates', 'public', withOptionalAuth((ctx) => certificateHandlers.listByUser(ctx, ctx.params.id)));
   addRoute('PATCH', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
   addRoute('PUT', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
@@ -142,7 +142,7 @@ export function buildRouter(
   );
   addRoute('PATCH', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.update(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/areas/:id', 'protected', withAuth((ctx) => areaHandlers.remove(ctx, ctx.params.id)));
-  addRoute('GET', '/api/v1/areas', 'protected', withAuth((ctx) => areaHandlers.list(ctx)));
+  addRoute('GET', '/api/v1/areas', 'public', withOptionalAuth((ctx) => areaHandlers.list(ctx)));
 
   // Area audit workflow routes
   addRoute('POST', '/api/v1/areas/:id/submit-audit', 'protected', withAuth((ctx) => areaHandlers.submitForAudit(ctx, ctx.params.id)));

@@ -233,7 +233,6 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async list(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
-        const auth = requireAuth(ctx);
         const query = parseQueryWithSchema(listAreasQuerySchema, ctx.query);
 
         const result = await listAreas(
@@ -241,8 +240,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             areaRepository: deps.areaRepository,
           },
           {
-            userId: auth.userId,
-            roles: auth.roles,
+            userId: ctx.auth?.userId,
+            roles: ctx.auth?.roles,
             ...query,
           }
         );

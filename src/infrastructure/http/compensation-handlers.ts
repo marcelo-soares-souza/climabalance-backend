@@ -170,7 +170,6 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByUser(ctx: HttpContext, userId: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const auth = requireAuth(ctx);
         const validated = parseQueryWithSchema(listCompensationsQuerySchema, ctx.query);
         const result = await listCompensations(
           {
@@ -178,8 +177,8 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           },
           {
             supporterUserId: userId,
-            actorUserId: auth.userId,
-            actorRoles: auth.roles,
+            actorUserId: ctx.auth?.userId,
+            actorRoles: ctx.auth?.roles,
             status: validated.status,
             limit: validated.limit,
             offset: validated.offset,
