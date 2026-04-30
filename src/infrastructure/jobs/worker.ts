@@ -1,4 +1,5 @@
 import { getLogger } from '../../shared/utils/logger';
+import { numberEnv } from '../../shared/utils/env';
 import type { PostgresJobRepository } from '../persistence/postgres/job-repository';
 import type { JobHandlerDeps } from '../../application/jobs/handlers';
 import {
@@ -54,6 +55,7 @@ export function startJobWorker(
     }
   }
 
-  setInterval(tick, 3000);
+  const intervalMs = numberEnv('JOB_POLL_INTERVAL_MS', 10_000);
+  setInterval(tick, intervalMs);
   tick();
 }
