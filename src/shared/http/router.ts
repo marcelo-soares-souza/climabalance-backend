@@ -61,7 +61,7 @@ export class Router {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
     const requestId = uuidv7();
-    const clientIp = options?.clientIp ?? getForwardedClientIp(request);
+    const clientIp = getForwardedClientIp(request) ?? options?.clientIp;
     const corsHeaders = buildCorsHeaders(request);
 
     if (method === 'OPTIONS') {
