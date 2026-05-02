@@ -82,10 +82,23 @@ export async function listAreas(
 
   if (request.onlyActive) {
     // Public listing: show all active areas regardless of auth
-  } else if (request.ownerUserId) {
-    filters.ownerUserId = request.ownerUserId;
-  } else if (!isPrivileged(request.roles) && request.userId) {
-    filters.ownerUserId = request.userId;
+  } else if (isPrivileged(request.roles)) {
+    // Privileged users (admin/analyst): can filter by ownerUserId or see all
+    if (request.ownerUserId) {
+      filters.ownerUserId = request.ownerUserId;
+    }
+  } else if (request.userId) {
+    if (request.ownerUserId && request.ownerUserId !== request.userId) {
+      // Non-privileged user viewing another user's areas: only show active
+      filters.ownerUserId = request.ownerUserId;
+      filters.status = AreaStatus.active;
+    } else {
+      // Non-privileged user viewing own areas: show all statuses
+      filters.ownerUserId = request.userId;
+    }
+  } else {
+    // Unauthenticated: only show active areas
+    filters.status = AreaStatus.active;
   }
 
   const areas = await deps.areaRepository.findAll(filters);
