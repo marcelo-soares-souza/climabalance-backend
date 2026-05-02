@@ -9,6 +9,7 @@ export interface ListAreasRequest {
   status?: string;
   biome?: string;
   ownerUserId?: string;
+  onlyActive?: boolean;
   limit?: number;
   offset?: number;
   cursor?: string;
@@ -63,7 +64,9 @@ export async function listAreas(
   const pageSize = request.limit ?? 20;
   const filters: AreaFilters = isPaginated ? { limit: pageSize + 1 } : {};
 
-  if (request.status) {
+  if (request.onlyActive) {
+    filters.status = AreaStatus.active;
+  } else if (request.status) {
     filters.status = AreaStatus.fromString(request.status);
   }
 
@@ -77,7 +80,9 @@ export async function listAreas(
     filters.offset = request.offset;
   }
 
-  if (request.ownerUserId) {
+  if (request.onlyActive) {
+    // Public listing: show all active areas regardless of auth
+  } else if (request.ownerUserId) {
     filters.ownerUserId = request.ownerUserId;
   } else if (!isPrivileged(request.roles) && request.userId) {
     filters.ownerUserId = request.userId;
