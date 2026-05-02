@@ -66,7 +66,7 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC',
+      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, id DESC',
       [ownerUserId]
     );
 
@@ -99,7 +99,14 @@ export class PostgresAreaRepository implements AreaRepository {
       query += ` AND status = 'active'`;
     }
 
-    query += ' ORDER BY updated_at DESC, created_at DESC';
+    if (filters?.cursor) {
+      query += ` AND (updated_at, id) < (
+        SELECT updated_at, id FROM areas WHERE id = $${paramIndex++}
+      )`;
+      params.push(filters.cursor);
+    }
+
+    query += ' ORDER BY updated_at DESC, id DESC';
 
     if (filters?.limit) {
       query += ` LIMIT $${paramIndex++}`;
@@ -137,7 +144,7 @@ export class PostgresAreaRepository implements AreaRepository {
       params.push(filters.biome.toString());
     }
 
-    query += ' ORDER BY updated_at DESC, created_at DESC';
+    query += ' ORDER BY updated_at DESC, id DESC';
 
     const result = await db.query(query, params);
 
@@ -156,8 +163,8 @@ export class PostgresAreaRepository implements AreaRepository {
            location,
            ST_MakeEnvelope($1, $2, $3, $4, 4326)
          )
-       ORDER BY updated_at DESC, created_at DESC`,
-      [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat]
+ORDER BY updated_at DESC, id DESC`,
+       [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat]
     );
 
     return result.rows.map((row) => this.mapRowToArea(row));

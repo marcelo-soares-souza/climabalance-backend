@@ -1,4 +1,5 @@
 import { AreaRepository, AreaFilters } from '../../domain/areas/repositories/area-repository';
+import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import { AreaStatus } from '../../domain/areas/value-objects/area-status';
 import { Biome } from '../../domain/areas/value-objects/biome';
 
@@ -10,6 +11,7 @@ export interface ListAreasRequest {
   ownerUserId?: string;
   limit?: number;
   offset?: number;
+  cursor?: string;
 }
 
 export interface AreaListItem {
@@ -31,12 +33,20 @@ export interface AreaListItem {
   estimatedKgCO2PerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
+  thumbnailUrl?: string;
+  imageUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
+export interface PaginatedAreasResult {
+  data: AreaListItem[];
+  nextCursor?: string;
+}
+
 export interface ListAreasDeps {
   areaRepository: AreaRepository;
+  areaMediaRepository: AreaMediaRepository;
 }
 
 const PRIVILEGED_ROLES = ['administrator', 'analyst'];
@@ -48,11 +58,10 @@ function isPrivileged(roles?: string[]): boolean {
 export async function listAreas(
   deps: ListAreasDeps,
   request: ListAreasRequest
-): Promise<AreaListItem[]> {
-  const filters: AreaFilters = {
-    limit: request.limit,
-    offset: request.offset,
-  };
+): Promise<PaginatedAreasResult> {
+  const isPaginated = request.cursor !== undefined || request.limit !== undefined;
+  const pageSize = request.limit ?? 20;
+  const filters: AreaFilters = isPaginated ? { limit: pageSize + 1 } : {};
 
   if (request.status) {
     filters.status = AreaStatus.fromString(request.status);
@@ -60,6 +69,12 @@ export async function listAreas(
 
   if (request.biome) {
     filters.biome = new Biome(request.biome);
+  }
+
+  if (request.cursor) {
+    filters.cursor = request.cursor;
+  } else if (request.offset) {
+    filters.offset = request.offset;
   }
 
   if (request.ownerUserId) {
@@ -70,29 +85,65 @@ export async function listAreas(
 
   const areas = await deps.areaRepository.findAll(filters);
 
-  return areas.map((area) => ({
-    id: area.id,
-    ownerUserId: area.ownerUserId,
-    name: area.name,
-    description: area.description,
-    latitude: area.location.latitude,
-    longitude: area.location.longitude,
-    biome: area.biome?.toString(),
-    countryCode: area.countryCode,
-    state: area.state,
-    city: area.city,
-    status: area.status.toString(),
-    totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e,
-    committedTCO2e: area.carbonCapacity?.committedTCO2e,
-    availableTCO2e: area.carbonCapacity?.availableTCO2e,
-    tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
-    estimatedKgCO2PerTreePerYear:
-      area.tCO2ePerTreePerYear !== undefined
-        ? area.tCO2ePerTreePerYear * 1000
-        : undefined,
-    pricePerTree: area.pricePerTree,
-    defaultHorizonYears: area.defaultHorizonYears,
-    createdAt: area.createdAt,
-    updatedAt: area.updatedAt,
-  }));
+  let pageAreas: Area[];
+  let nextCursor: string | undefined;
+
+  if (isPaginated) {
+    const hasNextPage = areas.length > pageSize;
+    pageAreas = hasNextPage ? areas.slice(0, pageSize) : areas;
+    nextCursor = hasNextPage ? pageAreas[pageAreas.length - 1].id : undefined;
+  } else {
+    pageAreas = areas;
+  }
+
+  const areaIds = pageAreas.map((a) => a.id);
+  const allMedia = areaIds.length > 0
+    ? await deps.areaMediaRepository.listByAreaIds(areaIds)
+    : [];
+
+  const mediaByAreaId = new Map<string, { thumbnailUrl: string; imageUrl: string }>();
+  const usedAreas = new Set<string>();
+  const shuffled = allMedia.sort(() => Math.random() - 0.5);
+  for (const media of shuffled) {
+    if (!usedAreas.has(media.areaId)) {
+      usedAreas.add(media.areaId);
+      mediaByAreaId.set(media.areaId, {
+        thumbnailUrl: `/api/v1/areas/media/${media.id}/thumbnail`,
+        imageUrl: `/api/v1/areas/media/${media.id}/file`,
+      });
+    }
+  }
+
+  const data = pageAreas.map((area) => {
+    const media = mediaByAreaId.get(area.id);
+    return {
+      id: area.id,
+      ownerUserId: area.ownerUserId,
+      name: area.name,
+      description: area.description,
+      latitude: area.location.latitude,
+      longitude: area.location.longitude,
+      biome: area.biome?.toString(),
+      countryCode: area.countryCode,
+      state: area.state,
+      city: area.city,
+      status: area.status.toString(),
+      totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e,
+      committedTCO2e: area.carbonCapacity?.committedTCO2e,
+      availableTCO2e: area.carbonCapacity?.availableTCO2e,
+      tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
+      estimatedKgCO2PerTreePerYear:
+        area.tCO2ePerTreePerYear !== undefined
+          ? area.tCO2ePerTreePerYear * 1000
+          : undefined,
+      pricePerTree: area.pricePerTree,
+      defaultHorizonYears: area.defaultHorizonYears,
+      thumbnailUrl: media?.thumbnailUrl || undefined,
+      imageUrl: media?.imageUrl || undefined,
+      createdAt: area.createdAt,
+      updatedAt: area.updatedAt,
+    };
+  });
+
+  return { data, nextCursor };
 }

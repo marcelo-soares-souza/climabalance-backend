@@ -5,10 +5,20 @@ import { Location } from '../src/domain/areas/value-objects/location';
 import { CarbonCapacity } from '../src/domain/areas/value-objects/carbon-capacity';
 import { Biome } from '../src/domain/areas/value-objects/biome';
 import { listAreas } from '../src/application/areas/list-areas';
+import { AreaMediaRepository } from '../src/domain/areas/repositories/area-media-repository';
 import { signJwt } from '../src/infrastructure/crypto/jwt';
 import { withAuth } from '../src/infrastructure/http/auth';
 import { env } from '../src/shared/utils/env';
 import type { AreaRepository, AreaFilters } from '../src/domain/areas/repositories/area-repository';
+
+const stubAreaMediaRepository: AreaMediaRepository = {
+  async save() { throw new Error('not_implemented'); },
+  async findById() { return null; },
+  async listByAreaId() { return []; },
+  async listByAreaIds() { return []; },
+  async updateThumbnail() { throw new Error('not_implemented'); },
+  async softDelete() { throw new Error('not_implemented'); },
+};
 
 class MockAreaRepository {
   private areas: Area[] = [];
@@ -28,6 +38,9 @@ class MockAreaRepository {
     }
     if (filters?.biome) {
       result = result.filter((a) => a.biome?.toString() === filters.biome?.toString());
+    }
+    if (filters?.limit) {
+      result = result.slice(0, filters.limit);
     }
     return result;
   }
@@ -145,60 +158,60 @@ describe('Authorization - listAreas Use Case', () => {
 
   test('administrator sees all areas', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'admin-user', roles: ['administrator'] }
     );
-    expect(result.length).toBe(4);
+    expect(result.data.length).toBe(4);
   });
 
   test('analyst sees all areas', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'analyst-user', roles: ['analyst'] }
     );
-    expect(result.length).toBe(4);
+    expect(result.data.length).toBe(4);
   });
 
   test('producer sees only own areas', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'producer-1', roles: ['producer'] }
     );
-    expect(result.length).toBe(2);
-    expect(result.every((a) => a.ownerUserId === 'producer-1')).toBe(true);
+    expect(result.data.length).toBe(2);
+    expect(result.data.every((a) => a.ownerUserId === 'producer-1')).toBe(true);
   });
 
   test('individual sees only own areas', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'individual-user', roles: ['individual'] }
     );
-    expect(result.length).toBe(0);
+    expect(result.data.length).toBe(0);
   });
 
   test('legal_entity sees only own areas', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'legal-entity-user', roles: ['legal_entity'] }
     );
-    expect(result.length).toBe(0);
+    expect(result.data.length).toBe(0);
   });
 
   test('producer-2 sees only their areas', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'producer-2', roles: ['producer'] }
     );
-    expect(result.length).toBe(2);
-    expect(result.every((a) => a.ownerUserId === 'producer-2')).toBe(true);
+    expect(result.data.length).toBe(2);
+    expect(result.data.every((a) => a.ownerUserId === 'producer-2')).toBe(true);
   });
 
   test('admin with explicit ownerUserId filter works', async () => {
     const result = await listAreas(
-      { areaRepository: repo as unknown as AreaRepository },
+      { areaRepository: repo as unknown as AreaRepository, areaMediaRepository: stubAreaMediaRepository },
       { userId: 'admin-user', roles: ['administrator'], ownerUserId: 'producer-1' }
     );
-    expect(result.length).toBe(2);
+    expect(result.data.length).toBe(2);
   });
 });
 

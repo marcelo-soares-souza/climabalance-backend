@@ -10,6 +10,7 @@ export interface AreaFilters {
   onlyWithCapacity?: boolean;
   limit?: number;
   offset?: number;
+  cursor?: string;
 }
 
 export interface BoundingBox {

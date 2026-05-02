@@ -239,6 +239,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         const result = await listAreas(
           {
             areaRepository: deps.areaRepository,
+            areaMediaRepository: deps.areaMediaRepository,
           },
           {
             userId: ctx.auth?.userId,
@@ -247,7 +248,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           }
         );
 
-        return jsonResponse(200, { data: result }, logContext);
+        return jsonResponse(200, { data: { items: result.data, nextCursor: result.nextCursor } }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
@@ -432,7 +433,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      * GET /api/v1/map/areas
      * Get areas for map display (public endpoint)
      */
-    async getForMap(ctx: HttpContext) {
+async getForMap(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
         const query = parseQueryWithSchema(getMapAreasQuerySchema, ctx.query);
@@ -446,7 +447,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           query
         );
 
-        return jsonResponse(200, { data: result }, logContext);
+return jsonResponse(200, { data: result }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
       }

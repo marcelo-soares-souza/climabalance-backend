@@ -157,6 +157,7 @@ export const listAreasQuerySchema = z.object({
   onlyActive: z.string().transform((val) => val === 'true').optional(),
   limit: z.string().transform((val) => parseInt(val, 10)).optional(),
   offset: z.string().transform((val) => parseInt(val, 10)).optional(),
+  cursor: z.string().max(100).optional(),
 });
 
 export type ListAreasQuery = z.infer<typeof listAreasQuerySchema>;

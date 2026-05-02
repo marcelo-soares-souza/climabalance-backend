@@ -1,4 +1,4 @@
-import { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import { AreaRepository, AreaFilters } from '../../domain/areas/repositories/area-repository';
 import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
 import { Biome } from '../../domain/areas/value-objects/biome';
@@ -26,6 +26,7 @@ export interface AreaMapItem {
   plantedTreesCount?: number;
   totalCompensatedTreesCount?: number;
   thumbnailUrl?: string;
+  imageUrl?: string;
 }
 
 export interface GetAreasForMapDeps {
@@ -38,7 +39,7 @@ export async function getAreasForMap(
   deps: GetAreasForMapDeps,
   filters?: { biome?: string; status?: string }
 ): Promise<AreaMapItem[]> {
-  const repoFilters: any = { onlyActive: true };
+  const repoFilters: AreaFilters = { onlyActive: true };
 
   if (filters?.status) {
     repoFilters.status = AreaStatus.fromString(filters.status);
@@ -64,48 +65,55 @@ export async function getAreasForMap(
       : Promise.resolve(new Map<string, number>()),
   ]);
 
-  const thumbnailByAreaId = new Map<string, string>();
+  const mediaByAreaId = new Map<string, { thumbnailUrl: string; imageUrl: string }>();
   const usedAreas = new Set<string>();
   const shuffled = allMedia.sort(() => Math.random() - 0.5);
   for (const media of shuffled) {
     if (!usedAreas.has(media.areaId)) {
       usedAreas.add(media.areaId);
-      thumbnailByAreaId.set(media.areaId, `/api/v1/areas/media/${media.id}/thumbnail`);
+      mediaByAreaId.set(media.areaId, {
+        thumbnailUrl: `/api/v1/areas/media/${media.id}/thumbnail`,
+        imageUrl: `/api/v1/areas/media/${media.id}/file`,
+      });
     }
   }
 
-  return areas.map((area) => ({
-    id: area.id,
-    name: area.name,
-    latitude: area.location.latitude,
-    longitude: area.location.longitude,
-    biome: area.biome?.toString(),
-    countryCode: area.countryCode,
-    state: area.state,
-    city: area.city,
-    description: area.description,
-    status: area.status.toString(),
-    totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e || 0,
-    committedTCO2e: area.carbonCapacity?.committedTCO2e || 0,
-    availableTCO2e: area.carbonCapacity?.availableTCO2e || 0,
-    tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
-    estimatedKgCO2PerTreePerYear:
-      area.tCO2ePerTreePerYear !== undefined
-        ? area.tCO2ePerTreePerYear * 1000
-        : undefined,
-    pricePerTree: area.pricePerTree,
-    defaultHorizonYears: area.defaultHorizonYears,
-    committedTreesCount:
-      area.carbonCapacity?.committedTCO2e &&
-      area.tCO2ePerTreePerYear &&
-      area.defaultHorizonYears
-        ? Math.floor(
-            area.carbonCapacity.committedTCO2e /
-              (area.tCO2ePerTreePerYear * area.defaultHorizonYears)
-          )
-        : undefined,
-    plantedTreesCount: plantedCountByAreaId.get(area.id) || 0,
-    totalCompensatedTreesCount: compensatedCountByAreaId.get(area.id) || 0,
-    thumbnailUrl: thumbnailByAreaId.get(area.id) || undefined,
-  }));
+  return areas.map((area) => {
+    const media = mediaByAreaId.get(area.id);
+    return {
+      id: area.id,
+      name: area.name,
+      latitude: area.location.latitude,
+      longitude: area.location.longitude,
+      biome: area.biome?.toString(),
+      countryCode: area.countryCode,
+      state: area.state,
+      city: area.city,
+      description: area.description,
+      status: area.status.toString(),
+      totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e || 0,
+      committedTCO2e: area.carbonCapacity?.committedTCO2e || 0,
+      availableTCO2e: area.carbonCapacity?.availableTCO2e || 0,
+      tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
+      estimatedKgCO2PerTreePerYear:
+        area.tCO2ePerTreePerYear !== undefined
+          ? area.tCO2ePerTreePerYear * 1000
+          : undefined,
+      pricePerTree: area.pricePerTree,
+      defaultHorizonYears: area.defaultHorizonYears,
+      committedTreesCount:
+        area.carbonCapacity?.committedTCO2e &&
+        area.tCO2ePerTreePerYear &&
+        area.defaultHorizonYears
+          ? Math.floor(
+              area.carbonCapacity.committedTCO2e /
+                (area.tCO2ePerTreePerYear * area.defaultHorizonYears)
+            )
+          : undefined,
+      plantedTreesCount: plantedCountByAreaId.get(area.id) || 0,
+      totalCompensatedTreesCount: compensatedCountByAreaId.get(area.id) || 0,
+      thumbnailUrl: media?.thumbnailUrl || undefined,
+      imageUrl: media?.imageUrl || undefined,
+    };
+  });
 }
