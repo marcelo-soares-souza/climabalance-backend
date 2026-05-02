@@ -39,6 +39,13 @@ export async function deleteArea(
     } catch {
       // Keep soft-delete behavior even if physical file is already missing.
     }
+    if (media.thumbnailStoragePath) {
+      try {
+        await deps.areaMediaStorage.delete(media.thumbnailStoragePath);
+      } catch {
+        // Best-effort cleanup.
+      }
+    }
   }
 
   await deps.areaRepository.delete(area.id);

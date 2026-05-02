@@ -70,7 +70,7 @@ export async function getAreasForMap(
   for (const media of shuffled) {
     if (!usedAreas.has(media.areaId)) {
       usedAreas.add(media.areaId);
-      thumbnailByAreaId.set(media.areaId, `/api/v1/areas/media/${media.id}/file`);
+      thumbnailByAreaId.set(media.areaId, `/api/v1/areas/media/${media.id}/thumbnail`);
     }
   }
 

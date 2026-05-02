@@ -15,6 +15,8 @@ function mapRow(row: Record<string, unknown>): AreaMedia {
     originalFileName: String(row.original_file_name),
     storagePath: String(row.storage_path),
     fileSizeBytes: Number(row.file_size_bytes),
+    thumbnailStoragePath: row.thumbnail_storage_path == null ? null : String(row.thumbnail_storage_path),
+    thumbnailGeneratedAt: row.thumbnail_generated_at == null ? null : new Date(String(row.thumbnail_generated_at)),
     createdAt: new Date(String(row.created_at)),
     updatedAt: new Date(String(row.updated_at)),
     deletedAt: row.deleted_at ? new Date(String(row.deleted_at)) : null,
@@ -92,6 +94,13 @@ export class PostgresAreaMediaRepository implements AreaMediaRepository {
     await this.pool.query(
       `UPDATE area_media SET deleted_at = $2, updated_at = $2 WHERE id = $1`,
       [id, deletedAt]
+    );
+  }
+
+  async updateThumbnail(id: string, thumbnailStoragePath: string, thumbnailGeneratedAt: Date): Promise<void> {
+    await this.pool.query(
+      `UPDATE area_media SET thumbnail_storage_path = $2, thumbnail_generated_at = $3, updated_at = $3 WHERE id = $1`,
+      [id, thumbnailStoragePath, thumbnailGeneratedAt]
     );
   }
 }

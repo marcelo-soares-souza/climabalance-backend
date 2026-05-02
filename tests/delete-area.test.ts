@@ -90,6 +90,8 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
     if (!media) return;
     this.items.set(id, { ...media, deletedAt, updatedAt: deletedAt });
   }
+
+  async updateThumbnail(_id: string, _thumbnailStoragePath: string, _thumbnailGeneratedAt: Date): Promise<void> {}
 }
 
 class MemoryAreaMediaStorage implements AreaMediaStorage {
@@ -110,6 +112,14 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
 
   async delete(storagePath: string): Promise<void> {
     this.deletedPaths.push(storagePath);
+  }
+
+  async exists(): Promise<boolean> {
+    return false;
+  }
+
+  async generateThumbnail(): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
+    return { thumbnailStoragePath: '', bytes: new Uint8Array(0) };
   }
 }
 
@@ -145,6 +155,8 @@ describe('deleteArea', () => {
       originalFileName: 'photo.jpg',
       storagePath: '/tmp/photo.jpg',
       fileSizeBytes: 100,
+      thumbnailStoragePath: '/tmp/photo_thumb.webp',
+      thumbnailGeneratedAt: new Date('2026-02-10T10:00:00Z'),
       createdAt: new Date('2026-02-10T10:00:00Z'),
       updatedAt: new Date('2026-02-10T10:00:00Z'),
       deletedAt: null,
@@ -160,6 +172,8 @@ describe('deleteArea', () => {
       originalFileName: 'video.mp4',
       storagePath: '/tmp/video.mp4',
       fileSizeBytes: 200,
+      thumbnailStoragePath: null,
+      thumbnailGeneratedAt: null,
       createdAt: new Date('2026-02-10T10:00:00Z'),
       updatedAt: new Date('2026-02-10T10:00:00Z'),
       deletedAt: null,
@@ -185,7 +199,7 @@ describe('deleteArea', () => {
 
     const media = await areaMediaRepository.listByAreaId('area-1');
     expect(media.length).toBe(0);
-    expect(areaMediaStorage.deletedPaths).toEqual(['/tmp/photo.jpg', '/tmp/video.mp4']);
+    expect(areaMediaStorage.deletedPaths).toEqual(['/tmp/photo.jpg', '/tmp/photo_thumb.webp', '/tmp/video.mp4']);
   });
 
   test('non-owner without admin cannot delete area', async () => {

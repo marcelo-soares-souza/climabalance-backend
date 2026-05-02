@@ -1,5 +1,6 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import sharp from 'sharp';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
 import { env } from '../../shared/utils/env';
 
@@ -19,6 +20,11 @@ function resolveExtension(mimeType: string): string {
 function sanitizePathSegment(value: string): string {
   const sanitized = value.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
   return sanitized || 'unknown-user';
+}
+
+function thumbnailPathFor(storagePath: string): string {
+  const parsed = path.parse(storagePath);
+  return path.join(parsed.dir, `${parsed.name}_thumb.webp`);
 }
 
 export class LocalAreaMediaStorage implements AreaMediaStorage {
@@ -47,5 +53,29 @@ export class LocalAreaMediaStorage implements AreaMediaStorage {
 
   async delete(storagePath: string): Promise<void> {
     await rm(storagePath, { force: true });
+  }
+
+  async exists(storagePath: string): Promise<boolean> {
+    try {
+      await stat(storagePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async generateThumbnail(storagePath: string): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
+    const thumbPath = thumbnailPathFor(storagePath);
+    const originalBytes = await readFile(storagePath);
+    const thumbBuffer = await sharp(originalBytes)
+      .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 70 })
+      .toBuffer();
+    await mkdir(path.dirname(thumbPath), { recursive: true });
+    await writeFile(thumbPath, thumbBuffer);
+    return {
+      thumbnailStoragePath: thumbPath,
+      bytes: new Uint8Array(thumbBuffer),
+    };
   }
 }

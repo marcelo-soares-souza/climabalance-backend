@@ -43,6 +43,7 @@ import { uploadAreaMedia } from '../../application/areas/upload-area-media';
 import { listAreaMedia } from '../../application/areas/list-area-media';
 import { deleteAreaMedia } from '../../application/areas/delete-area-media';
 import { getAreaMediaFile } from '../../application/areas/get-area-media-file';
+import { getAreaMediaThumbnail } from '../../application/areas/get-area-media-thumbnail';
 import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
 import { CarbonStockService } from '../../domain/areas/services/carbon-stock.service';
 import { buildLogContext } from '../../shared/http/log-context';
@@ -651,6 +652,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             data: result.map((item) => ({
               ...item,
               downloadUrl: `/api/v1/areas/media/${item.id}/file`,
+              thumbnailUrl: item.mediaType === 'photo' ? `/api/v1/areas/media/${item.id}/thumbnail` : undefined,
             })),
           },
           logContext
@@ -722,6 +724,40 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             'content-type': file.mimeType,
             'cache-control': 'public, max-age=3600',
             'content-disposition': contentDispositionHeader('inline', file.fileName),
+          },
+        });
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * GET /api/v1/areas/media/:mediaId/thumbnail
+     * Serve a resized WebP thumbnail (200x200 max) for map display.
+     * Generated lazily on first request and cached on disk.
+     */
+    async getMediaThumbnail(ctx: HttpContext, mediaId: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const thumb = await getAreaMediaThumbnail(
+          {
+            areaRepository: deps.areaRepository,
+            areaMediaRepository: deps.areaMediaRepository,
+            areaMediaStorage: deps.areaMediaStorage,
+            clock: deps.clock,
+          },
+          {
+            mediaId,
+            actorUserId: ctx.auth?.userId,
+            actorRoles: ctx.auth?.roles,
+          }
+        );
+
+        return new Response(thumb.bytes, {
+          status: 200,
+          headers: {
+            'content-type': thumb.mimeType,
+            'cache-control': 'public, max-age=86400',
           },
         });
       } catch (error) {

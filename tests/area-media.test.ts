@@ -95,6 +95,8 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
       updatedAt: deletedAt,
     });
   }
+
+  async updateThumbnail(_id: string, _thumbnailStoragePath: string, _thumbnailGeneratedAt: Date): Promise<void> {}
 }
 
 class MemoryAreaMediaStorage implements AreaMediaStorage {
@@ -123,6 +125,14 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
 
   async delete(storagePath: string): Promise<void> {
     this.files.delete(storagePath);
+  }
+
+  async exists(storagePath: string): Promise<boolean> {
+    return this.files.has(storagePath);
+  }
+
+  async generateThumbnail(_storagePath: string): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
+    return { thumbnailStoragePath: '', bytes: new Uint8Array(0) };
   }
 }
 

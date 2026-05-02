@@ -695,6 +695,16 @@ const routes: ApiRouteDoc[] = [
     includeNotFound: true,
   },
   {
+    method: 'get',
+    path: '/api/v1/areas/media/:id/thumbnail',
+    summary: 'Get media thumbnail',
+    description: 'Returns a 200x200 WebP thumbnail for map display. Generated lazily on first request.',
+    tags: ['Area Media'],
+    successStatus: '200',
+    successResponse: 'BinaryFileResponse',
+    includeNotFound: true,
+  },
+  {
     method: 'delete',
     path: '/api/v1/areas/media/:id',
     summary: 'Delete area media',

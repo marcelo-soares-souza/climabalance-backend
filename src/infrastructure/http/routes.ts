@@ -156,6 +156,7 @@ export function buildRouter(
   addRoute('POST', '/api/v1/areas/:id/media', 'protected', withAuth((ctx) => areaHandlers.uploadMedia(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
   addRoute('GET', '/api/v1/areas/:id/media', 'public', withOptionalAuth((ctx) => areaHandlers.listMedia(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/areas/media/:id/file', 'media', withOptionalAuth((ctx) => areaHandlers.getMediaFile(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/areas/media/:id/thumbnail', 'media', withOptionalAuth((ctx) => areaHandlers.getMediaThumbnail(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/areas/media/:id', 'protected', withAuth((ctx) => areaHandlers.deleteMedia(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
 
   // Public map route (no auth required)

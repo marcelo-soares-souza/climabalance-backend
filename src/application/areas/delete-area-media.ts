@@ -43,6 +43,13 @@ export async function deleteAreaMedia(
   const now = deps.clock.now();
   await deps.areaMediaRepository.softDelete(media.id, now);
   await deps.areaMediaStorage.delete(media.storagePath);
+  if (media.thumbnailStoragePath) {
+    try {
+      await deps.areaMediaStorage.delete(media.thumbnailStoragePath);
+    } catch {
+      // Best-effort cleanup.
+    }
+  }
 
   await deps.auditLog.log({
     actorUserId: input.actorUserId,
