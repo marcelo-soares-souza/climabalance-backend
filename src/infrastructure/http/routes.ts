@@ -10,7 +10,9 @@ import { createCertificateHandlers } from './certificate-handlers';
 import { createPaymentHandlers } from './payment-handlers';
 import { createLocationHandlers } from './location-handlers';
 import { createStatsHandlers } from './stats-handlers';
+import { createStripeConnectHandlers } from './stripe-connect-handlers';
 import type { StatsHandlersDeps } from './stats-handlers';
+import type { StripeConnectHandlersDeps } from './stripe-connect-handlers';
 import { openApiJsonHandler, swaggerUiHandler } from './openapi';
 import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
@@ -51,7 +53,8 @@ export function buildRouter(
     CompensationHandlersDeps &
     CertificateHandlersDeps &
     PaymentHandlersDeps &
-    StatsHandlersDeps
+    StatsHandlersDeps &
+    StripeConnectHandlersDeps
   ): Router {
   const router = new Router();
   const rateLimiter = new InMemoryRateLimiter();
@@ -66,6 +69,7 @@ export function buildRouter(
   const paymentHandlers = createPaymentHandlers(deps);
   const locationHandlers = createLocationHandlers();
   const statsHandlers = createStatsHandlers(deps);
+  const stripeConnectHandlers = createStripeConnectHandlers(deps);
 
   const addRoute = (
     method: string,
@@ -251,6 +255,32 @@ export function buildRouter(
     'admin',
     withAuth((ctx) => paymentHandlers.reconcile(ctx), {
       roles: ['administrator']
+    })
+  );
+
+  // Stripe Connect routes (producers)
+  addRoute(
+    'POST',
+    '/api/v1/producers/stripe/onboard',
+    'protected',
+    withAuth((ctx) => stripeConnectHandlers.onboard(ctx), {
+      roles: ['producer', 'administrator'],
+    })
+  );
+  addRoute(
+    'GET',
+    '/api/v1/producers/stripe/status',
+    'protected',
+    withAuth((ctx) => stripeConnectHandlers.status(ctx), {
+      roles: ['producer', 'administrator'],
+    })
+  );
+  addRoute(
+    'POST',
+    '/api/v1/producers/stripe/dashboard',
+    'protected',
+    withAuth((ctx) => stripeConnectHandlers.dashboard(ctx), {
+      roles: ['producer', 'administrator'],
     })
   );
 

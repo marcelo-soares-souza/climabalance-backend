@@ -30,6 +30,7 @@ import { PostgresCompensationAtomicStore } from '../persistence/postgres/compens
 import { PostgresCompensationHistoryRepository } from '../persistence/postgres/compensation-history-repository';
 import { PostgresCompensationCertificateRepository } from '../persistence/postgres/compensation-certificate-repository';
 import { PostgresPaymentStore } from '../persistence/postgres/payment-simulation-store';
+import { PostgresStripeConnectRepository } from '../persistence/postgres/stripe-connect-repository';
 import { pgPool } from '../persistence/postgres/pg-client';
 import { bunPasswordHasher } from '../crypto/password';
 import { CryptoTokenGenerator } from '../crypto/crypto-token-generator';
@@ -114,6 +115,7 @@ export function buildAppRuntime() {
   const compensationHistoryRepository = new PostgresCompensationHistoryRepository(pgPool);
   const compensationCertificateRepository = new PostgresCompensationCertificateRepository(pgPool);
   const paymentStore = new PostgresPaymentStore(pgPool);
+  const stripeConnectRepository = new PostgresStripeConnectRepository(pgPool);
   const unitOfWork = new PostgresUnitOfWork(pgPool);
   const jobRepository = new PostgresJobRepository(pgPool);
 
@@ -156,6 +158,9 @@ export function buildAppRuntime() {
     clock,
     config,
     jobQueue: jobRepository,
+    stripeConnectRepository,
+    stripeConnectLookup: stripeConnectRepository,
+    stripePlatformFeePercent: env.stripePlatformFeePercent,
   });
 
   return {

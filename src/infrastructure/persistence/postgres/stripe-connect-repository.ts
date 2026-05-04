@@ -33,6 +33,20 @@ export class PostgresStripeConnectRepository {
     return mapRow(row);
   }
 
+  /**
+   * Adapter for StripeConnectLookup port from the payment use case.
+   */
+  async getByUserId(
+    userId: string
+  ): Promise<{ stripeAccountId: string; chargesEnabled: boolean } | null> {
+    const record = await this.findByUserId(userId);
+    if (!record) return null;
+    return {
+      stripeAccountId: record.stripeAccountId,
+      chargesEnabled: record.chargesEnabled,
+    };
+  }
+
   async create(record: {
     id: string;
     userId: string;
