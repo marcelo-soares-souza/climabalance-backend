@@ -1,5 +1,6 @@
 import { AreaRepository, AreaFilters } from '../../domain/areas/repositories/area-repository';
 import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
+import { Area } from '../../domain/areas/entities/area';
 import { AreaStatus } from '../../domain/areas/value-objects/area-status';
 import { Biome } from '../../domain/areas/value-objects/biome';
 
@@ -65,7 +66,7 @@ export async function listAreas(
   const filters: AreaFilters = isPaginated ? { limit: pageSize + 1 } : {};
 
   if (request.onlyActive) {
-    filters.status = AreaStatus.active;
+    filters.status = AreaStatus.ACTIVE;
   } else if (request.status) {
     filters.status = AreaStatus.fromString(request.status);
   }
@@ -91,14 +92,14 @@ export async function listAreas(
     if (request.ownerUserId && request.ownerUserId !== request.userId) {
       // Non-privileged user viewing another user's areas: only show active
       filters.ownerUserId = request.ownerUserId;
-      filters.status = AreaStatus.active;
+      filters.status = AreaStatus.ACTIVE;
     } else {
       // Non-privileged user viewing own areas: show all statuses
       filters.ownerUserId = request.userId;
     }
   } else {
     // Unauthenticated: only show active areas
-    filters.status = AreaStatus.active;
+    filters.status = AreaStatus.ACTIVE;
   }
 
   const areas = await deps.areaRepository.findAll(filters);
