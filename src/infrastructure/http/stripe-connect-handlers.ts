@@ -111,6 +111,7 @@ export function createStripeConnectHandlers(
      */
     async status(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const auth = requireAuth(ctx);
 
@@ -144,12 +145,40 @@ export function createStripeConnectHandlers(
           chargesEnabled !== record.chargesEnabled ||
           payoutsEnabled !== record.payoutsEnabled
         ) {
+          const previousState = {
+            charges_enabled: record.chargesEnabled,
+            payouts_enabled: record.payoutsEnabled,
+          };
+          const newState = {
+            charges_enabled: chargesEnabled,
+            payouts_enabled: payoutsEnabled,
+          };
+          const changedFields: string[] = [];
+          if (chargesEnabled !== record.chargesEnabled)
+            changedFields.push('charges_enabled');
+          if (payoutsEnabled !== record.payoutsEnabled)
+            changedFields.push('payouts_enabled');
+
           await deps.stripeConnectRepository.updateStatus(
             record.id,
             chargesEnabled,
             payoutsEnabled,
             deps.clock.now()
           );
+
+          await requestAuditLog.log({
+            actorUserId: auth.userId,
+            action: 'producer.stripe_onboarding_updated',
+            entityType: 'stripe_connect_account',
+            entityId: record.id,
+            metadata: {
+              stripe_account_id: record.stripeAccountId,
+              source: 'manual_poll',
+            },
+            previousState,
+            newState,
+            changedFields,
+          });
         }
 
         return jsonResponse(
