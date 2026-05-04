@@ -7,6 +7,8 @@ import { LocalAreaMediaStorage } from '../storage/local-area-media-storage';
 import { LocalCertificateStorage } from '../storage/local-certificate-storage';
 import { SimpleCertificatePdfGenerator } from '../pdf/simple-certificate-pdf-generator';
 import { CardSimulatorPaymentGatewayAdapter } from '../payments/card-simulator-gateway';
+import { StripePaymentGatewayAdapter } from '../payments/stripe-gateway';
+import { getStripeClient } from '../payments/stripe-client';
 import { PostgresUserRepository } from '../persistence/postgres/user-repository';
 import { PostgresEmailConfirmationRepository } from '../persistence/postgres/email-confirmation-repository';
 import { PostgresPasswordResetRepository } from '../persistence/postgres/password-reset-repository';
@@ -78,10 +80,17 @@ export function buildAppRuntime() {
   const hashService = new WebCryptoHashService();
   const idGenerator = new UUIDv7Generator();
   const clock = new SystemClock();
-  const paymentGateway = new CardSimulatorPaymentGatewayAdapter({
-    clock,
-    webhookSecret: env.paymentWebhookSecret,
-  });
+  const paymentGateway =
+    env.appEnv === 'local'
+      ? new CardSimulatorPaymentGatewayAdapter({
+          clock,
+          webhookSecret: env.paymentWebhookSecret,
+        })
+      : new StripePaymentGatewayAdapter({
+          stripe: getStripeClient(env.stripeSecretKey),
+          clock,
+          webhookSecret: env.stripeWebhookSecret,
+        });
   const { areaMediaStorage, compensationCertificateStorage, logMeta: storageLogMeta } =
     createObjectStorage();
   const emailSender = createEmailSender();
