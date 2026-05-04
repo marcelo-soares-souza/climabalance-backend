@@ -228,6 +228,14 @@ export function buildRouter(
     'protected',
     withAuth((ctx) => paymentHandlers.simulate(ctx))
   );
+  addRoute(
+    'POST',
+    '/api/v1/payments/create-payment-intent',
+    'protected',
+    withAuth((ctx) => paymentHandlers.createPaymentIntent(ctx), {
+      roles: ['individual', 'legal_entity', 'administrator'],
+    })
+  );
   addRoute('GET', '/api/v1/stats/global', 'public', (ctx) => statsHandlers.global(ctx));
 
   addRoute(

@@ -942,6 +942,17 @@ const routes: ApiRouteDoc[] = [
     successResponse: 'CreatedData',
   },
   {
+    method: 'post',
+    path: '/api/v1/payments/create-payment-intent',
+    summary: 'Create Stripe PaymentIntent',
+    description: 'Creates a Stripe PaymentIntent for card or Pix payment with Connect routing.',
+    tags: ['Payments'],
+    secured: true,
+    requestBodyRef: 'PaymentCreateIntentRequest',
+    successStatus: '201',
+    successResponse: 'CreatedData',
+  },
+  {
     method: 'get',
     path: '/api/v1/payments/:id/status',
     summary: 'Get payment status',

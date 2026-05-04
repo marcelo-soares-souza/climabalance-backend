@@ -23,6 +23,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
       `SELECT
          id,
          supporter_user_id,
+         area_id,
          total_amount,
          currency,
          status
@@ -41,6 +42,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
     return {
       id: String(row.id),
       supporterUserId: String(row.supporter_user_id),
+      areaId: String(row.area_id),
       totalAmount: Number(row.total_amount),
       currency: String(row.currency),
       status: String(row.status) as PaymentCompensationSnapshot['status'],
@@ -48,36 +50,62 @@ class PostgresPaymentTransaction implements PaymentTransaction {
   }
 
   async insertPayment(record: PaymentCreateRecord): Promise<void> {
-    await this.client.query(
-      `INSERT INTO payments (
-         id,
-         compensation_id,
-         provider,
-         provider_reference,
-         amount,
-         currency,
-         status,
-         paid_at,
-         created_at,
-         updated_at,
-         deleted_at
-       ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
-       )`,
-      [
-        record.id,
-        record.compensationId,
-        record.provider,
-        record.providerReference,
-        record.amount,
-        record.currency,
-        record.status,
-        record.paidAt ?? null,
-        record.createdAt,
-        record.updatedAt,
-        null,
-      ]
-    );
+    const hasStripeColumns =
+      record.paymentMethod !== undefined &&
+      record.stripePaymentIntentId !== undefined &&
+      record.paymentMethod !== null &&
+      record.stripePaymentIntentId !== null;
+
+    if (hasStripeColumns) {
+      await this.client.query(
+        `INSERT INTO payments (
+           id, compensation_id, provider, provider_reference,
+           amount, currency, status, paid_at,
+           payment_method, stripe_payment_intent_id,
+           created_at, updated_at, deleted_at
+         ) VALUES (
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
+         )`,
+        [
+          record.id,
+          record.compensationId,
+          record.provider,
+          record.providerReference,
+          record.amount,
+          record.currency,
+          record.status,
+          record.paidAt ?? null,
+          record.paymentMethod,
+          record.stripePaymentIntentId,
+          record.createdAt,
+          record.updatedAt,
+          null,
+        ]
+      );
+    } else {
+      await this.client.query(
+        `INSERT INTO payments (
+           id, compensation_id, provider, provider_reference,
+           amount, currency, status, paid_at,
+           created_at, updated_at, deleted_at
+         ) VALUES (
+           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11
+         )`,
+        [
+          record.id,
+          record.compensationId,
+          record.provider,
+          record.providerReference,
+          record.amount,
+          record.currency,
+          record.status,
+          record.paidAt ?? null,
+          record.createdAt,
+          record.updatedAt,
+          null,
+        ]
+      );
+    }
   }
 
   async lockPaymentById(paymentId: string): Promise<LockedPaymentRecord | null> {

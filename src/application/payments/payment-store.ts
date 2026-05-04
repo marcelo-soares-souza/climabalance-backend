@@ -14,6 +14,7 @@ export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type PaymentCompensationSnapshot = {
   id: string;
   supporterUserId: string;
+  areaId: string;
   totalAmount: number;
   currency: string;
   status: CompensationStatus;
@@ -33,6 +34,8 @@ export type PaymentCreateRecord = {
   paidAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  paymentMethod?: string;
+  stripePaymentIntentId?: string;
 };
 
 /**

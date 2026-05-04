@@ -467,6 +467,7 @@ describe('payment webhook and reconciliation', () => {
       supporterUserId: 'supporter-1',
       totalAmount: 100,
       currency: 'BRL',
+      areaId: 'area-1',
       status: 'pending',
     });
 
@@ -525,6 +526,7 @@ describe('payment webhook and reconciliation', () => {
       supporterUserId: 'supporter-a',
       totalAmount: 100,
       currency: 'BRL',
+      areaId: 'area-a',
       status: 'pending',
     });
     store.addCompensation({
@@ -532,6 +534,7 @@ describe('payment webhook and reconciliation', () => {
       supporterUserId: 'supporter-b',
       totalAmount: 80,
       currency: 'BRL',
+      areaId: 'area-b',
       status: 'pending',
     });
 

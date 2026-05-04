@@ -9,10 +9,13 @@ import {
   reconcilePaymentsSchema,
   simulateCardPaymentSchema,
 } from './schemas/payment-schemas';
+import { createPaymentIntentSchema } from './schemas/stripe-schemas';
 import { simulateCardPayment } from '../../application/payments/simulate-card-payment';
 import { getPaymentStatus } from '../../application/payments/get-payment-status';
 import { processPaymentWebhook } from '../../application/payments/process-payment-webhook';
 import { reconcilePendingPayments } from '../../application/payments/reconcile-payments';
+import { createStripePaymentIntent } from '../../application/payments/create-stripe-payment-intent';
+import type { StripeConnectLookup } from '../../application/payments/create-stripe-payment-intent';
 import { issueCompensationCertificate } from '../../application/compensations/issue-compensation-certificate';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
@@ -40,6 +43,8 @@ export interface PaymentHandlersDeps {
   jobQueue?: JobQueue;
   areaRepository?: AreaRepository;
   users?: UserRepository;
+  stripeConnectLookup?: StripeConnectLookup;
+  stripePlatformFeePercent?: number;
 }
 
 export function createPaymentHandlers(deps: PaymentHandlersDeps) {
@@ -101,6 +106,86 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
               certificate,
             },
             message_key: 'payment.simulated',
+          },
+          logContext
+        );
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * POST /api/v1/payments/create-payment-intent
+     * Creates a Stripe PaymentIntent (card or Pix) with Connect routing.
+     */
+    async createPaymentIntent(ctx: HttpContext) {
+      const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
+      try {
+        const auth = requireAuth(ctx);
+        const body = await parseJson(ctx.request, ctx);
+        const validated = parseWithSchema(createPaymentIntentSchema, body);
+
+        if (!deps.areaRepository) {
+          return errorResponse(
+            500,
+            'payment.configuration_error',
+            undefined,
+            logContext
+          );
+        }
+
+        if (!deps.stripeConnectLookup) {
+          return errorResponse(
+            500,
+            'payment.configuration_error',
+            undefined,
+            logContext
+          );
+        }
+
+        const result = await createStripePaymentIntent(
+          {
+            store: deps.paymentStore,
+            paymentGateway: deps.paymentGateway,
+            areaOwnerLookup: {
+              getOwnerUserId: async (areaId: string) => {
+                const area = await deps.areaRepository!.findById(areaId);
+                return area?.ownerUserId ?? null;
+              },
+            },
+            stripeConnectLookup: deps.stripeConnectLookup,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+            auditLog: requestAuditLog,
+            platformFeePercent: deps.stripePlatformFeePercent ?? 5,
+          },
+          {
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
+            compensationId: validated.compensation_id,
+            paymentMethod: validated.payment_method,
+          }
+        );
+
+        return jsonResponse(
+          201,
+          {
+            data: {
+              payment_id: result.paymentId,
+              compensation_id: result.compensationId,
+              payment_status: result.paymentStatus,
+              compensation_status: result.compensationStatus,
+              amount: result.amount,
+              currency: result.currency,
+              processed_at: result.processedAt,
+              client_secret: result.clientSecret,
+              qr_code: result.qrCode,
+              copy_paste_code: result.copyPasteCode,
+              payment_intent_id: result.paymentIntentId,
+              payment_method: validated.payment_method,
+            },
+            message_key: 'payment.intent_created',
           },
           logContext
         );

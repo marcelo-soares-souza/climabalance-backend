@@ -438,6 +438,7 @@ describe('POST /api/v1/payments/simulate', () => {
         supporterUserId: 'supporter-1',
         totalAmount: 120,
         currency: 'BRL',
+        areaId: 'area-1',
         status: 'pending',
       },
     ]);
@@ -483,6 +484,7 @@ describe('POST /api/v1/payments/simulate', () => {
         supporterUserId: 'supporter-1',
         totalAmount: 200,
         currency: 'BRL',
+        areaId: 'area-1',
         status: 'pending',
       },
     ]);
@@ -525,18 +527,19 @@ describe('POST /api/v1/payments/simulate', () => {
         supporterUserId: 'supporter-1',
         totalAmount: 200,
         currency: 'BRL',
+        areaId: 'area-1',
         status: 'pending',
       },
     ]);
 
-    const handlers = createHandlers(
+    const handlerWithOtherUser = createHandlers(
       store,
       new FakeGateway(),
       'pay-3',
       '2026-02-07T20:10:00Z'
     );
 
-    const response = await handlers.simulate(
+    const response = await handlerWithOtherUser.simulate(
       buildPostContext({
         userId: 'other-user',
         url: '/api/v1/payments/simulate',
@@ -564,6 +567,7 @@ describe('POST /api/v1/payments/simulate', () => {
         supporterUserId: 'supporter-1',
         totalAmount: 200,
         currency: 'BRL',
+        areaId: 'area-1',
         status: 'pending',
       },
     ]);
@@ -605,6 +609,7 @@ describe('GET /api/v1/payments/:id/status', () => {
         supporterUserId: 'supporter-1',
         totalAmount: 300,
         currency: 'BRL',
+        areaId: 'area-1',
         status: 'pending',
       },
     ]);
