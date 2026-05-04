@@ -104,6 +104,10 @@ export interface PaymentTransaction {
     providerReference: string;
   }): Promise<LockedPaymentRecord | null>;
 
+  lockPaymentByStripePaymentIntentId(
+    stripePaymentIntentId: string
+  ): Promise<LockedPaymentRecord | null>;
+
   updatePaymentStatus(input: {
     paymentId: string;
     status: PaymentStatus;

@@ -11,11 +11,17 @@ export const simulateCardPaymentSchema = z.object({
 });
 
 export const paymentWebhookSchema = z.object({
-  provider: z.literal('card_simulator'),
-  event: z.literal('payment.updated'),
+  provider: z.enum(['card_simulator', 'stripe']),
+  event: z.string().min(1),
   data: z.object({
-    provider_reference: z.string().min(8).max(140),
-  }),
+    provider_reference: z.string().min(8).max(140).optional(),
+    object: z
+      .object({
+        id: z.string().optional(),
+        status: z.string().optional(),
+      })
+      .optional(),
+  }).optional(),
 });
 
 export const reconcilePaymentsSchema = z.object({

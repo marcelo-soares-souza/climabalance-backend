@@ -14,6 +14,10 @@ import { simulateCardPayment } from '../../application/payments/simulate-card-pa
 import { getPaymentStatus } from '../../application/payments/get-payment-status';
 import { processPaymentWebhook } from '../../application/payments/process-payment-webhook';
 import { reconcilePendingPayments } from '../../application/payments/reconcile-payments';
+import {
+  mapGatewayOutcomeToPaymentStatus,
+  resolveCompensationStatusFromPayment,
+} from '../../application/payments/payment-status';
 import { createStripePaymentIntent } from '../../application/payments/create-stripe-payment-intent';
 import type { StripeConnectLookup } from '../../application/payments/create-stripe-payment-intent';
 import { issueCompensationCertificate } from '../../application/compensations/issue-compensation-certificate';
@@ -249,13 +253,22 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
     /**
      * POST /api/v1/payments/webhook
      * Receives gateway webhook updates and syncs payment status.
+     * Supports card_simulator (HMAC) and Stripe (constructEvent).
      */
     async webhook(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const rawPayload = await readTextBody(ctx.request, 1024 * 64);
-        const signature = ctx.request.headers.get('x-payment-signature');
+
+        // Determine signature header based on provider
+        const isStripe =
+          deps.paymentGateway.provider === 'stripe' ||
+          ctx.request.headers.get('stripe-signature') !== null;
+
+        const signature = isStripe
+          ? ctx.request.headers.get('stripe-signature')
+          : ctx.request.headers.get('x-payment-signature');
 
         const isValid = deps.paymentGateway.verifyWebhookSignature({
           payload: rawPayload,
@@ -263,6 +276,16 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
         });
 
         if (!isValid) {
+          await requestAuditLog.log({
+            actorUserId: 'system:webhook',
+            action: 'payment.webhook_invalid_signature',
+            entityType: 'webhook',
+            entityId: '',
+            severity: 'critical' as const,
+            success: false,
+            errorCode: 'invalid_signature',
+          });
+
           return errorResponse(
             401,
             'payment.webhook_invalid_signature',
@@ -271,6 +294,125 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           );
         }
 
+        // For Stripe, parse the event and route to payment or account handler
+        if (isStripe) {
+          const stripeGateway = deps.paymentGateway as any;
+          if (typeof stripeGateway.parseWebhookEvent === 'function' && signature) {
+            const parsed = stripeGateway.parseWebhookEvent(rawPayload, signature);
+
+            if (!parsed.paymentIntentId || !parsed.outcome) {
+              return jsonResponse(
+                202,
+                {
+                  data: { processed: false },
+                  message_key: 'payment.webhook_processed',
+                },
+                logContext
+              );
+            }
+
+            const result = await deps.paymentStore.runInTransaction(async (tx) => {
+              const payment =
+                await tx.lockPaymentByStripePaymentIntentId(
+                  parsed.paymentIntentId!
+                );
+
+              if (!payment) {
+                return { processed: false };
+              }
+
+              const latestPaymentStatus =
+                mapGatewayOutcomeToPaymentStatus(parsed.outcome!);
+              const now = deps.clock.now();
+
+              if (latestPaymentStatus !== payment.paymentStatus) {
+                await tx.updatePaymentStatus({
+                  paymentId: payment.id,
+                  status: latestPaymentStatus,
+                  updatedAt: now,
+                  paidAt: latestPaymentStatus === 'paid' ? now : undefined,
+                });
+              }
+
+              const nextCompensationStatus = resolveCompensationStatusFromPayment({
+                currentCompensationStatus: payment.compensationStatus,
+                newPaymentStatus: latestPaymentStatus,
+              });
+
+              if (
+                (nextCompensationStatus === 'pending' ||
+                  nextCompensationStatus === 'paid' ||
+                  nextCompensationStatus === 'canceled') &&
+                payment.compensationStatus !== nextCompensationStatus
+              ) {
+                await tx.updateCompensationStatus({
+                  compensationId: payment.compensationId,
+                  status: nextCompensationStatus,
+                  updatedAt: now,
+                });
+              }
+
+              return {
+                processed: true,
+                paymentId: payment.id,
+                compensationId: payment.compensationId,
+                paymentStatus: latestPaymentStatus,
+                compensationStatus: nextCompensationStatus,
+              };
+            });
+
+            if (result.processed) {
+              await requestAuditLog.log({
+                actorUserId: 'system:webhook',
+                action:
+                  result.paymentStatus === 'paid'
+                    ? 'payment.confirmed'
+                    : result.paymentStatus === 'failed'
+                      ? 'payment.failed'
+                      : 'payment.webhook_processed',
+                entityType: 'payment',
+                entityId: result.paymentId!,
+                metadata: {
+                  stripe_payment_intent_id: parsed.paymentIntentId,
+                  stripe_event_type: parsed.type,
+                  payment_status: result.paymentStatus,
+                  compensation_id: result.compensationId,
+                },
+                severity:
+                  result.paymentStatus === 'failed' ? ('warning' as const) : ('info' as const),
+                success: result.paymentStatus !== 'failed',
+              });
+            }
+
+            const certificate =
+              result.processed && result.compensationId
+                ? await ensureCertificateAfterPaidCompensation(
+                    deps,
+                    result.compensationId!,
+                    'system:webhook',
+                    requestAuditLog
+                  )
+                : null;
+
+            return jsonResponse(
+              202,
+              {
+                data: {
+                  processed: result.processed,
+                  payment_id: result.paymentId,
+                  compensation_id: result.compensationId,
+                  payment_status: result.paymentStatus,
+                  compensation_status: result.compensationStatus,
+                  certificate,
+                },
+                message_key: 'payment.webhook_processed',
+              },
+              logContext
+            );
+          }
+        }
+
+        // Card simulator webhook path (unchanged)
         const parsedJson = rawPayload.length > 0 ? JSON.parse(rawPayload) : {};
         const body = parseWithSchema(paymentWebhookSchema, parsedJson);
 
@@ -283,7 +425,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           },
           {
             provider: body.provider,
-            providerReference: body.data.provider_reference,
+            providerReference: body.data?.provider_reference ?? '',
             actorUserId: 'system:webhook',
           }
         );

@@ -106,6 +106,18 @@ class InMemoryPaymentStore implements PaymentStore {
 
         return mapLockedPayment(payment, compensation);
       },
+      lockPaymentByStripePaymentIntentId: async (
+        stripePaymentIntentId: string
+      ) => {
+        const payment = [...this.payments.values()].find(
+          (candidate) =>
+            (candidate as any).stripePaymentIntentId === stripePaymentIntentId
+        );
+        if (!payment) return null;
+        const compensation = this.compensations.get(payment.compensationId);
+        if (!compensation) return null;
+        return mapLockedPayment(payment, compensation);
+      },
       updatePaymentStatus: async (input: {
         paymentId: string;
         status: PaymentStatus;

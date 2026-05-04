@@ -172,6 +172,37 @@ class PostgresPaymentTransaction implements PaymentTransaction {
     return this.mapLockedPayment(result.rows[0] as Record<string, unknown>);
   }
 
+  async lockPaymentByStripePaymentIntentId(
+    stripePaymentIntentId: string
+  ): Promise<LockedPaymentRecord | null> {
+    const result = await this.client.query(
+      `SELECT
+         p.id,
+         p.compensation_id,
+         p.provider,
+         p.provider_reference,
+         p.amount,
+         p.currency,
+         p.status AS payment_status,
+         p.paid_at,
+         c.supporter_user_id,
+         c.status AS compensation_status
+       FROM payments p
+       INNER JOIN compensations c ON c.id = p.compensation_id
+       WHERE p.stripe_payment_intent_id = $1
+         AND p.deleted_at IS NULL
+         AND c.deleted_at IS NULL
+       FOR UPDATE OF p, c`,
+      [stripePaymentIntentId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return this.mapLockedPayment(result.rows[0] as Record<string, unknown>);
+  }
+
   async updatePaymentStatus(input: {
     paymentId: string;
     status: PaymentStatus;
