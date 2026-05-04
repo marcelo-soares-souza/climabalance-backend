@@ -23,6 +23,10 @@ export type Env = {
   refreshCookieSameSite: 'lax' | 'strict' | 'none';
   refreshCookieSecure: boolean;
   paymentWebhookSecret: string;
+  stripeSecretKey: string;
+  stripePublishableKey: string;
+  stripeWebhookSecret: string;
+  stripePlatformFeePercent: number;
   areaMediaStoragePath: string;
   certificateStoragePath: string;
   smtpServer?: string;
@@ -154,6 +158,18 @@ export const env: Env = {
   },
   get paymentWebhookSecret() {
     return process.env.PAYMENT_WEBHOOK_SECRET ?? 'dev-payment-webhook-secret';
+  },
+  get stripeSecretKey() {
+    return optionalEnv('STRIPE_SECRET_KEY') ?? '';
+  },
+  get stripePublishableKey() {
+    return optionalEnv('STRIPE_PUBLISHABLE_KEY') ?? '';
+  },
+  get stripeWebhookSecret() {
+    return optionalEnv('STRIPE_WEBHOOK_SECRET') ?? '';
+  },
+  get stripePlatformFeePercent() {
+    return numberEnv('STRIPE_PLATFORM_FEE_PERCENT', 5);
   },
   get areaMediaStoragePath() {
     return process.env.AREA_MEDIA_STORAGE_PATH ?? './storage/area-media';
