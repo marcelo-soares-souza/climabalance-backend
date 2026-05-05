@@ -76,6 +76,17 @@ function mapAuditLog(row: Record<string, unknown>): AuditLogEntry {
   };
 }
 
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function normalizeActorUserId(actorUserId: string | null | undefined): string | null {
+  if (!actorUserId) return null;
+  return isUuidLike(actorUserId) ? actorUserId : null;
+}
+
 export class PostgresAuditLogRepository implements AuditLogRepository {
   constructor(private readonly db: DbClient) {}
 
@@ -128,7 +139,7 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
 
     await this.create({
       id: crypto.randomUUID(),
-      actorUserId: entry.actorUserId ?? null,
+      actorUserId: normalizeActorUserId(entry.actorUserId),
       actorEmail: entry.actorEmail ?? null,
       action: entry.action,
       entityType: entry.entityType,
