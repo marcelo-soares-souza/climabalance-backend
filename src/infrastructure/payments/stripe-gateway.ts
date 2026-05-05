@@ -191,7 +191,8 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
 
     if (
       event.type === 'payment_intent.succeeded' ||
-      event.type === 'payment_intent.payment_failed'
+      event.type === 'payment_intent.payment_failed' ||
+      event.type === 'payment_intent.canceled'
     ) {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       return {
