@@ -344,6 +344,37 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
               );
             }
 
+            if (parsed.type === 'charge.refunded' && parsed.paymentIntentId) {
+              const refundResult = await deps.paymentStore.runInTransaction(async (tx) => {
+                const payment = await tx.lockPaymentByStripePaymentIntentId(parsed.paymentIntentId!);
+                if (!payment) return { processed: false };
+                const now = deps.clock.now();
+                await tx.updatePaymentStatus({ paymentId: payment.id, status: 'refunded', updatedAt: now });
+                await tx.updateCompensationStatus({ compensationId: payment.compensationId, status: 'refunded', updatedAt: now });
+                return { processed: true, paymentId: payment.id, compensationId: payment.compensationId };
+              });
+
+              if (refundResult.processed) {
+                await requestAuditLog.log({
+                  actorUserId: 'system:webhook',
+                  action: 'payment.refunded',
+                  entityType: 'payment',
+                  entityId: refundResult.paymentId!,
+                  metadata: { stripe_event_type: parsed.type, compensation_id: refundResult.compensationId },
+                  severity: 'warning' as const,
+                  success: true,
+                });
+                if (deps.jobQueue && deps.areaRepository && deps.users) {
+                  notifyContributionRefunded(deps, refundResult.compensationId!).catch(() => {});
+                }
+              }
+
+              return jsonResponse(202, {
+                data: { processed: refundResult.processed },
+                message_key: 'payment.webhook_processed',
+              }, logContext);
+            }
+
             if (!parsed.paymentIntentId || !parsed.outcome) {
               const accountUpdateProcessed =
                 await handleStripeAccountUpdatedWebhook(
@@ -463,6 +494,10 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                   )
                 : null;
 
+            if (result.paymentStatus === 'paid' && deps.jobQueue && deps.areaRepository && deps.users) {
+              notifyCompensationMilestone(deps, result.compensationId!).catch(() => {});
+            }
+
             return jsonResponse(
               202,
               {
@@ -553,14 +588,14 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           }
         );
         for (const compensationId of result.paidCompensationIds) {
-          const certificate = await ensureCertificateAfterPaidCompensation(
+          await ensureCertificateAfterPaidCompensation(
             deps,
             compensationId,
             auth.userId,
             requestAuditLog
           );
 
-          if (certificate && deps.jobQueue && deps.areaRepository && deps.users) {
+          if (deps.jobQueue && deps.areaRepository && deps.users) {
             const comp = await deps.paymentStore.getCompensationForCertificate(compensationId);
             if (comp) {
               const area = await deps.areaRepository.findById(comp.areaId);
@@ -574,6 +609,23 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                   currency: comp.currency,
                   treesCount: comp.treesCount,
                 }).catch(() => {});
+                if (area.carbonCapacity) {
+                  const contributionShare = (comp.totalTCO2e / area.carbonCapacity.totalCapacityTCO2e) * 100;
+                  const utilization = area.carbonCapacity.utilizationPercentage;
+                  const prevUtilization = utilization - contributionShare;
+                  const milestones = [50, 75, 100];
+                  for (const milestone of milestones) {
+                    if (utilization >= milestone && prevUtilization < milestone) {
+                      await deps.jobQueue.enqueue('area.compensation_milestone', {
+                        areaId: comp.areaId,
+                        areaName: area.name,
+                        producerEmail: owner?.email ?? '',
+                        percentage: milestone,
+                      }).catch(() => {});
+                      break;
+                    }
+                  }
+                }
               }
             }
           }
@@ -654,6 +706,7 @@ async function handleStripeAccountUpdatedWebhook(
     id?: string;
     charges_enabled?: boolean;
     payouts_enabled?: boolean;
+    requirements?: { disabled_reason?: string | null; currently_due?: string[] };
   };
 
   const stripeAccountId = typeof account.id === 'string' ? account.id : '';
@@ -705,6 +758,19 @@ async function handleStripeAccountUpdatedWebhook(
       ...(payoutsEnabled !== record.payoutsEnabled ? ['payouts_enabled'] : []),
     ],
   });
+
+  // Detect onboarding failure and notify producer
+  const disabledReason = account.requirements?.disabled_reason ?? null;
+  if (disabledReason && deps.jobQueue && deps.users) {
+    const user = await deps.users.findById(record.userId);
+    if (user) {
+      await deps.jobQueue.enqueue('stripe.onboarding_failed', {
+        email: user.email,
+        producerName: user.name ?? user.email,
+        reason: disabledReason,
+      }).catch(() => {});
+    }
+  }
 
   return true;
 }
@@ -819,6 +885,54 @@ async function ensureCertificateAfterPaidCompensation(
       },
     });
     return null;
+  }
+}
+
+async function notifyContributionRefunded(
+  deps: PaymentHandlersDeps,
+  compensationId: string
+): Promise<void> {
+  if (!deps.jobQueue || !deps.areaRepository || !deps.users) return;
+  const comp = await deps.paymentStore.getCompensationForCertificate(compensationId);
+  if (!comp) return;
+  const area = await deps.areaRepository.findById(comp.areaId);
+  if (!area) return;
+  const owner = await deps.users.findById(area.ownerUserId);
+  if (!owner) return;
+  await deps.jobQueue.enqueue('contribution.refunded', {
+    areaId: comp.areaId,
+    areaName: area.name,
+    producerEmail: owner.email,
+    amount: comp.totalAmount,
+    currency: comp.currency,
+  }).catch(() => {});
+}
+
+async function notifyCompensationMilestone(
+  deps: PaymentHandlersDeps,
+  compensationId: string
+): Promise<void> {
+  if (!deps.jobQueue || !deps.areaRepository || !deps.users) return;
+  const comp = await deps.paymentStore.getCompensationForCertificate(compensationId);
+  if (!comp) return;
+  const area = await deps.areaRepository.findById(comp.areaId);
+  if (!area || !area.carbonCapacity) return;
+  const utilization = area.carbonCapacity.utilizationPercentage;
+  const contributionShare = (comp.totalTCO2e / area.carbonCapacity.totalCapacityTCO2e) * 100;
+  const prevUtilization = utilization - contributionShare;
+  const milestones = [50, 75, 100];
+  for (const milestone of milestones) {
+    if (utilization >= milestone && prevUtilization < milestone) {
+      const owner = await deps.users.findById(area.ownerUserId);
+      if (!owner) return;
+      await deps.jobQueue.enqueue('area.compensation_milestone', {
+        areaId: comp.areaId,
+        areaName: area.name,
+        producerEmail: owner.email,
+        percentage: milestone,
+      }).catch(() => {});
+      break;
+    }
   }
 }
 

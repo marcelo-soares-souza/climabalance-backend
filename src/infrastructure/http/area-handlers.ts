@@ -350,6 +350,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(rejectAreaSchema, body);
 
+        const area = await deps.areaRepository.findById(id);
+
         await rejectArea(
           {
             auditService,
@@ -358,6 +360,16 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           auth.userId,
           validated.reason
         );
+
+        if (area) {
+          const owner = await deps.users.findById(area.ownerUserId);
+          await deps.jobQueue.enqueue('area.rejected', {
+            areaId: id,
+            areaName: area.name,
+            producerEmail: owner?.email ?? '',
+            reason: validated.reason,
+          }).catch(() => {});
+        }
 
         return jsonResponse(
           200,

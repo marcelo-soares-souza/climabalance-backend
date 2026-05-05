@@ -203,6 +203,20 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
       };
     }
 
+    if (event.type === 'charge.refunded') {
+      const charge = event.data.object as Stripe.Charge;
+      const paymentIntentId =
+        typeof charge.payment_intent === 'string'
+          ? charge.payment_intent
+          : (charge.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+      return {
+        eventId: event.id,
+        type: event.type,
+        paymentIntentId,
+        outcome: null,
+      };
+    }
+
     return {
       eventId: event.id,
       type: event.type,

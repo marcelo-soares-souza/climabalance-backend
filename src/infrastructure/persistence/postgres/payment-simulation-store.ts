@@ -255,7 +255,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
 
   async updateCompensationStatus(input: {
     compensationId: string;
-    status: 'pending' | 'paid' | 'canceled';
+    status: 'pending' | 'paid' | 'canceled' | 'refunded';
     updatedAt: Date;
   }): Promise<void> {
     await this.client.query(

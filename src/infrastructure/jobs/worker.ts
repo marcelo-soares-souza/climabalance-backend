@@ -8,6 +8,10 @@ import {
   handleAuditRequested,
   handleAreaApproved,
   handleContributionReceived,
+  handleAreaRejected,
+  handleStripeOnboardingFailed,
+  handleContributionRefunded,
+  handleCompensationMilestone,
 } from '../../application/jobs/handlers';
 
 const HANDLERS: Record<
@@ -19,6 +23,10 @@ const HANDLERS: Record<
   'area.audit_requested': handleAuditRequested,
   'area.approved': handleAreaApproved,
   'area.contribution_received': handleContributionReceived,
+  'area.rejected': handleAreaRejected,
+  'stripe.onboarding_failed': handleStripeOnboardingFailed,
+  'contribution.refunded': handleContributionRefunded,
+  'area.compensation_milestone': handleCompensationMilestone,
 };
 
 export function startJobWorker(
