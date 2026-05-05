@@ -59,5 +59,5 @@ export interface PaymentGatewayAdapter {
   verifyWebhookSignature(input: {
     payload: string;
     signature: string | null;
-  }): boolean;
+  }): Promise<boolean>;
 }

@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test';
 import { createHmac } from 'node:crypto';
-import Stripe from 'stripe';
 import { createPaymentHandlers } from '../src/infrastructure/http/payment-handlers';
 import { resetStripeClient } from '../src/infrastructure/payments/stripe-client';
 import type { HttpContext } from '../src/shared/http/router';
@@ -267,20 +266,22 @@ class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
   verifyWebhookSignature(input: {
     payload: string;
     signature: string | null;
-  }): boolean {
-    return Boolean(input.payload && input.signature);
+  }): Promise<boolean> {
+    return Promise.resolve(Boolean(input.payload && input.signature));
   }
 
-  parseWebhookEvent(_rawPayload: string, _signature: string): {
+  async parseWebhookEvent(_rawPayload: string, _signature: string): Promise<{
+    eventId: string;
     type: string;
     paymentIntentId: string | null;
     outcome: PaymentGatewayOutcome | null;
-  } {
-    return {
+  }> {
+    return Promise.resolve({
+      eventId: 'evt_account_updated_1',
       type: 'account.updated',
       paymentIntentId: null,
       outcome: null,
-    };
+    });
   }
 }
 
@@ -319,9 +320,9 @@ class MutableGateway implements PaymentGatewayAdapter {
   verifyWebhookSignature(input: {
     payload: string;
     signature: string | null;
-  }): boolean {
+  }): Promise<boolean> {
     if (!input.signature) {
-      return false;
+      return Promise.resolve(false);
     }
 
     const received = input.signature.startsWith('sha256=')
@@ -332,7 +333,7 @@ class MutableGateway implements PaymentGatewayAdapter {
       .update(input.payload, 'utf-8')
       .digest('hex');
 
-    return received === expected;
+    return Promise.resolve(received === expected);
   }
 
   setStatus(providerReference: string, outcome: PaymentGatewayOutcome): void {
@@ -708,10 +709,15 @@ describe('payment webhook and reconciliation', () => {
       },
     });
 
-    const stripeSignature = Stripe.webhooks.generateTestHeaderString({
-      payload,
-      secret: process.env.STRIPE_WEBHOOK_SECRET!,
-    });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signedPayload = `${timestamp}.${payload}`;
+    const signature = createHmac(
+      'sha256',
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+      .update(signedPayload, 'utf-8')
+      .digest('hex');
+    const stripeSignature = `t=${timestamp},v1=${signature}`;
 
     const response = await handlers.webhook(
       buildWebhookContext({

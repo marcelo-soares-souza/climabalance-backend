@@ -17,6 +17,7 @@ export type StripePaymentIntentCreateInput = {
   paymentMethod: 'card' | 'pix';
   connectedAccountId: string;
   applicationFeeAmount: number;
+  idempotencyKey: string;
   metadata: { compensationId: string; paymentId: string };
 };
 
@@ -104,20 +105,22 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
   verifyWebhookSignature(input: {
     payload: string;
     signature: string | null;
-  }): boolean {
+  }): Promise<boolean> {
     if (!input.signature) {
-      return false;
+      return Promise.resolve(false);
     }
 
     try {
-      this.deps.stripe.webhooks.constructEvent(
+      return this.deps.stripe.webhooks
+        .constructEventAsync(
         input.payload,
         input.signature,
         this.deps.webhookSecret
-      );
-      return true;
+      )
+        .then(() => true)
+        .catch(() => false);
     } catch {
-      return false;
+      return Promise.resolve(false);
     }
   }
 
@@ -131,22 +134,27 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     const paymentMethodTypes: string[] =
       input.paymentMethod === 'card' ? ['card'] : ['pix'];
 
-    const paymentIntent = await this.deps.stripe.paymentIntents.create({
-      amount: toStripeAmount(input.amount, input.currency),
-      currency: input.currency.toLowerCase(),
-      payment_method_types: paymentMethodTypes,
-      application_fee_amount: toStripeAmount(
-        input.applicationFeeAmount,
-        input.currency
-      ),
-      transfer_data: {
-        destination: input.connectedAccountId,
+    const paymentIntent = await this.deps.stripe.paymentIntents.create(
+      {
+        amount: toStripeAmount(input.amount, input.currency),
+        currency: input.currency.toLowerCase(),
+        payment_method_types: paymentMethodTypes,
+        application_fee_amount: toStripeAmount(
+          input.applicationFeeAmount,
+          input.currency
+        ),
+        transfer_data: {
+          destination: input.connectedAccountId,
+        },
+        metadata: {
+          compensation_id: input.metadata.compensationId,
+          payment_id: input.metadata.paymentId,
+        },
       },
-      metadata: {
-        compensation_id: input.metadata.compensationId,
-        payment_id: input.metadata.paymentId,
-      },
-    });
+      {
+        idempotencyKey: input.idempotencyKey,
+      }
+    );
 
     const result: StripePaymentIntentCreateResult = {
       clientSecret: paymentIntent.client_secret,
@@ -169,12 +177,13 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
    * Parses a Stripe webhook event and extracts the PaymentIntent-based outcome.
    * Returns null if the event type is not a payment intent event.
    */
-  parseWebhookEvent(rawPayload: string, signature: string): {
+  async parseWebhookEvent(rawPayload: string, signature: string): Promise<{
+    eventId: string;
     type: string;
     paymentIntentId: string | null;
     outcome: PaymentGatewayOutcome | null;
-  } {
-    const event = this.deps.stripe.webhooks.constructEvent(
+  }> {
+    const event = await this.deps.stripe.webhooks.constructEventAsync(
       rawPayload,
       signature,
       this.deps.webhookSecret
@@ -186,6 +195,7 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     ) {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       return {
+        eventId: event.id,
         type: event.type,
         paymentIntentId: paymentIntent.id,
         outcome: mapStripeStatusToOutcome(paymentIntent.status),
@@ -193,6 +203,7 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     }
 
     return {
+      eventId: event.id,
       type: event.type,
       paymentIntentId: null,
       outcome: null,

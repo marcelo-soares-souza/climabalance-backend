@@ -137,4 +137,11 @@ export interface PaymentStore {
   getCompensationForCertificate(
     compensationId: string
   ): Promise<CompensationCertificateSnapshot | null>;
+
+  markWebhookEventProcessed?(input: {
+    provider: string;
+    eventId: string;
+    eventType: string;
+    processedAt: Date;
+  }): Promise<boolean>;
 }

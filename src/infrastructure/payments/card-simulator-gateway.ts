@@ -69,9 +69,9 @@ export class CardSimulatorPaymentGatewayAdapter implements PaymentGatewayAdapter
   verifyWebhookSignature(input: {
     payload: string;
     signature: string | null;
-  }): boolean {
+  }): Promise<boolean> {
     if (!input.signature) {
-      return false;
+      return Promise.resolve(false);
     }
 
     const normalizedSignature = input.signature.startsWith('sha256=')
@@ -87,10 +87,10 @@ export class CardSimulatorPaymentGatewayAdapter implements PaymentGatewayAdapter
     const expectedBytes = Buffer.from(expected, 'hex');
 
     if (receivedBytes.length !== expectedBytes.length) {
-      return false;
+      return Promise.resolve(false);
     }
 
-    return timingSafeEqual(receivedBytes, expectedBytes);
+    return Promise.resolve(timingSafeEqual(receivedBytes, expectedBytes));
   }
 }
 

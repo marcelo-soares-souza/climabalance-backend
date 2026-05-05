@@ -7,6 +7,22 @@ function createClock() {
 }
 
 function createMockStripe(overrides: Partial<Record<string, any>> = {}) {
+  const defaultEvent = {
+    id: 'evt_test_123',
+    type: 'payment_intent.succeeded',
+    data: { object: { id: 'pi_test_123', status: 'succeeded' } },
+  };
+  const constructEvent =
+    overrides.webhooks?.constructEvent ?? mock().mockReturnValue(defaultEvent);
+  const constructEventAsync =
+    overrides.webhooks?.constructEventAsync ??
+    mock().mockImplementation(async (...args: any[]) => constructEvent(...args));
+
+  const webhooks = {
+    constructEvent,
+    constructEventAsync,
+  };
+
   return {
     paymentMethods: {
       create: mock().mockResolvedValue({
@@ -26,13 +42,8 @@ function createMockStripe(overrides: Partial<Record<string, any>> = {}) {
         status: 'succeeded',
       }),
     },
-    webhooks: {
-      constructEvent: mock().mockReturnValue({
-        type: 'payment_intent.succeeded',
-        data: { object: { id: 'pi_test_123', status: 'succeeded' } },
-      }),
-    },
     ...overrides,
+    webhooks,
   } as any;
 }
 
@@ -218,7 +229,7 @@ describe('StripePaymentGatewayAdapter', () => {
   });
 
   describe('verifyWebhookSignature', () => {
-    test('returns true for valid signature', () => {
+    test('returns true for valid signature', async () => {
       const stripe = createMockStripe();
       const adapter = new StripePaymentGatewayAdapter({
         stripe,
@@ -226,7 +237,7 @@ describe('StripePaymentGatewayAdapter', () => {
         webhookSecret: 'whsec_test',
       });
 
-      const result = adapter.verifyWebhookSignature({
+      const result = await adapter.verifyWebhookSignature({
         payload: '{"type":"payment_intent.succeeded"}',
         signature: 't=123,v1=abc',
       });
@@ -234,7 +245,7 @@ describe('StripePaymentGatewayAdapter', () => {
       expect(result).toBe(true);
     });
 
-    test('returns false for null signature', () => {
+    test('returns false for null signature', async () => {
       const stripe = createMockStripe();
       const adapter = new StripePaymentGatewayAdapter({
         stripe,
@@ -242,7 +253,7 @@ describe('StripePaymentGatewayAdapter', () => {
         webhookSecret: 'whsec_test',
       });
 
-      const result = adapter.verifyWebhookSignature({
+      const result = await adapter.verifyWebhookSignature({
         payload: '{}',
         signature: null,
       });
@@ -250,7 +261,7 @@ describe('StripePaymentGatewayAdapter', () => {
       expect(result).toBe(false);
     });
 
-    test('returns false when constructEvent throws', () => {
+    test('returns false when constructEvent throws', async () => {
       const stripe = createMockStripe({
         webhooks: {
           constructEvent: mock().mockImplementation(() => {
@@ -264,7 +275,7 @@ describe('StripePaymentGatewayAdapter', () => {
         webhookSecret: 'whsec_test',
       });
 
-      const result = adapter.verifyWebhookSignature({
+      const result = await adapter.verifyWebhookSignature({
         payload: '{}',
         signature: 'invalid',
       });
@@ -298,6 +309,7 @@ describe('StripePaymentGatewayAdapter', () => {
         paymentMethod: 'card',
         connectedAccountId: 'acct_producer_1',
         applicationFeeAmount: 7.5,
+        idempotencyKey: 'comp_comp-1_pay_pay-1',
         metadata: { compensationId: 'comp-1', paymentId: 'pay-1' },
       });
 
@@ -306,9 +318,11 @@ describe('StripePaymentGatewayAdapter', () => {
       expect(result.qrCode).toBeUndefined();
 
       const createCall = stripe.paymentIntents.create.mock.calls[0]?.[0];
+      const createOptions = stripe.paymentIntents.create.mock.calls[0]?.[1];
       expect(createCall.payment_method_types).toEqual(['card']);
       expect(createCall.application_fee_amount).toBeGreaterThan(0);
       expect(createCall.transfer_data.destination).toBe('acct_producer_1');
+      expect(createOptions.idempotencyKey).toBe('comp_comp-1_pay_pay-1');
     });
 
     test('creates Pix PaymentIntent with QR code data', async () => {
@@ -341,6 +355,7 @@ describe('StripePaymentGatewayAdapter', () => {
         paymentMethod: 'pix',
         connectedAccountId: 'acct_producer_2',
         applicationFeeAmount: 10.0,
+        idempotencyKey: 'comp_comp-2_pay_pay-2',
         metadata: { compensationId: 'comp-2', paymentId: 'pay-2' },
       });
 
@@ -377,6 +392,7 @@ describe('StripePaymentGatewayAdapter', () => {
         paymentMethod: 'card',
         connectedAccountId: 'acct_1',
         applicationFeeAmount: 7.5,
+        idempotencyKey: 'comp_comp-1_pay_pay-1',
         metadata: { compensationId: 'comp-1', paymentId: 'pay-1' },
       });
 
@@ -387,10 +403,11 @@ describe('StripePaymentGatewayAdapter', () => {
   });
 
   describe('parseWebhookEvent', () => {
-    test('parses payment_intent.succeeded event', () => {
+    test('parses payment_intent.succeeded event', async () => {
       const stripe = createMockStripe({
         webhooks: {
           constructEvent: mock().mockReturnValue({
+            id: 'evt_1',
             type: 'payment_intent.succeeded',
             data: {
               object: { id: 'pi_webhook_1', status: 'succeeded' },
@@ -404,20 +421,22 @@ describe('StripePaymentGatewayAdapter', () => {
         webhookSecret: 'whsec_test',
       });
 
-      const result = adapter.parseWebhookEvent(
+      const result = await adapter.parseWebhookEvent(
         '{"type":"payment_intent.succeeded"}',
         't=123,v1=valid'
       );
 
       expect(result.type).toBe('payment_intent.succeeded');
+      expect(result.eventId).toBe('evt_1');
       expect(result.paymentIntentId).toBe('pi_webhook_1');
       expect(result.outcome).toBe('authorized');
     });
 
-    test('parses payment_intent.payment_failed event', () => {
+    test('parses payment_intent.payment_failed event', async () => {
       const stripe = createMockStripe({
         webhooks: {
           constructEvent: mock().mockReturnValue({
+            id: 'evt_2',
             type: 'payment_intent.payment_failed',
             data: {
               object: { id: 'pi_webhook_2', status: 'requires_payment_method' },
@@ -431,20 +450,22 @@ describe('StripePaymentGatewayAdapter', () => {
         webhookSecret: 'whsec_test',
       });
 
-      const result = adapter.parseWebhookEvent(
+      const result = await adapter.parseWebhookEvent(
         '{"type":"payment_intent.payment_failed"}',
         't=123,v1=valid'
       );
 
       expect(result.type).toBe('payment_intent.payment_failed');
+      expect(result.eventId).toBe('evt_2');
       expect(result.paymentIntentId).toBe('pi_webhook_2');
       expect(result.outcome).toBe('declined');
     });
 
-    test('returns null for non-payment-intent events', () => {
+    test('returns null for non-payment-intent events', async () => {
       const stripe = createMockStripe({
         webhooks: {
           constructEvent: mock().mockReturnValue({
+            id: 'evt_3',
             type: 'account.updated',
             data: { object: { id: 'acct_1' } },
           }),
@@ -456,12 +477,13 @@ describe('StripePaymentGatewayAdapter', () => {
         webhookSecret: 'whsec_test',
       });
 
-      const result = adapter.parseWebhookEvent(
+      const result = await adapter.parseWebhookEvent(
         '{"type":"account.updated"}',
         't=123,v1=valid'
       );
 
       expect(result.type).toBe('account.updated');
+      expect(result.eventId).toBe('evt_3');
       expect(result.paymentIntentId).toBeNull();
       expect(result.outcome).toBeNull();
     });

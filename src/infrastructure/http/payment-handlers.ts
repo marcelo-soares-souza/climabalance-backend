@@ -288,7 +288,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           ? ctx.request.headers.get('stripe-signature')
           : ctx.request.headers.get('x-payment-signature');
 
-        const isValid = deps.paymentGateway.verifyWebhookSignature({
+        const isValid = await deps.paymentGateway.verifyWebhookSignature({
           payload: rawPayload,
           signature,
         });
@@ -316,7 +316,24 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
         if (isStripe) {
           const stripeGateway = deps.paymentGateway as any;
           if (typeof stripeGateway.parseWebhookEvent === 'function' && signature) {
-            const parsed = stripeGateway.parseWebhookEvent(rawPayload, signature);
+            const parsed = await stripeGateway.parseWebhookEvent(rawPayload, signature);
+
+            const registered = await registerWebhookEventIfNew(
+              deps,
+              'stripe',
+              parsed.eventId,
+              parsed.type
+            );
+            if (!registered) {
+              return jsonResponse(
+                202,
+                {
+                  data: { processed: true, deduplicated: true },
+                  message_key: 'payment.webhook_processed',
+                },
+                logContext
+              );
+            }
 
             if (!parsed.paymentIntentId || !parsed.outcome) {
               const accountUpdateProcessed =
@@ -324,7 +341,8 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                   deps,
                   requestAuditLog,
                   rawPayload,
-                  signature
+                  signature,
+                  parsed.type
                 );
               if (accountUpdateProcessed) {
                 return jsonResponse(
@@ -599,20 +617,21 @@ async function handleStripeAccountUpdatedWebhook(
   deps: PaymentHandlersDeps,
   auditLog: Pick<AuditLogRepository, 'log'>,
   rawPayload: string,
-  signature: string
+  signature: string,
+  parsedEventType: string
 ): Promise<boolean> {
   if (!deps.stripeConnectRepository || !env.stripeSecretKey.trim()) {
     return false;
   }
 
   const stripe = getStripeClient(env.stripeSecretKey);
-  const event = stripe.webhooks.constructEvent(
+  const event = await stripe.webhooks.constructEventAsync(
     rawPayload,
     signature,
     env.stripeWebhookSecret
   );
 
-  if (event.type !== 'account.updated') {
+  if (parsedEventType !== 'account.updated' || event.type !== 'account.updated') {
     return false;
   }
 
@@ -673,6 +692,24 @@ async function handleStripeAccountUpdatedWebhook(
   });
 
   return true;
+}
+
+async function registerWebhookEventIfNew(
+  deps: PaymentHandlersDeps,
+  provider: string,
+  eventId: string,
+  eventType: string
+): Promise<boolean> {
+  if (typeof deps.paymentStore.markWebhookEventProcessed !== 'function') {
+    return true;
+  }
+
+  return deps.paymentStore.markWebhookEventProcessed({
+    provider,
+    eventId,
+    eventType,
+    processedAt: deps.clock.now(),
+  });
 }
 
 async function ensureCertificateAfterPaidCompensation(

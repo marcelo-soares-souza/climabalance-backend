@@ -142,6 +142,7 @@ export async function createStripePaymentIntent(
       paymentMethod: input.paymentMethod,
       connectedAccountId: stripeAccount.stripeAccountId,
       applicationFeeAmount,
+      idempotencyKey: `comp_${compensation.id}_pay_${paymentId}`,
       metadata: {
         compensationId: compensation.id,
         paymentId,

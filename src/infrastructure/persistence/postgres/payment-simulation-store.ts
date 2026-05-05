@@ -407,6 +407,30 @@ export class PostgresPaymentStore implements PaymentStore {
       status: String(row.status) as CompensationCertificateSnapshot['status'],
     };
   }
+
+  async markWebhookEventProcessed(input: {
+    provider: string;
+    eventId: string;
+    eventType: string;
+    processedAt: Date;
+  }): Promise<boolean> {
+    const result = await this.pool.query(
+      `INSERT INTO processed_webhooks (
+         id, provider, event_id, event_type,
+         processed_at, created_at, updated_at, deleted_at
+       ) VALUES ($1,$2,$3,$4,$5,$5,$5,NULL)
+       ON CONFLICT (provider, event_id) DO NOTHING`,
+      [
+        crypto.randomUUID(),
+        input.provider,
+        input.eventId,
+        input.eventType,
+        input.processedAt,
+      ]
+    );
+
+    return (result.rowCount ?? 0) > 0;
+  }
 }
 
 /**

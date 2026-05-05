@@ -266,8 +266,8 @@ class FakeGateway implements PaymentGatewayAdapter {
     };
   }
 
-  verifyWebhookSignature(): boolean {
-    return true;
+  verifyWebhookSignature(): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
   setOutcome(providerReference: string, outcome: PaymentGatewayOutcome): void {
