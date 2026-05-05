@@ -46,7 +46,7 @@ function compilePath(path: string): { regex: RegExp; paramNames: string[] } {
       return segment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     })
     .join('/');
-  return { regex: new RegExp(`^${regexPath}$`), paramNames };
+  return { regex: new RegExp(`^${regexPath}/?$`), paramNames };
 }
 
 export class Router {

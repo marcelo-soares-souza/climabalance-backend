@@ -3,6 +3,7 @@ import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { parseWithSchema } from './schemas/validation-helper';
 import { buildLogContext } from '../../shared/http/log-context';
+import { getLogger } from '../../shared/utils/logger';
 import { handleError } from './error-mapper';
 import {
   paymentWebhookSchema,
@@ -222,7 +223,6 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
      */
     async status(ctx: HttpContext, paymentId: string) {
       const logContext = buildLogContext(ctx);
-      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const auth = requireAuth(ctx);
         const result = await getPaymentStatus(
@@ -236,12 +236,6 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             actorUserId: auth.userId,
             actorRoles: auth.roles,
           }
-        );
-        const certificate = await ensureCertificateAfterPaidCompensation(
-          deps,
-          result.compensationId,
-          auth.userId,
-          requestAuditLog
         );
 
         return jsonResponse(
@@ -258,7 +252,6 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
               amount: result.amount,
               currency: result.currency,
               processed_at: result.processedAt,
-              certificate,
             },
           },
           logContext
@@ -287,6 +280,15 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
         const signature = isStripe
           ? ctx.request.headers.get('stripe-signature')
           : ctx.request.headers.get('x-payment-signature');
+
+        const logger = getLogger(logContext);
+        logger.info('payment.webhook_received', {
+          provider: isStripe ? 'stripe' : 'card_simulator',
+          has_signature: !!signature,
+          signature_prefix: signature ? `${signature.slice(0, 12)}...` : null,
+          content_length: rawPayload.length,
+          content_type: ctx.request.headers.get('content-type') ?? null,
+        });
 
         const isValid = await deps.paymentGateway.verifyWebhookSignature({
           payload: rawPayload,
@@ -317,6 +319,13 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           const stripeGateway = deps.paymentGateway as any;
           if (typeof stripeGateway.parseWebhookEvent === 'function' && signature) {
             const parsed = await stripeGateway.parseWebhookEvent(rawPayload, signature);
+
+            logger.info('payment.webhook_stripe_event', {
+              event_id: parsed.eventId,
+              event_type: parsed.type,
+              payment_intent_id: parsed.paymentIntentId ?? null,
+              has_outcome: !!parsed.outcome,
+            });
 
             const registered = await registerWebhookEventIfNew(
               deps,
@@ -354,6 +363,12 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                   logContext
                 );
               }
+
+              logger.warn('payment.webhook_unhandled_event_type', {
+                event_id: parsed.eventId,
+                event_type: parsed.type,
+                payment_intent_id: parsed.paymentIntentId ?? null,
+              });
 
               return jsonResponse(
                 202,

@@ -669,6 +669,7 @@ describe('GET /api/v1/payments/:id/status', () => {
     const statusPayload = await statusResponse.json();
     expect(statusPayload.data.payment_status).toBe('paid');
     expect(statusPayload.data.compensation_status).toBe('paid');
-    expect(store.getCompensation('comp-5')?.status).toBe('paid');
+    // Local DB is only updated by webhook, not by status polling
+    expect(store.getCompensation('comp-5')?.status).toBe('pending');
   });
 });

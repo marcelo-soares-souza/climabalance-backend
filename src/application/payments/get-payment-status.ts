@@ -42,8 +42,6 @@ export async function getPaymentStatus(
   },
   input: GetPaymentStatusInput
 ): Promise<GetPaymentStatusResult> {
-  const now = deps.clock.now();
-
   return deps.store.runInTransaction(async (tx) => {
     const payment = await tx.lockPaymentById(input.paymentId);
     if (!payment) {
@@ -67,32 +65,13 @@ export async function getPaymentStatus(
     });
     const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(gatewayStatus.outcome);
 
-    if (latestPaymentStatus !== payment.paymentStatus) {
-      await tx.updatePaymentStatus({
-        paymentId: payment.id,
-        status: latestPaymentStatus,
-        updatedAt: now,
-        paidAt: latestPaymentStatus === 'paid' ? now : undefined,
-      });
-    }
-
     const nextCompensationStatus = resolveCompensationStatusFromPayment({
       currentCompensationStatus: payment.compensationStatus,
-      newPaymentStatus: latestPaymentStatus,
+      newPaymentStatus:
+        latestPaymentStatus !== payment.paymentStatus
+          ? latestPaymentStatus
+          : payment.paymentStatus,
     });
-
-    if (
-      (nextCompensationStatus === 'pending' ||
-        nextCompensationStatus === 'paid' ||
-        nextCompensationStatus === 'canceled') &&
-      payment.compensationStatus !== nextCompensationStatus
-    ) {
-      await tx.updateCompensationStatus({
-        compensationId: payment.compensationId,
-        status: nextCompensationStatus,
-        updatedAt: now,
-      });
-    }
 
     return {
       paymentId: payment.id,

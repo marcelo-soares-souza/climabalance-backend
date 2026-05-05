@@ -63,6 +63,13 @@ export async function reconcilePendingPayments(
       continue;
     }
 
+    // Only reconcile non-Stripe providers (e.g. card simulator).
+    // Stripe payments are confirmed exclusively via webhook.
+    if (payment.provider === 'stripe') {
+      remainedPending += 1;
+      continue;
+    }
+
     const gatewayStatus = await deps.paymentGateway.getChargeStatus({
       providerReference: payment.providerReference,
     });
