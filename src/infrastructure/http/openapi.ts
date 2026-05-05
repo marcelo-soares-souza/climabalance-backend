@@ -356,8 +356,23 @@ const routes: ApiRouteDoc[] = [
     queryParameters: [
       {
         name: 'actor_user_id',
-        description: 'Filter by actor id',
+        description: 'Filter by actor id (exact UUID)',
         schema: uuidLikeSchema,
+      },
+      {
+        name: 'actor_email',
+        description: 'Filter by actor email (partial match)',
+        schema: stringSchema,
+      },
+      {
+        name: 'action',
+        description: 'Filter by action name (partial match)',
+        schema: stringSchema,
+      },
+      {
+        name: 'client_ip',
+        description: 'Filter by client IP (partial match)',
+        schema: stringSchema,
       },
       {
         name: 'entity_type',

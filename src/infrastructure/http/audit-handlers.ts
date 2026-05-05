@@ -10,6 +10,9 @@ import { z } from 'zod';
 
 const listAuditLogQuerySchema = z.object({
   actor_user_id: z.string().trim().min(1).optional(),
+  actor_email: z.string().trim().min(1).optional(),
+  action: z.string().trim().min(1).optional(),
+  client_ip: z.string().trim().min(1).optional(),
   entity_type: z.string().trim().min(1).optional(),
   entity_id: z.string().trim().min(1).optional(),
   limit: z.coerce.number().int().min(1).optional(),
@@ -31,6 +34,9 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
         const entries = await listAuditLog(
           {
             actorUserId: query.actor_user_id,
+            actorEmail: query.actor_email,
+            action: query.action,
+            clientIp: query.client_ip,
             entityType: query.entity_type,
             entityId: query.entity_id,
             limit: query.limit,

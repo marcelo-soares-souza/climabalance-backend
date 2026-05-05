@@ -247,6 +247,19 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
       conditions.push(`al.actor_user_id = $${index++}`);
       values.push(filters.actorUserId);
     }
+    if (filters.actorEmail) {
+      conditions.push(`(al.actor_email ILIKE $${index} OR u.email ILIKE $${index})`);
+      values.push(`%${filters.actorEmail}%`);
+      index++;
+    }
+    if (filters.action) {
+      conditions.push(`al.action ILIKE $${index++}`);
+      values.push(`%${filters.action}%`);
+    }
+    if (filters.clientIp) {
+      conditions.push(`al.client_ip ILIKE $${index++}`);
+      values.push(`%${filters.clientIp}%`);
+    }
     if (filters.entityType) {
       conditions.push(`al.entity_type = $${index++}`);
       values.push(filters.entityType);

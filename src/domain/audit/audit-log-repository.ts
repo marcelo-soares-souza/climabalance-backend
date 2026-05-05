@@ -44,6 +44,9 @@ export type AuditLogEntry = {
 
 export type AuditLogFilters = {
   actorUserId?: string;
+  actorEmail?: string;
+  action?: string;
+  clientIp?: string;
   entityType?: string;
   entityId?: string;
   limit?: number;
