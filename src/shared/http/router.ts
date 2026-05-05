@@ -236,5 +236,5 @@ function applySecurityHeaders(headers: Headers): void {
   headers.set('x-content-type-options', 'nosniff');
   headers.set('x-frame-options', 'DENY');
   headers.set('referrer-policy', 'strict-origin-when-cross-origin');
-  headers.set('cross-origin-resource-policy', 'same-site');
+  headers.set('cross-origin-resource-policy', 'cross-origin');
 }

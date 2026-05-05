@@ -8,6 +8,7 @@ import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { PostgresStripeConnectRepository } from '../persistence/postgres/stripe-connect-repository';
+import type Stripe from 'stripe';
 import { getStripeClient } from '../payments/stripe-client';
 import { env } from '../../shared/utils/env';
 
@@ -16,12 +17,13 @@ export interface StripeConnectHandlersDeps {
   idGenerator: IdGenerator;
   clock: Clock;
   auditLog: Pick<AuditLogRepository, 'log'>;
+  stripe?: Stripe;
 }
 
 export function createStripeConnectHandlers(
   deps: StripeConnectHandlersDeps
 ) {
-  const stripe = getStripeClient(env.stripeSecretKey);
+  const stripe = deps.stripe ?? getStripeClient(env.stripeSecretKey);
 
   const isConnectNotEnabledError = (error: unknown): boolean => {
     const message =
@@ -204,6 +206,23 @@ export function createStripeConnectHandlers(
           });
         }
 
+        const currentlyDue = stripeAccount.requirements?.currently_due ?? [];
+        const pendingVerification =
+          stripeAccount.requirements?.pending_verification ?? [];
+        const disabledReason =
+          stripeAccount.requirements?.disabled_reason ?? null;
+
+        let onboardingStatus: string;
+        if (chargesEnabled && payoutsEnabled) {
+          onboardingStatus = 'complete';
+        } else if (currentlyDue.length > 0) {
+          onboardingStatus = 'incomplete';
+        } else if (pendingVerification.length > 0) {
+          onboardingStatus = 'pending_verification';
+        } else {
+          onboardingStatus = 'incomplete';
+        }
+
         return jsonResponse(
           200,
           {
@@ -213,6 +232,12 @@ export function createStripeConnectHandlers(
               charges_enabled: chargesEnabled,
               payouts_enabled: payoutsEnabled,
               country: record.country,
+              onboarding_status: onboardingStatus,
+              pending_verification:
+                pendingVerification.length > 0
+                  ? pendingVerification
+                  : undefined,
+              disabled_reason: disabledReason,
             },
           },
           logContext
@@ -239,6 +264,15 @@ export function createStripeConnectHandlers(
           return errorResponse(
             404,
             'producer.stripe.not_connected',
+            undefined,
+            logContext
+          );
+        }
+
+        if (!record.chargesEnabled || !record.payoutsEnabled) {
+          return errorResponse(
+            400,
+            'producer.stripe.onboarding_incomplete',
             undefined,
             logContext
           );
