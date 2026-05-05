@@ -48,6 +48,7 @@ function createStore(compensationStatus = 'pending'): PaymentStore {
           currency: 'BRL',
           status: compensationStatus,
         })),
+        lockLatestPendingPaymentByCompensationId: mock(async () => null),
         insertPayment: mock(async () => {}),
         lockPaymentById: mock(async () => null),
         lockPaymentByProviderReference: mock(async () => null),
@@ -85,6 +86,7 @@ describe('Audit Compliance - Stripe Payment Events', () => {
         getByUserId: mock(async () => ({
           stripeAccountId: 'acct_prod_1',
           chargesEnabled: true,
+          payoutsEnabled: true,
         })),
       };
 
@@ -137,6 +139,7 @@ describe('Audit Compliance - Stripe Payment Events', () => {
             getByUserId: mock(async () => ({
               stripeAccountId: 'acct_prod_2',
               chargesEnabled: true,
+              payoutsEnabled: true,
             })),
           },
           idGenerator: { generate: () => 'pay-2' },

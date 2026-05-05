@@ -38,13 +38,37 @@ export class PostgresStripeConnectRepository {
    */
   async getByUserId(
     userId: string
-  ): Promise<{ stripeAccountId: string; chargesEnabled: boolean } | null> {
+  ): Promise<{
+    stripeAccountId: string;
+    chargesEnabled: boolean;
+    payoutsEnabled: boolean;
+  } | null> {
     const record = await this.findByUserId(userId);
     if (!record) return null;
     return {
       stripeAccountId: record.stripeAccountId,
       chargesEnabled: record.chargesEnabled,
+      payoutsEnabled: record.payoutsEnabled,
     };
+  }
+
+  async findByStripeAccountId(
+    stripeAccountId: string
+  ): Promise<StripeConnectAccountRecord | null> {
+    const result = await this.db.query(
+      `SELECT id, user_id, stripe_account_id, charges_enabled,
+              payouts_enabled, country, created_at, updated_at
+       FROM stripe_connect_accounts
+       WHERE stripe_account_id = $1 AND deleted_at IS NULL`,
+      [stripeAccountId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0] as Record<string, unknown>;
+    return mapRow(row);
   }
 
   async create(record: {

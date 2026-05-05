@@ -170,7 +170,11 @@ export const env: Env = {
     return optionalEnv('STRIPE_WEBHOOK_SECRET') ?? '';
   },
   get stripePlatformFeePercent() {
-    return numberEnv('STRIPE_PLATFORM_FEE_PERCENT', 5);
+    const value = numberEnv('STRIPE_PLATFORM_FEE_PERCENT', 5);
+    if (value < 0 || value > 100) {
+      throw new Error('Invalid STRIPE_PLATFORM_FEE_PERCENT: must be between 0 and 100');
+    }
+    return value;
   },
   get defaultMaxPurchasableTrees() {
     return numberEnv('DEFAULT_MAX_PURCHASABLE_TREES', 100);

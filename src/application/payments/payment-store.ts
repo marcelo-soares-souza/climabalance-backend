@@ -95,6 +95,10 @@ export type CompensationCertificateSnapshot = {
 export interface PaymentTransaction {
   lockCompensation(compensationId: string): Promise<PaymentCompensationSnapshot | null>;
 
+  lockLatestPendingPaymentByCompensationId(
+    compensationId: string
+  ): Promise<LockedPaymentRecord | null>;
+
   insertPayment(record: PaymentCreateRecord): Promise<void>;
 
   lockPaymentById(paymentId: string): Promise<LockedPaymentRecord | null>;

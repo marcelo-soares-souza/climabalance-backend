@@ -288,8 +288,11 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           : null;
         const producerStripeConnected = Boolean(stripeAccount);
         const producerChargesEnabled = Boolean(stripeAccount?.chargesEnabled);
+        const producerPayoutsEnabled = Boolean(stripeAccount?.payoutsEnabled);
         const producerReadyToReceiveSupport =
-          producerStripeConnected && producerChargesEnabled;
+          producerStripeConnected &&
+          producerChargesEnabled &&
+          producerPayoutsEnabled;
 
         return jsonResponse(
           200,
@@ -310,6 +313,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               remaining_purchasable_trees: quote.remainingPurchasableTrees,
               producer_stripe_connected: producerStripeConnected,
               producer_charges_enabled: producerChargesEnabled,
+              producer_payouts_enabled: producerPayoutsEnabled,
               producer_ready_to_receive_support: producerReadyToReceiveSupport,
             },
             message_key: 'compensation.quote_tree_purchase_created',

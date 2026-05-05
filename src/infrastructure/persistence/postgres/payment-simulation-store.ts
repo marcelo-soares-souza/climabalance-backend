@@ -108,6 +108,40 @@ class PostgresPaymentTransaction implements PaymentTransaction {
     }
   }
 
+  async lockLatestPendingPaymentByCompensationId(
+    compensationId: string
+  ): Promise<LockedPaymentRecord | null> {
+    const result = await this.client.query(
+      `SELECT
+         p.id,
+         p.compensation_id,
+         p.provider,
+         p.provider_reference,
+         p.amount,
+         p.currency,
+         p.status AS payment_status,
+         p.paid_at,
+         c.supporter_user_id,
+         c.status AS compensation_status
+       FROM payments p
+       INNER JOIN compensations c ON c.id = p.compensation_id
+       WHERE p.compensation_id = $1
+         AND p.status = 'pending'
+         AND p.deleted_at IS NULL
+         AND c.deleted_at IS NULL
+       ORDER BY p.created_at DESC
+       LIMIT 1
+       FOR UPDATE OF p, c`,
+      [compensationId]
+    );
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    return this.mapLockedPayment(result.rows[0] as Record<string, unknown>);
+  }
+
   async lockPaymentById(paymentId: string): Promise<LockedPaymentRecord | null> {
     const result = await this.client.query(
       `SELECT

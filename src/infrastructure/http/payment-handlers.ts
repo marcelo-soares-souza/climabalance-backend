@@ -34,6 +34,9 @@ import type { AreaRepository } from '../../domain/areas/repositories/area-reposi
 import type { UserRepository } from '../../domain/user/user-repository';
 import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 import { requireAuth } from '../../shared/http/auth-context';
+import type { PostgresStripeConnectRepository } from '../persistence/postgres/stripe-connect-repository';
+import { getStripeClient } from '../payments/stripe-client';
+import { env } from '../../shared/utils/env';
 
 export interface PaymentHandlersDeps {
   paymentStore: PaymentStore;
@@ -48,6 +51,7 @@ export interface PaymentHandlersDeps {
   areaRepository?: AreaRepository;
   users?: UserRepository;
   stripeConnectLookup?: StripeConnectLookup;
+  stripeConnectRepository?: PostgresStripeConnectRepository;
   stripePlatformFeePercent?: number;
 }
 
@@ -146,6 +150,20 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             undefined,
             logContext
           );
+        }
+
+        const compensation = await deps.paymentStore.getCompensationForCertificate(
+          validated.compensation_id
+        );
+        if (compensation && deps.areaRepository && deps.stripeConnectRepository) {
+          const area = await deps.areaRepository.findById(compensation.areaId);
+          if (area?.ownerUserId) {
+            await syncStripeConnectStatusForOwner(
+              deps.stripeConnectRepository,
+              area.ownerUserId,
+              deps.clock.now()
+            );
+          }
         }
 
         const result = await createStripePaymentIntent(
@@ -301,6 +319,24 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             const parsed = stripeGateway.parseWebhookEvent(rawPayload, signature);
 
             if (!parsed.paymentIntentId || !parsed.outcome) {
+              const accountUpdateProcessed =
+                await handleStripeAccountUpdatedWebhook(
+                  deps,
+                  requestAuditLog,
+                  rawPayload,
+                  signature
+                );
+              if (accountUpdateProcessed) {
+                return jsonResponse(
+                  202,
+                  {
+                    data: { processed: true },
+                    message_key: 'payment.webhook_processed',
+                  },
+                  logContext
+                );
+              }
+
               return jsonResponse(
                 202,
                 {
@@ -530,6 +566,113 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
       }
     },
   };
+}
+
+async function syncStripeConnectStatusForOwner(
+  stripeConnectRepository: PostgresStripeConnectRepository,
+  ownerUserId: string,
+  now: Date
+): Promise<void> {
+  const record = await stripeConnectRepository.findByUserId(ownerUserId);
+  if (!record) return;
+
+  if (!env.stripeSecretKey.trim()) return;
+  const stripe = getStripeClient(env.stripeSecretKey);
+  const stripeAccount = await stripe.accounts.retrieve(record.stripeAccountId);
+  const chargesEnabled = stripeAccount.charges_enabled ?? record.chargesEnabled;
+  const payoutsEnabled = stripeAccount.payouts_enabled ?? record.payoutsEnabled;
+
+  if (
+    chargesEnabled !== record.chargesEnabled ||
+    payoutsEnabled !== record.payoutsEnabled
+  ) {
+    await stripeConnectRepository.updateStatus(
+      record.id,
+      chargesEnabled,
+      payoutsEnabled,
+      now
+    );
+  }
+}
+
+async function handleStripeAccountUpdatedWebhook(
+  deps: PaymentHandlersDeps,
+  auditLog: Pick<AuditLogRepository, 'log'>,
+  rawPayload: string,
+  signature: string
+): Promise<boolean> {
+  if (!deps.stripeConnectRepository || !env.stripeSecretKey.trim()) {
+    return false;
+  }
+
+  const stripe = getStripeClient(env.stripeSecretKey);
+  const event = stripe.webhooks.constructEvent(
+    rawPayload,
+    signature,
+    env.stripeWebhookSecret
+  );
+
+  if (event.type !== 'account.updated') {
+    return false;
+  }
+
+  const account = event.data.object as {
+    id?: string;
+    charges_enabled?: boolean;
+    payouts_enabled?: boolean;
+  };
+
+  const stripeAccountId = typeof account.id === 'string' ? account.id : '';
+  if (!stripeAccountId) {
+    return false;
+  }
+
+  const record =
+    await deps.stripeConnectRepository.findByStripeAccountId(stripeAccountId);
+  if (!record) {
+    return true;
+  }
+
+  const chargesEnabled = Boolean(account.charges_enabled);
+  const payoutsEnabled = Boolean(account.payouts_enabled);
+  const changed =
+    chargesEnabled !== record.chargesEnabled ||
+    payoutsEnabled !== record.payoutsEnabled;
+
+  if (changed) {
+    await deps.stripeConnectRepository.updateStatus(
+      record.id,
+      chargesEnabled,
+      payoutsEnabled,
+      deps.clock.now()
+    );
+  }
+
+  await auditLog.log({
+    actorUserId: 'system:webhook',
+    action: 'producer.stripe_onboarding_updated',
+    entityType: 'stripe_connect_account',
+    entityId: record.id,
+    metadata: {
+      stripe_account_id: stripeAccountId,
+      source: 'stripe_webhook',
+      stripe_event_type: event.type,
+    },
+    previousState: {
+      charges_enabled: record.chargesEnabled,
+      payouts_enabled: record.payoutsEnabled,
+    },
+    newState: {
+      charges_enabled: chargesEnabled,
+      payouts_enabled: payoutsEnabled,
+    },
+    changedFields: [
+      ...(chargesEnabled !== record.chargesEnabled ? ['charges_enabled'] : []),
+      ...(payoutsEnabled !== record.payoutsEnabled ? ['payouts_enabled'] : []),
+    ],
+  });
+
+  return true;
 }
 
 async function ensureCertificateAfterPaidCompensation(

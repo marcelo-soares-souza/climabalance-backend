@@ -11,6 +11,7 @@ export type StripeConnectLookup = {
   getByUserId(userId: string): Promise<{
     stripeAccountId: string;
     chargesEnabled: boolean;
+    payoutsEnabled: boolean;
   } | null>;
 };
 
@@ -98,6 +99,14 @@ export async function createStripePaymentIntent(
       ]);
     }
 
+    const existingPendingPayment =
+      await tx.lockLatestPendingPaymentByCompensationId(compensation.id);
+    if (existingPendingPayment) {
+      throw new ValidationError([
+        { field: 'compensation_id', message: 'payment_already_pending' },
+      ]);
+    }
+
     const ownerUserId = await deps.areaOwnerLookup.getOwnerUserId(
       compensation.areaId
     );
@@ -108,9 +117,19 @@ export async function createStripePaymentIntent(
     const stripeAccount = await deps.stripeConnectLookup.getByUserId(
       ownerUserId
     );
-    if (!stripeAccount || !stripeAccount.chargesEnabled) {
+    if (
+      !stripeAccount ||
+      !stripeAccount.chargesEnabled ||
+      !stripeAccount.payoutsEnabled
+    ) {
       throw new ValidationError([
         { field: 'compensation_id', message: 'producer_not_onboarded' },
+      ]);
+    }
+
+    if (input.paymentMethod === 'pix' && compensation.currency !== 'BRL') {
+      throw new ValidationError([
+        { field: 'payment_method', message: 'pix_requires_brl' },
       ]);
     }
 

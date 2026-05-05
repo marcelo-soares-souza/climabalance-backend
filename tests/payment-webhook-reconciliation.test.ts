@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { createHmac } from 'node:crypto';
+import Stripe from 'stripe';
 import { createPaymentHandlers } from '../src/infrastructure/http/payment-handlers';
+import { resetStripeClient } from '../src/infrastructure/payments/stripe-client';
 import type { HttpContext } from '../src/shared/http/router';
 import type {
   CompensationCertificateSnapshot,
@@ -69,6 +71,7 @@ class InMemoryPaymentStore implements PaymentStore {
         const current = this.compensations.get(compensationId);
         return current ? { ...current } : null;
       },
+      lockLatestPendingPaymentByCompensationId: async () => null,
       insertPayment: async (record: PaymentCreateRecord) => {
         this.payments.set(record.id, {
           id: record.id,
@@ -236,6 +239,51 @@ class InMemoryPaymentStore implements PaymentStore {
   }
 }
 
+class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
+  readonly provider = 'stripe';
+
+  async createCharge(
+    _input: CreatePaymentChargeInput
+  ): Promise<PaymentGatewayChargeResult> {
+    return {
+      provider: this.provider,
+      providerReference: 'pi_stub',
+      outcome: 'authorized',
+      processedAt: new Date('2026-02-07T20:00:00Z'),
+    };
+  }
+
+  async getChargeStatus(input: {
+    providerReference: string;
+  }): Promise<PaymentGatewayStatusResult> {
+    return {
+      provider: this.provider,
+      providerReference: input.providerReference,
+      outcome: 'authorized',
+      processedAt: new Date('2026-02-07T21:00:00Z'),
+    };
+  }
+
+  verifyWebhookSignature(input: {
+    payload: string;
+    signature: string | null;
+  }): boolean {
+    return Boolean(input.payload && input.signature);
+  }
+
+  parseWebhookEvent(_rawPayload: string, _signature: string): {
+    type: string;
+    paymentIntentId: string | null;
+    outcome: PaymentGatewayOutcome | null;
+  } {
+    return {
+      type: 'account.updated',
+      paymentIntentId: null,
+      outcome: null,
+    };
+  }
+}
+
 class MutableGateway implements PaymentGatewayAdapter {
   readonly provider = 'card_simulator';
 
@@ -396,12 +444,16 @@ function createHandlers(
 function buildWebhookContext(params: {
   body: string;
   signature?: string;
+  stripeSignature?: string;
 }): HttpContext {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
   };
   if (params.signature != null) {
     headers['x-payment-signature'] = params.signature;
+  }
+  if (params.stripeSignature != null) {
+    headers['stripe-signature'] = params.stripeSignature;
   }
   const context: HttpContext = {
     request: new Request('http://localhost/api/v1/payments/webhook', {
@@ -592,5 +644,90 @@ describe('payment webhook and reconciliation', () => {
     expect(store.getCompensation('comp-a')?.status).toBe('paid');
     expect(store.getPayment('pay-b')?.status).toBe('pending');
     expect(store.getCompensation('comp-b')?.status).toBe('pending');
+  });
+
+  test('processes stripe account.updated webhook and syncs connect status', async () => {
+    resetStripeClient();
+    process.env.STRIPE_SECRET_KEY = 'sk_test_stub_for_webhook';
+    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_account_updated';
+
+    const store = new InMemoryPaymentStore();
+    const gateway = new StripeWebhookGatewayStub();
+    const updatedCalls: Array<{
+      id: string;
+      chargesEnabled: boolean;
+      payoutsEnabled: boolean;
+    }> = [];
+
+    const handlers = createPaymentHandlers({
+      paymentStore: store,
+      paymentGateway: gateway,
+      compensationCertificateRepository:
+        new InMemoryCertificateRepository() as any,
+      compensationCertificateStorage: new InMemoryCertificateStorage() as any,
+      compensationCertificatePdfGenerator:
+        new InMemoryCertificatePdfGenerator() as any,
+      idGenerator: { generate: () => 'id-1' },
+      clock: { now: () => new Date('2026-02-07T23:00:00Z') },
+      auditLog: { async log() {} },
+      stripeConnectRepository: {
+        async findByStripeAccountId(accountId: string) {
+          if (accountId !== 'acct_test_123') return null;
+          return {
+            id: 'sca-1',
+            userId: 'producer-1',
+            stripeAccountId: 'acct_test_123',
+            chargesEnabled: false,
+            payoutsEnabled: false,
+            country: 'BR',
+            createdAt: new Date('2026-02-01T00:00:00Z'),
+            updatedAt: new Date('2026-02-01T00:00:00Z'),
+          };
+        },
+        async updateStatus(
+          id: string,
+          chargesEnabled: boolean,
+          payoutsEnabled: boolean
+        ) {
+          updatedCalls.push({ id, chargesEnabled, payoutsEnabled });
+        },
+      } as any,
+    });
+
+    const payload = JSON.stringify({
+      id: 'evt_1',
+      object: 'event',
+      type: 'account.updated',
+      data: {
+        object: {
+          id: 'acct_test_123',
+          object: 'account',
+          charges_enabled: true,
+          payouts_enabled: true,
+        },
+      },
+    });
+
+    const stripeSignature = Stripe.webhooks.generateTestHeaderString({
+      payload,
+      secret: process.env.STRIPE_WEBHOOK_SECRET!,
+    });
+
+    const response = await handlers.webhook(
+      buildWebhookContext({
+        body: payload,
+        stripeSignature,
+      })
+    );
+
+    expect(response.status).toBe(202);
+    const body = await response.json();
+    expect(body.data.processed).toBe(true);
+    expect(updatedCalls).toHaveLength(1);
+    expect(updatedCalls[0]).toEqual({
+      id: 'sca-1',
+      chargesEnabled: true,
+      payoutsEnabled: true,
+    });
   });
 });
