@@ -81,17 +81,18 @@ export function buildAppRuntime() {
   const hashService = new WebCryptoHashService();
   const idGenerator = new UUIDv7Generator();
   const clock = new SystemClock();
-  const paymentGateway =
-    env.appEnv === 'local'
-      ? new CardSimulatorPaymentGatewayAdapter({
-          clock,
-          webhookSecret: env.paymentWebhookSecret,
-        })
-      : new StripePaymentGatewayAdapter({
-          stripe: getStripeClient(env.stripeSecretKey),
-          clock,
-          webhookSecret: env.stripeWebhookSecret,
-        });
+  const useStripeGateway =
+    env.appEnv !== 'local' || env.stripeSecretKey.trim().length > 0;
+  const paymentGateway = useStripeGateway
+    ? new StripePaymentGatewayAdapter({
+        stripe: getStripeClient(env.stripeSecretKey),
+        clock,
+        webhookSecret: env.stripeWebhookSecret,
+      })
+    : new CardSimulatorPaymentGatewayAdapter({
+        clock,
+        webhookSecret: env.paymentWebhookSecret,
+      });
   const { areaMediaStorage, compensationCertificateStorage, logMeta: storageLogMeta } =
     createObjectStorage();
   const emailSender = createEmailSender();

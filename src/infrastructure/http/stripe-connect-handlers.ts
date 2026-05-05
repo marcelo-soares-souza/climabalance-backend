@@ -23,6 +23,20 @@ export function createStripeConnectHandlers(
 ) {
   const stripe = getStripeClient(env.stripeSecretKey);
 
+  const isConnectNotEnabledError = (error: unknown): boolean => {
+    const message =
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof (error as { message?: unknown }).message === 'string'
+        ? (error as { message: string }).message
+        : '';
+    return (
+      message.includes("signed up for Connect") ||
+      message.includes("create new accounts")
+    );
+  };
+
   return {
     /**
      * POST /api/v1/producers/stripe/onboard
@@ -48,6 +62,7 @@ export function createStripeConnectHandlers(
             country: 'BR',
             email: (auth as any).email,
             capabilities: {
+              card_payments: { requested: true },
               transfers: { requested: true },
             },
             metadata: {
@@ -101,6 +116,14 @@ export function createStripeConnectHandlers(
           logContext
         );
       } catch (error) {
+        if (isConnectNotEnabledError(error)) {
+          return errorResponse(
+            400,
+            'producer.stripe.connect_not_enabled',
+            undefined,
+            logContext
+          );
+        }
         return handleError(error, undefined, logContext);
       }
     },

@@ -19,6 +19,7 @@ import type { CompensationHistoryRepository } from '../../domain/compensations/r
 import { listCompensations } from '../../application/compensations/list-compensations';
 import { listAreaContributions } from '../../application/compensations/list-area-contributions';
 import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import type { StripeConnectLookup } from '../../application/payments/create-stripe-payment-intent';
 import {
   quoteTreePurchaseCompensation,
 } from '../../application/compensations/quote-tree-purchase-compensation';
@@ -28,6 +29,7 @@ import { parseQueryWithSchema } from './schemas/validation-helper';
 
 export interface CompensationHandlersDeps {
   areaRepository: AreaRepository;
+  stripeConnectLookup?: StripeConnectLookup;
   compensationStore: CompensationAtomicStore;
   compensationHistoryRepository: CompensationHistoryRepository;
   idGenerator: IdGenerator;
@@ -279,6 +281,16 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           }
         );
 
+        const area = await deps.areaRepository.findById(validated.area_id);
+        const ownerUserId = area?.ownerUserId ?? null;
+        const stripeAccount = ownerUserId && deps.stripeConnectLookup
+          ? await deps.stripeConnectLookup.getByUserId(ownerUserId)
+          : null;
+        const producerStripeConnected = Boolean(stripeAccount);
+        const producerChargesEnabled = Boolean(stripeAccount?.chargesEnabled);
+        const producerReadyToReceiveSupport =
+          producerStripeConnected && producerChargesEnabled;
+
         return jsonResponse(
           200,
           {
@@ -296,6 +308,9 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               currency: quote.currency,
               max_purchasable_trees: quote.maxPurchasableTrees,
               remaining_purchasable_trees: quote.remainingPurchasableTrees,
+              producer_stripe_connected: producerStripeConnected,
+              producer_charges_enabled: producerChargesEnabled,
+              producer_ready_to_receive_support: producerReadyToReceiveSupport,
             },
             message_key: 'compensation.quote_tree_purchase_created',
           },
