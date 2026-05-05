@@ -149,12 +149,20 @@ export class Router {
       }
     }
 
-    getLogger({ requestId, clientIp }).warn('request.completed', {
+    const log404 = getLogger({ requestId, clientIp });
+    log404.warn('request.completed', {
       method,
       path: url.pathname,
       route: 'unmatched',
       status: 404,
       duration_ms: 0
+    });
+    log404.debug('router.unmatched_details', {
+      method,
+      pathname: url.pathname,
+      href: url.href,
+      registered_routes: this.routes.map((r) => `${r.method} ${r.path}`),
+      content_type: request.headers.get('content-type') ?? null,
     });
     return withCors(
       errorResponse(404, 'common.notFound', undefined, { requestId, clientIp }),

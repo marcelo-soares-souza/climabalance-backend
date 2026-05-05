@@ -419,7 +419,7 @@ export class PostgresPaymentStore implements PaymentStore {
          id, provider, event_id, event_type,
          processed_at, created_at, updated_at, deleted_at
        ) VALUES ($1,$2,$3,$4,$5,$5,$5,NULL)
-       ON CONFLICT (provider, event_id) DO NOTHING`,
+       ON CONFLICT (provider, event_id) WHERE deleted_at IS NULL DO NOTHING`,
       [
         crypto.randomUUID(),
         input.provider,
