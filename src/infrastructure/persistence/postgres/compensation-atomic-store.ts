@@ -15,7 +15,8 @@ class PostgresCompensationAtomicTransaction
     const result = await this.client.query(
       `SELECT
         id,
-        status
+        status,
+        max_purchasable_trees
       FROM areas
       WHERE id = $1
         AND deleted_at IS NULL
@@ -31,7 +32,20 @@ class PostgresCompensationAtomicTransaction
     return {
       id: String(row.id),
       status: String(row.status),
+      maxPurchasableTrees: row.max_purchasable_trees != null ? Number(row.max_purchasable_trees) : null,
     };
+  }
+
+  async sumPaidTreeCountByArea(areaId: string): Promise<number> {
+    const result = await this.client.query(
+      `SELECT COALESCE(SUM(trees_count), 0) AS total
+       FROM compensations
+       WHERE area_id = $1
+         AND status = 'paid'
+         AND deleted_at IS NULL`,
+      [areaId]
+    );
+    return Number(result.rows[0]?.total ?? 0);
   }
 
   async insertCompensation(record: CompensationCreateRecord): Promise<void> {

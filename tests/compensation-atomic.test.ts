@@ -11,9 +11,11 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
   area: CompensationAreaSnapshot = {
     id: 'area-1',
     status: 'active',
+    maxPurchasableTrees: 1000,
   };
   compensations: CompensationCreateRecord[] = [];
   private lock: Promise<void> = Promise.resolve();
+  paidTreeCountByArea: Map<string, number> = new Map();
 
   async runInTransaction<T>(
     work: (tx: CompensationAtomicTransaction) => Promise<T>
@@ -36,6 +38,9 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
         },
         insertCompensation: async (record: CompensationCreateRecord) => {
           this.compensations.push(record);
+        },
+        sumPaidTreeCountByArea: async (areaId: string) => {
+          return this.paidTreeCountByArea.get(areaId) ?? 0;
         },
       };
 
@@ -68,6 +73,7 @@ describe('createCompensationAtomic', () => {
         auditLog: {
           async log() {},
         },
+        defaultMaxPurchasableTrees: 100,
       },
       {
         supporterUserId: 'supporter-1',
@@ -106,6 +112,7 @@ describe('createCompensationAtomic', () => {
       auditLog: {
         async log() {},
       },
+      defaultMaxPurchasableTrees: 100,
     };
 
     const [first, second] = await Promise.allSettled([

@@ -33,6 +33,7 @@ export interface CompensationHandlersDeps {
   idGenerator: IdGenerator;
   clock: Clock;
   auditLog: Pick<AuditLogRepository, 'log'>;
+  defaultMaxPurchasableTrees: number;
 }
 
 export function createCompensationHandlers(deps: CompensationHandlersDeps) {
@@ -51,6 +52,8 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
         const quote = await quoteTreePurchaseCompensation(
           {
             areaRepository: deps.areaRepository,
+            compensationHistoryRepository: deps.compensationHistoryRepository,
+            defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
             areaId: validated.area_id,
@@ -65,6 +68,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             idGenerator: deps.idGenerator,
             clock: deps.clock,
             auditLog: requestAuditLog,
+            defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
             supporterUserId: auth.userId,
@@ -265,6 +269,8 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
         const quote = await quoteTreePurchaseCompensation(
           {
             areaRepository: deps.areaRepository,
+            compensationHistoryRepository: deps.compensationHistoryRepository,
+            defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
             areaId: validated.area_id,
@@ -288,6 +294,8 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               price_per_tree: quote.pricePerTree,
               total_amount: quote.totalAmount,
               currency: quote.currency,
+              max_purchasable_trees: quote.maxPurchasableTrees,
+              remaining_purchasable_trees: quote.remainingPurchasableTrees,
             },
             message_key: 'compensation.quote_tree_purchase_created',
           },

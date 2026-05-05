@@ -19,8 +19,8 @@ export class PostgresAreaRepository implements AreaRepository {
         biome, country_code, state, city, status, audit_status, audit_notes,
         audited_by_user_id, audited_at, total_capacity_t_co2e,
         committed_t_co2e, t_co2e_per_tree_per_year, price_per_tree,
-        default_horizon_years, created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($6, $5), 4326), $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+        default_horizon_years, max_purchasable_trees, created_at, updated_at, deleted_at
+      ) VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($6, $5), 4326), $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
       [
         area.id,
         area.ownerUserId,
@@ -42,6 +42,7 @@ export class PostgresAreaRepository implements AreaRepository {
         area.tCO2ePerTreePerYear || null,
         area.pricePerTree || null,
         area.defaultHorizonYears || null,
+        area.maxPurchasableTrees ?? null,
         area.createdAt,
         area.updatedAt,
         area.deletedAt || null,
@@ -221,8 +222,9 @@ ORDER BY updated_at DESC, id DESC`,
         t_co2e_per_tree_per_year = $17,
         price_per_tree = $18,
         default_horizon_years = $19,
-        updated_at = $20,
-        deleted_at = $21
+        max_purchasable_trees = $20,
+        updated_at = $21,
+        deleted_at = $22
        WHERE id = $1 AND deleted_at IS NULL`,
       [
         area.id,
@@ -244,6 +246,7 @@ ORDER BY updated_at DESC, id DESC`,
         area.tCO2ePerTreePerYear || null,
         area.pricePerTree || null,
         area.defaultHorizonYears || null,
+        area.maxPurchasableTrees ?? null,
         area.updatedAt,
         area.deletedAt || null,
       ]
@@ -338,7 +341,7 @@ ORDER BY updated_at DESC, id DESC`,
       auditedByUserId: row.audited_by_user_id,
       auditedAt: row.audited_at ? new Date(row.audited_at) : undefined,
       carbonCapacity,
-      tCO2ePerTreePerYear: row.t_co2e_per_tree_per_year ? parseFloat(row.t_co2e_per_tree_per_year) : undefined,
+      maxPurchasableTrees: row.max_purchasable_trees != null ? parseInt(row.max_purchasable_trees, 10) : null,
       pricePerTree: row.price_per_tree ? parseFloat(row.price_per_tree) : undefined,
       defaultHorizonYears: row.default_horizon_years ? parseInt(row.default_horizon_years, 10) : undefined,
       createdAt: new Date(row.created_at),

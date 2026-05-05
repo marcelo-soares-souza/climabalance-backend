@@ -37,6 +37,7 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
         return { ...this.area };
       },
       insertCompensation: async (_record: CompensationCreateRecord) => {},
+      sumPaidTreeCountByArea: async (_areaId: string) => 0,
     };
     return work(tx);
   }
@@ -74,6 +75,14 @@ class InMemoryCompensationHistoryRepository
     return this.areaContributions
       .filter((item) => item.areaId === input.areaId)
       .slice(input.offset, input.offset + input.limit);
+  }
+
+  async sumPaidTreeCountByArea(_areaId: string): Promise<number> {
+    return 0;
+  }
+
+  async findById(_compensationId: string): Promise<CompensationHistoryItem | null> {
+    return this.items.find((item) => item.id === _compensationId) ?? null;
   }
 }
 
@@ -224,6 +233,7 @@ describe('POST /api/v1/compensations handler', () => {
     tCO2ePerTreePerYear: 0.00075,
     pricePerTree: 12,
     defaultHorizonYears: 20,
+    maxPurchasableTrees: null,
     createdAt: new Date('2026-02-07T12:00:00Z'),
     updatedAt: new Date('2026-02-07T12:00:00Z'),
   });
@@ -236,6 +246,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository: certificateRepository,
@@ -248,6 +259,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 1000,
       auditLog: {
         async log() {},
       },
@@ -281,6 +293,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository:
@@ -294,6 +307,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
       },
@@ -318,6 +332,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository([
         {
@@ -345,6 +360,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
       },
@@ -368,6 +384,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository([
         {
@@ -395,6 +412,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
       },
@@ -420,6 +438,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(
         [],
@@ -446,6 +465,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
       },
@@ -472,6 +492,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository:
@@ -485,6 +506,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
       },
@@ -516,6 +538,7 @@ describe('POST /api/v1/compensations handler', () => {
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
         status: 'active',
+        maxPurchasableTrees: null,
       }),
       compensationHistoryRepository: new InMemoryCompensationHistoryRepository(),
       compensationCertificateRepository:
@@ -531,6 +554,7 @@ describe('POST /api/v1/compensations handler', () => {
       clock: {
         now: () => new Date('2026-02-07T16:00:00Z'),
       },
+      defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
       },

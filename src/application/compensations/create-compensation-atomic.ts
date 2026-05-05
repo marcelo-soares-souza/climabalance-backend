@@ -41,6 +41,7 @@ export type CreateCompensationAtomicResult = {
 export type CompensationAreaSnapshot = {
   id: string;
   status: string;
+  maxPurchasableTrees: number | null;
 };
 
 /**
@@ -72,6 +73,7 @@ export type CompensationCreateRecord = {
 export interface CompensationAtomicTransaction {
   lockArea(areaId: string): Promise<CompensationAreaSnapshot | null>;
   insertCompensation(record: CompensationCreateRecord): Promise<void>;
+  sumPaidTreeCountByArea(areaId: string): Promise<number>;
 }
 
 /**
@@ -100,6 +102,7 @@ export async function createCompensationAtomic(
         metadata?: Record<string, any>;
       }): Promise<void>;
     };
+    defaultMaxPurchasableTrees: number;
   },
   input: CreateCompensationAtomicInput
 ): Promise<CreateCompensationAtomicResult> {
@@ -120,6 +123,19 @@ export async function createCompensationAtomic(
         {
           field: 'area_id',
           message: 'area_not_active',
+        },
+      ]);
+    }
+
+    const effectiveMax = area.maxPurchasableTrees ?? deps.defaultMaxPurchasableTrees;
+    const paidTreeCount = await tx.sumPaidTreeCountByArea(area.id);
+    const requestedTrees = input.treesCount;
+
+    if (paidTreeCount + requestedTrees > effectiveMax) {
+      throw new ValidationError([
+        {
+          field: 'trees_count',
+          message: `tree_limit_exceeded: max ${effectiveMax}, remaining ${effectiveMax - paidTreeCount}`,
         },
       ]);
     }

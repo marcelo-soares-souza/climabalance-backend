@@ -19,6 +19,7 @@ export interface CreateAreaRequest {
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
+  maxPurchasableTrees?: number | null;
 }
 
 export interface CreateAreaResponse {
@@ -74,6 +75,7 @@ export async function createArea(
     city: request.city,
     status: AreaStatus.DRAFT,
     carbonCapacity,
+    maxPurchasableTrees: request.maxPurchasableTrees ?? null,
     tCO2ePerTreePerYear: request.tCO2ePerTreePerYear,
     pricePerTree: request.pricePerTree,
     defaultHorizonYears: request.defaultHorizonYears,

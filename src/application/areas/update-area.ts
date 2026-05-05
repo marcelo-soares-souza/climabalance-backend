@@ -16,6 +16,7 @@ export interface UpdateAreaRequest {
   state?: string;
   city?: string;
   totalCapacityTCO2e?: number;
+  maxPurchasableTrees?: number | null;
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
@@ -55,6 +56,8 @@ export async function updateArea(
   if (request.pricePerTree !== undefined) updates.pricePerTree = request.pricePerTree;
   if (request.defaultHorizonYears !== undefined)
     updates.defaultHorizonYears = request.defaultHorizonYears;
+  if (request.maxPurchasableTrees !== undefined)
+    updates.maxPurchasableTrees = request.maxPurchasableTrees;
 
   if (request.latitude !== undefined && request.longitude !== undefined) {
     updates.location = new Location(request.latitude, request.longitude);
@@ -62,6 +65,21 @@ export async function updateArea(
 
   if (request.biome !== undefined) {
     updates.biome = new Biome(request.biome);
+  }
+
+  if (request.maxPurchasableTrees !== undefined) {
+    if (!isAdmin) {
+      throw new Error('Only admin can update max purchasable trees');
+    }
+    if (request.maxPurchasableTrees !== null) {
+      if (!Number.isInteger(request.maxPurchasableTrees) || request.maxPurchasableTrees < 1) {
+        throw new Error('Max purchasable trees must be a positive integer or null');
+      }
+      const current = area.maxPurchasableTrees ?? 0;
+      if (request.maxPurchasableTrees < current) {
+        throw new Error('Max purchasable trees can only be increased');
+      }
+    }
   }
 
   area.update(updates, { forceEdit: isAdmin });

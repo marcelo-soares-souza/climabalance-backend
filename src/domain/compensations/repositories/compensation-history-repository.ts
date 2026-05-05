@@ -57,4 +57,6 @@ export interface CompensationHistoryRepository {
   ): Promise<AreaContributionItem[]>;
 
   findById(compensationId: string, client?: any): Promise<CompensationHistoryItem | null>;
+
+  sumPaidTreeCountByArea(areaId: string, client?: any): Promise<number>;
 }

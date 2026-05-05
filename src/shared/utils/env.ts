@@ -27,6 +27,7 @@ export type Env = {
   stripePublishableKey: string;
   stripeWebhookSecret: string;
   stripePlatformFeePercent: number;
+  defaultMaxPurchasableTrees: number;
   areaMediaStoragePath: string;
   certificateStoragePath: string;
   smtpServer?: string;
@@ -170,6 +171,9 @@ export const env: Env = {
   },
   get stripePlatformFeePercent() {
     return numberEnv('STRIPE_PLATFORM_FEE_PERCENT', 5);
+  },
+  get defaultMaxPurchasableTrees() {
+    return numberEnv('DEFAULT_MAX_PURCHASABLE_TREES', 100);
   },
   get areaMediaStoragePath() {
     return process.env.AREA_MEDIA_STORAGE_PATH ?? './storage/area-media';

@@ -1,4 +1,5 @@
 import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import type { CompensationHistoryRepository } from '../../domain/compensations/repositories/compensation-history-repository';
 import { NotFoundError, ValidationError } from '../../domain/errors';
 
 export const TREE_PURCHASE_HORIZON_YEARS = 20;
@@ -27,12 +28,16 @@ export type QuoteTreePurchaseCompensationResult = {
   pricePerTree: number;
   totalAmount: number;
   currency: string;
+  maxPurchasableTrees: number | null;
+  remainingPurchasableTrees: number;
 };
 
 export async function quoteTreePurchaseCompensation(
   deps: {
     areaRepository: AreaRepository;
+    compensationHistoryRepository: CompensationHistoryRepository;
     treePriceResolver?: (currency: string, areaId: string) => number | null;
+    defaultMaxPurchasableTrees: number;
   },
   input: QuoteTreePurchaseCompensationInput
 ): Promise<QuoteTreePurchaseCompensationResult> {
@@ -51,6 +56,10 @@ export async function quoteTreePurchaseCompensation(
       },
     ]);
   }
+
+  const effectiveMax = area.getEffectiveMaxPurchasableTrees(deps.defaultMaxPurchasableTrees);
+  const paidTreeCount = await deps.compensationHistoryRepository.sumPaidTreeCountByArea(area.id);
+  const remainingPurchasableTrees = Math.max(0, effectiveMax - paidTreeCount);
 
   const tCO2ePerTreePerYear =
     area.tCO2ePerTreePerYear ?? DEFAULT_T_CO2E_PER_TREE_PER_YEAR;
@@ -89,6 +98,8 @@ export async function quoteTreePurchaseCompensation(
     pricePerTree: resolvedPrice,
     totalAmount: input.treesRequested * resolvedPrice,
     currency,
+    maxPurchasableTrees: area.maxPurchasableTrees,
+    remainingPurchasableTrees,
   };
 }
 

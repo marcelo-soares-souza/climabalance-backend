@@ -176,6 +176,19 @@ export class PostgresCompensationHistoryRepository
     return mapRow(result.rows[0] as Record<string, unknown>);
   }
 
+  async sumPaidTreeCountByArea(areaId: string, client?: any): Promise<number> {
+    const db = client || this.pool;
+    const result = await db.query(
+      `SELECT COALESCE(SUM(trees_count), 0) AS total
+       FROM compensations
+       WHERE area_id = $1
+         AND status = 'paid'
+         AND deleted_at IS NULL`,
+      [areaId]
+    );
+    return Number(result.rows[0]?.total ?? 0);
+  }
+
   async getPaidContributionSummaryBySupporter(userId: string): Promise<{
     estimatedOffsetTCO2e: number;
     totalTreesPurchased: number;

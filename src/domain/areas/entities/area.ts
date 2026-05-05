@@ -20,6 +20,7 @@ export interface AreaProps {
   auditedByUserId?: string;
   auditedAt?: Date;
   carbonCapacity?: CarbonCapacity;
+  maxPurchasableTrees: number | null;
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
@@ -48,6 +49,7 @@ export class Area {
   auditedByUserId?: string;
   auditedAt?: Date;
   carbonCapacity?: CarbonCapacity;
+  maxPurchasableTrees: number | null;
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
@@ -71,6 +73,7 @@ export class Area {
     this.auditedByUserId = props.auditedByUserId;
     this.auditedAt = props.auditedAt;
     this.carbonCapacity = props.carbonCapacity;
+    this.maxPurchasableTrees = props.maxPurchasableTrees;
     this.tCO2ePerTreePerYear = props.tCO2ePerTreePerYear;
     this.pricePerTree = props.pricePerTree;
     this.defaultHorizonYears = props.defaultHorizonYears;
@@ -120,6 +123,10 @@ export class Area {
 
   hasAvailableCapacity(): boolean {
     return !!this.carbonCapacity && this.carbonCapacity.hasAvailableCapacity();
+  }
+
+  getEffectiveMaxPurchasableTrees(defaultMax: number): number {
+    return this.maxPurchasableTrees ?? defaultMax;
   }
 
   // State transitions
@@ -234,6 +241,7 @@ export class Area {
       state?: string;
       city?: string;
       totalCapacityTCO2e?: number;
+      maxPurchasableTrees?: number | null;
       tCO2ePerTreePerYear?: number;
       pricePerTree?: number;
       defaultHorizonYears?: number;
@@ -278,6 +286,10 @@ export class Area {
     if (updates.totalCapacityTCO2e !== undefined) {
       const committed = this.carbonCapacity?.committedTCO2e || 0;
       this.carbonCapacity = new CarbonCapacity(updates.totalCapacityTCO2e, committed);
+    }
+
+    if (updates.maxPurchasableTrees !== undefined) {
+      this.maxPurchasableTrees = updates.maxPurchasableTrees;
     }
 
     if (updates.tCO2ePerTreePerYear !== undefined) {

@@ -23,6 +23,7 @@ export interface GetAreaResponse {
   totalCapacityTCO2e?: number;
   committedTCO2e?: number;
   availableTCO2e?: number;
+  maxPurchasableTrees?: number | null;
   tCO2ePerTreePerYear?: number;
   estimatedKgCO2PerTreePerYear?: number;
   pricePerTree?: number;
@@ -91,6 +92,7 @@ export async function getArea(
     totalCapacityTCO2e: area.carbonCapacity?.totalCapacityTCO2e,
     committedTCO2e: area.carbonCapacity?.committedTCO2e,
     availableTCO2e: area.carbonCapacity?.availableTCO2e,
+    maxPurchasableTrees: area.maxPurchasableTrees,
     tCO2ePerTreePerYear: area.tCO2ePerTreePerYear,
     estimatedKgCO2PerTreePerYear:
       area.tCO2ePerTreePerYear !== undefined

@@ -161,6 +161,7 @@ export function buildAppRuntime() {
     stripeConnectRepository,
     stripeConnectLookup: stripeConnectRepository,
     stripePlatformFeePercent: env.stripePlatformFeePercent,
+    defaultMaxPurchasableTrees: env.defaultMaxPurchasableTrees,
   });
 
   return {
