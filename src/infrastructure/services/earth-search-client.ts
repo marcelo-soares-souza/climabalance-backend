@@ -1,5 +1,6 @@
 import { fromUrl } from 'geotiff';
 import sharp from 'sharp';
+import proj4 from 'proj4';
 
 export interface StacScene {
   id: string;
@@ -21,6 +22,84 @@ export interface ProcessedImage {
   bytes: Uint8Array;
   mimeType: string;
   isFallback: boolean;
+}
+
+interface PixelWindow {
+  window: [number, number, number, number];
+  tileWidth: number;
+  tileHeight: number;
+}
+
+function isUtmProjection(originX: number): boolean {
+  return Math.abs(originX) > 180;
+}
+
+function transformToUtm(
+  bbox: { west: number; south: number; east: number; north: number },
+): { west: number; south: number; east: number; north: number } {
+  const lat = (bbox.south + bbox.north) / 2;
+  const lng = (bbox.west + bbox.east) / 2;
+  const zone = Math.floor((lng + 180) / 6) + 1;
+  const southFlag = lat >= 0 ? '' : ' +south';
+  const def = `+proj=utm +zone=${zone}${southFlag} +datum=WGS84 +units=m +no_defs`;
+
+  const sw = proj4(def, [bbox.west, bbox.south]);
+  const se = proj4(def, [bbox.east, bbox.south]);
+  const nw = proj4(def, [bbox.west, bbox.north]);
+  const ne = proj4(def, [bbox.east, bbox.north]);
+
+  return {
+    west: Math.min(sw[0], se[0], nw[0], ne[0]),
+    south: Math.min(sw[1], se[1], nw[1], ne[1]),
+    east: Math.max(sw[0], se[0], nw[0], ne[0]),
+    north: Math.max(sw[1], se[1], nw[1], ne[1]),
+  };
+}
+
+function calculatePixelWindow(
+  image: import('geotiff').GeoTIFFImage,
+  bbox: { west: number; south: number; east: number; north: number },
+): PixelWindow {
+  const originX = image.getOrigin()[0];
+  const originY = image.getOrigin()[1];
+  const resX = image.getResolution()[0];
+  const resY = image.getResolution()[1];
+  const width = image.getWidth();
+  const height = image.getHeight();
+
+  let west = bbox.west;
+  let east = bbox.east;
+  let south = bbox.south;
+  let north = bbox.north;
+
+  if (isUtmProjection(originX)) {
+    const utm = transformToUtm(bbox);
+    west = utm.west;
+    east = utm.east;
+    south = utm.south;
+    north = utm.north;
+  }
+
+  const absResY = Math.abs(resY);
+
+  const pxMinX = Math.max(0, Math.floor((west - originX) / resX));
+  const pxMaxX = Math.min(width, Math.ceil((east - originX) / resX));
+
+  let pxMinY: number;
+  let pxMaxY: number;
+
+  if (resY < 0) {
+    pxMinY = Math.max(0, Math.floor((originY - north) / absResY));
+    pxMaxY = Math.min(height, Math.ceil((originY - south) / absResY));
+  } else {
+    pxMinY = Math.max(0, Math.floor((south - originY) / absResY));
+    pxMaxY = Math.min(height, Math.ceil((north - originY) / absResY));
+  }
+
+  const tileWidth = pxMaxX - pxMinX;
+  const tileHeight = pxMaxY - pxMinY;
+
+  return { window: [pxMinX, pxMinY, pxMaxX, pxMaxY], tileWidth, tileHeight };
 }
 
 const SENTINEL_COLLECTION = 'sentinel-2-l2a';
@@ -164,25 +243,7 @@ async function composeFromBands(
   const tiffs = await Promise.all(hrefs.map((h) => fromUrl(h)));
   const images = await Promise.all(tiffs.map((t) => t.getImage()));
 
-  const origin = images[0].getOrigin();
-  const originX = origin[0];
-  const originY = origin[1];
-  const resX = images[0].getResolution()[0];
-  const resY = images[0].getResolution()[1];
-
-  const width = images[0].getWidth();
-  const height = images[0].getHeight();
-
-  const pxMinX = Math.max(0, Math.floor((bbox.west - originX) / resX));
-  const pxMaxX = Math.min(width, Math.ceil((bbox.east - originX) / resX));
-  const pxMinY = Math.max(0, Math.floor((originY - bbox.north) / Math.abs(resY)));
-  const pxMaxY = Math.min(height, Math.ceil((originY - bbox.south) / Math.abs(resY)));
-
-  const window: [number, number, number, number] = [
-    pxMinX, pxMinY, pxMaxX, pxMaxY,
-  ];
-  const tileWidth = pxMaxX - pxMinX;
-  const tileHeight = pxMaxY - pxMinY;
+  const { window, tileWidth, tileHeight } = calculatePixelWindow(images[0], bbox);
 
   if (tileWidth <= 0 || tileHeight <= 0) {
     throw new Error('Bbox does not intersect scene');
@@ -247,21 +308,8 @@ async function cropVisualGeoTiff(
   try {
     const tiff = await fromUrl(href);
     const image = await tiff.getImage();
-    const originX = image.getOrigin()[0];
-    const originY = image.getOrigin()[1];
-    const resX = image.getResolution()[0];
-    const resY = image.getResolution()[1];
-    const width = image.getWidth();
-    const height = image.getHeight();
 
-    const pxMinX = Math.max(0, Math.floor((bbox.west - originX) / resX));
-    const pxMaxX = Math.min(width, Math.ceil((bbox.east - originX) / resX));
-    const pxMinY = Math.max(0, Math.floor((originY - bbox.north) / Math.abs(resY)));
-    const pxMaxY = Math.min(height, Math.ceil((originY - bbox.south) / Math.abs(resY)));
-
-    const window: [number, number, number, number] = [pxMinX, pxMinY, pxMaxX, pxMaxY];
-    const tileWidth = pxMaxX - pxMinX;
-    const tileHeight = pxMaxY - pxMinY;
+    const { window, tileWidth, tileHeight } = calculatePixelWindow(image, bbox);
 
     if (tileWidth <= 0 || tileHeight <= 0) return null;
 
