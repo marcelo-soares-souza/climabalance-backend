@@ -27,7 +27,7 @@ function mapProfile(row: Record<string, unknown>): UserProfile {
     displayName: row.display_name as string | undefined,
     documentType: row.document_type as string | undefined,
     documentNumber: row.document_number as string | undefined,
-    birthDate: row.birth_date ? String(row.birth_date) : undefined,
+    birthDate: row.birth_date ? new Date(row.birth_date as string).toISOString().split('T')[0] : undefined,
     phone: row.phone as string | undefined,
     countryCode: row.country_code as string | undefined,
     addressLine1: row.address_line1 as string | undefined,
