@@ -72,12 +72,13 @@ export async function fetchAreaSatelliteImage(
   const searchEnd = new Date(targetDate);
   searchEnd.setDate(searchEnd.getDate() + 3);
 
-  const delta = input.bboxSizeKm / 2 / 111.0;
+  const deltaLat = input.bboxSizeKm / 2 / 111.0;
+  const deltaLng = input.bboxSizeKm / 2 / (111.0 * Math.cos(area.location.latitude * Math.PI / 180));
   const bbox = {
-    west: area.location.longitude - delta,
-    south: area.location.latitude - delta,
-    east: area.location.longitude + delta,
-    north: area.location.latitude + delta,
+    west: area.location.longitude - deltaLng,
+    south: area.location.latitude - deltaLat,
+    east: area.location.longitude + deltaLng,
+    north: area.location.latitude + deltaLat,
   };
 
   const searchParams = {

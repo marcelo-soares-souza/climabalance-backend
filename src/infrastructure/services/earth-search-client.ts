@@ -146,13 +146,13 @@ export async function downloadRgbComposite(
   }
 
   if (hrefs.length < 3) {
-    return downloadVisualFallback(scene);
+    return downloadVisualFallback(scene, bbox);
   }
 
   try {
     return await composeFromBands(hrefs, bandNames, bbox);
   } catch {
-    return downloadVisualFallback(scene);
+    return downloadVisualFallback(scene, bbox);
   }
 }
 
@@ -240,8 +240,66 @@ function applyLinearStretch(
   return result;
 }
 
+async function cropVisualGeoTiff(
+  href: string,
+  bbox: { west: number; south: number; east: number; north: number },
+): Promise<ProcessedImage | null> {
+  try {
+    const tiff = await fromUrl(href);
+    const image = await tiff.getImage();
+    const originX = image.getOrigin()[0];
+    const originY = image.getOrigin()[1];
+    const resX = image.getResolution()[0];
+    const resY = image.getResolution()[1];
+    const width = image.getWidth();
+    const height = image.getHeight();
+
+    const pxMinX = Math.max(0, Math.floor((bbox.west - originX) / resX));
+    const pxMaxX = Math.min(width, Math.ceil((bbox.east - originX) / resX));
+    const pxMinY = Math.max(0, Math.floor((originY - bbox.north) / Math.abs(resY)));
+    const pxMaxY = Math.min(height, Math.ceil((originY - bbox.south) / Math.abs(resY)));
+
+    const window: [number, number, number, number] = [pxMinX, pxMinY, pxMaxX, pxMaxY];
+    const tileWidth = pxMaxX - pxMinX;
+    const tileHeight = pxMaxY - pxMinY;
+
+    if (tileWidth <= 0 || tileHeight <= 0) return null;
+
+    const rasters = await image.readRasters({ window });
+
+    if (rasters.length < 3) return null;
+
+    const rgbBuffer = Buffer.alloc(tileWidth * tileHeight * 3);
+    const data0 = rasters[0] as Uint8Array | Uint16Array | Float32Array;
+    const data1 = rasters[1] as Uint8Array | Uint16Array | Float32Array;
+    const data2 = rasters[2] as Uint8Array | Uint16Array | Float32Array;
+
+    const isUint8 = data0 instanceof Uint8Array;
+    for (let i = 0; i < tileWidth * tileHeight; i++) {
+      rgbBuffer[i * 3] = isUint8 ? data0[i] : clampUint8(data0[i]);
+      rgbBuffer[i * 3 + 1] = isUint8 ? data1[i] : clampUint8(data1[i]);
+      rgbBuffer[i * 3 + 2] = isUint8 ? data2[i] : clampUint8(data2[i]);
+    }
+
+    const jpeg = await sharp(rgbBuffer, {
+      raw: { width: tileWidth, height: tileHeight, channels: 3 },
+    })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    return { bytes: new Uint8Array(jpeg), mimeType: 'image/jpeg', isFallback: true };
+  } catch {
+    return null;
+  }
+}
+
+function clampUint8(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
 async function downloadVisualFallback(
   scene: StacScene,
+  bbox: { west: number; south: number; east: number; north: number },
 ): Promise<ProcessedImage> {
   const visualAsset =
     scene.assets['visual'] ??
@@ -250,6 +308,9 @@ async function downloadVisualFallback(
   if (!visualAsset?.href) {
     throw new Error('No visual or rendered_preview asset available');
   }
+
+  const cropped = await cropVisualGeoTiff(visualAsset.href, bbox);
+  if (cropped) return cropped;
 
   const res = await fetch(visualAsset.href);
   if (!res.ok) {
