@@ -118,12 +118,18 @@ export async function fetchAreaSatelliteImage(
     thumbBytes,
   );
 
-  const captureDate = new Date(scene.datetime ?? searchEnd);
-
-  await deps.satelliteImageRepository.softDeletePreviousForArea(
+  const previous = await deps.satelliteImageRepository.findLatestByAreaId(
     input.areaId,
-    createdAt,
   );
+  if (previous) {
+    await deps.satelliteImageStorage.delete(previous.storagePath).catch(() => {});
+    if (previous.thumbnailPath) {
+      await deps.satelliteImageStorage.delete(previous.thumbnailPath).catch(() => {});
+    }
+    await deps.satelliteImageRepository.softDelete(previous.id, createdAt);
+  }
+
+  const captureDate = new Date(scene.datetime ?? searchEnd);
 
   const AreaSatelliteImage = (
     await import('../../domain/areas/entities/area-satellite-image')

@@ -261,7 +261,10 @@ async function downloadVisualFallback(
 
   let jpeg: Buffer;
   try {
-    jpeg = await sharp(bytes).jpeg({ quality: 85 }).toBuffer();
+    jpeg = await sharp(bytes)
+      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 85 })
+      .toBuffer();
   } catch {
     throw new Error('Failed to decode visual asset (unsupported format)');
   }
