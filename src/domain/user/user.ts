@@ -29,6 +29,16 @@ export type UserProfile = {
   addressState?: string;
   addressPostalCode?: string;
   addressCountry?: string;
+  about?: string;
+  websiteUrl?: string;
+  instagramUrl?: string;
+  facebookUrl?: string;
+  xUrl?: string;
+  blueskyUrl?: string;
+  mastodonUrl?: string;
+  youtubeUrl?: string;
+  linkedinUrl?: string;
+  avatarPath?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;

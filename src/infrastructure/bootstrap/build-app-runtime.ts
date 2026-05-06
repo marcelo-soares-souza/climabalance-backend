@@ -5,6 +5,7 @@ import { ConsoleEmailSender } from '../email/console-email-sender';
 import { SMTPEmailSender } from '../email/smtp-email-sender';
 import { LocalAreaMediaStorage } from '../storage/local-area-media-storage';
 import { LocalCertificateStorage } from '../storage/local-certificate-storage';
+import { LocalProfileAvatarStorage } from '../storage/local-profile-avatar-storage';
 import { LocalSatelliteImageStorage } from '../storage/local-satellite-image-storage';
 import { SimpleCertificatePdfGenerator } from '../pdf/simple-certificate-pdf-generator';
 import { CardSimulatorPaymentGatewayAdapter } from '../payments/card-simulator-gateway';
@@ -103,6 +104,7 @@ export function buildAppRuntime() {
     createObjectStorage();
   const emailSender = createEmailSender();
   const compensationCertificatePdfGenerator = new SimpleCertificatePdfGenerator();
+  const profileAvatarStorage = new LocalProfileAvatarStorage(env.profileAvatarStoragePath);
 
   const userRepository = new PostgresUserRepository(pgPool);
   const emailConfirmationRepository = new PostgresEmailConfirmationRepository(pgPool);
@@ -172,6 +174,7 @@ export function buildAppRuntime() {
     stripeConnectRepository,
     stripeConnectLookup: stripeConnectRepository,
     stripePlatformFeePercent: env.stripePlatformFeePercent,
+    profileAvatarStorage,
     defaultMaxPurchasableTrees: env.defaultMaxPurchasableTrees,
     satelliteBboxSizeKm: env.satelliteBboxSizeKm,
     satelliteMaxCloud: env.satelliteMaxCloud,

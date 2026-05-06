@@ -13,6 +13,16 @@ const optionalTrimmedString = (max: number) =>
     z.string().max(max, { message: 'too_long' }).optional()
   ).optional();
 
+const optionalUrl = (max: number) =>
+  z.preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      const trimmed = value.trim();
+      return trimmed === '' ? undefined : trimmed;
+    },
+    z.string().max(max, { message: 'too_long' }).url({ message: 'invalid_url' }).optional()
+  ).optional();
+
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
   password: z.string().min(8, { message: 'too_short' }).max(200, { message: 'too_long' }).optional(),
@@ -29,6 +39,11 @@ export const listUsersQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).optional(),
 });
 
+export const uploadProfileAvatarSchema = z.object({
+  mime_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  file_base64: z.string().min(1).max(10 * 1024 * 1024)
+});
+
 export const upsertProfileSchema = z.object({
   display_name: optionalTrimmedString(200),
   document_type: optionalTrimmedString(30),
@@ -41,5 +56,14 @@ export const upsertProfileSchema = z.object({
   address_city: optionalTrimmedString(120),
   address_state: optionalTrimmedString(120),
   address_postal_code: optionalTrimmedString(30),
-  address_country: optionalTrimmedString(2)
+  address_country: optionalTrimmedString(2),
+  about: optionalTrimmedString(4000),
+  website_url: optionalUrl(500),
+  instagram_url: optionalUrl(500),
+  facebook_url: optionalUrl(500),
+  x_url: optionalUrl(500),
+  bluesky_url: optionalUrl(500),
+  mastodon_url: optionalUrl(500),
+  youtube_url: optionalUrl(500),
+  linkedin_url: optionalUrl(500)
 });

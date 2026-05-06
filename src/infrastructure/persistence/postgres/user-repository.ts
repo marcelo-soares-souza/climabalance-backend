@@ -36,6 +36,16 @@ function mapProfile(row: Record<string, unknown>): UserProfile {
     addressState: row.address_state as string | undefined,
     addressPostalCode: row.address_postal_code as string | undefined,
     addressCountry: row.address_country as string | undefined,
+    about: row.about as string | undefined,
+    websiteUrl: row.website_url as string | undefined,
+    instagramUrl: row.instagram_url as string | undefined,
+    facebookUrl: row.facebook_url as string | undefined,
+    xUrl: row.x_url as string | undefined,
+    blueskyUrl: row.bluesky_url as string | undefined,
+    mastodonUrl: row.mastodon_url as string | undefined,
+    youtubeUrl: row.youtube_url as string | undefined,
+    linkedinUrl: row.linkedin_url as string | undefined,
+    avatarPath: row.avatar_path as string | undefined,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
     deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
@@ -225,8 +235,10 @@ export class PostgresUserRepository implements UserRepository {
         `INSERT INTO user_profiles (
             id, user_id, display_name, document_type, document_number, birth_date, phone,
             country_code, address_line1, address_line2, address_city, address_state,
-            address_postal_code, address_country, created_at, updated_at
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$15)
+            address_postal_code, address_country, about, website_url, instagram_url,
+            facebook_url, x_url, bluesky_url, mastodon_url, youtube_url, linkedin_url,
+            avatar_path, created_at, updated_at
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$25)
           RETURNING *`,
         [
           profile.id,
@@ -243,6 +255,16 @@ export class PostgresUserRepository implements UserRepository {
           profile.addressState ?? null,
           profile.addressPostalCode ?? null,
           profile.addressCountry ?? null,
+          profile.about ?? null,
+          profile.websiteUrl ?? null,
+          profile.instagramUrl ?? null,
+          profile.facebookUrl ?? null,
+          profile.xUrl ?? null,
+          profile.blueskyUrl ?? null,
+          profile.mastodonUrl ?? null,
+          profile.youtubeUrl ?? null,
+          profile.linkedinUrl ?? null,
+          profile.avatarPath ?? null,
           now
         ]
       );
@@ -265,7 +287,17 @@ export class PostgresUserRepository implements UserRepository {
       ['addressCity', 'address_city'],
       ['addressState', 'address_state'],
       ['addressPostalCode', 'address_postal_code'],
-      ['addressCountry', 'address_country']
+      ['addressCountry', 'address_country'],
+      ['about', 'about'],
+      ['websiteUrl', 'website_url'],
+      ['instagramUrl', 'instagram_url'],
+      ['facebookUrl', 'facebook_url'],
+      ['xUrl', 'x_url'],
+      ['blueskyUrl', 'bluesky_url'],
+      ['mastodonUrl', 'mastodon_url'],
+      ['youtubeUrl', 'youtube_url'],
+      ['linkedinUrl', 'linkedin_url'],
+      ['avatarPath', 'avatar_path']
     ];
 
     for (const [key, column] of entries) {

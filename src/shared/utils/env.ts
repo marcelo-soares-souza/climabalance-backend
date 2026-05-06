@@ -31,6 +31,7 @@ export type Env = {
   areaMediaStoragePath: string;
   certificateStoragePath: string;
   satelliteImageStoragePath: string;
+  profileAvatarStoragePath: string;
   satelliteBboxSizeKm: number;
   satelliteMaxCloud: number;
   satelliteDaysBack: number;
@@ -192,6 +193,9 @@ export const env: Env = {
   },
   get satelliteImageStoragePath() {
     return process.env.SATELLITE_IMAGE_STORAGE_PATH ?? './storage/satellite';
+  },
+  get profileAvatarStoragePath() {
+    return process.env.PROFILE_AVATAR_STORAGE_PATH ?? './storage/profile-avatars';
   },
   get satelliteBboxSizeKm() {
     return numberEnv('SATELLITE_BBOX_SIZE_KM', 4);

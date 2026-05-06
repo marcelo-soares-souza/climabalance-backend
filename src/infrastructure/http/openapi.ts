@@ -1102,6 +1102,27 @@ const routes: ApiRouteDoc[] = [
     successStatus: '200',
     successResponse: 'OkData',
   },
+  {
+    method: 'post',
+    path: '/api/v1/users/:id/profile/avatar',
+    summary: 'Upload profile avatar',
+    description: 'Uploads and resizes profile photo for the user.',
+    tags: ['Users'],
+    secured: true,
+    requestBodyRef: 'UploadProfileAvatarInput',
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+  {
+    method: 'get',
+    path: '/api/v1/users/:id/profile/avatar/file',
+    summary: 'Get profile avatar file',
+    description: 'Returns the avatar image file for the user profile.',
+    tags: ['Users'],
+    secured: false,
+    successStatus: '200',
+    successResponse: 'BinaryFileResponse',
+  },
 ];
 
 export const OPENAPI_ROUTE_SIGNATURES = routes.map(
@@ -1378,6 +1399,23 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
             address_state: { type: 'string' },
             address_postal_code: { type: 'string' },
             address_country: { type: 'string' },
+            about: { type: 'string' },
+            website_url: { type: 'string', format: 'uri' },
+            instagram_url: { type: 'string', format: 'uri' },
+            facebook_url: { type: 'string', format: 'uri' },
+            x_url: { type: 'string', format: 'uri' },
+            bluesky_url: { type: 'string', format: 'uri' },
+            mastodon_url: { type: 'string', format: 'uri' },
+            youtube_url: { type: 'string', format: 'uri' },
+            linkedin_url: { type: 'string', format: 'uri' },
+          },
+        },
+        UploadProfileAvatarInput: {
+          type: 'object',
+          required: ['mime_type', 'file_base64'],
+          properties: {
+            mime_type: { type: 'string', enum: ['image/jpeg', 'image/png', 'image/webp'] },
+            file_base64: { type: 'string', description: 'Base64-encoded image data' },
           },
         },
 

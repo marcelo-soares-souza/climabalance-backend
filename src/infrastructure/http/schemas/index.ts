@@ -17,6 +17,7 @@ export {
 export {
   updateUserSchema,
   upsertProfileSchema,
+  uploadProfileAvatarSchema,
   listUsersQuerySchema
 } from './user-schemas';
 

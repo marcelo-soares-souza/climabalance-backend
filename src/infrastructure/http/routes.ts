@@ -114,6 +114,8 @@ export function buildRouter(
   addRoute('PATCH', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.update(ctx, ctx.params.id)));
   addRoute('DELETE', '/api/v1/users/:id', 'protected', withAuthOrSelf((ctx) => userHandlers.remove(ctx, ctx.params.id)));
   addRoute('PUT', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
+  addRoute('POST', '/api/v1/users/:id/profile/avatar', 'protected', withAuthOrSelf((ctx) => userHandlers.uploadAvatar(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/users/:id/profile/avatar/file', 'media', withOptionalAuth((ctx) => userHandlers.getAvatarFile(ctx, ctx.params.id)));
 
   // Location routes
   addRoute('GET', '/api/v1/locations/states', 'public', (ctx) => locationHandlers.listStates(ctx));
