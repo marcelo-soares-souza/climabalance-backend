@@ -268,6 +268,7 @@ async function composeFromBands(
   const jpeg = await sharp(rgbBuffer, {
     raw: { width: tileWidth, height: tileHeight, channels: 3 },
   })
+    .resize(1024, 1024, { fit: 'outside', kernel: 'lanczos3' })
     .jpeg({ quality: 85 })
     .toBuffer();
 
@@ -332,6 +333,7 @@ async function cropVisualGeoTiff(
     const jpeg = await sharp(rgbBuffer, {
       raw: { width: tileWidth, height: tileHeight, channels: 3 },
     })
+      .resize(1024, 1024, { fit: 'outside', kernel: 'lanczos3' })
       .jpeg({ quality: 85 })
       .toBuffer();
 

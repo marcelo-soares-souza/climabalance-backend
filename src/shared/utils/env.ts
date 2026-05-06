@@ -194,7 +194,7 @@ export const env: Env = {
     return process.env.SATELLITE_IMAGE_STORAGE_PATH ?? './storage/satellite';
   },
   get satelliteBboxSizeKm() {
-    return numberEnv('SATELLITE_BBOX_SIZE_KM', 2);
+    return numberEnv('SATELLITE_BBOX_SIZE_KM', 4);
   },
   get satelliteMaxCloud() {
     return numberEnv('SATELLITE_MAX_CLOUD', 30);
