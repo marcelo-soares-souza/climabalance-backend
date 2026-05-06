@@ -30,6 +30,11 @@ export type Env = {
   defaultMaxPurchasableTrees: number;
   areaMediaStoragePath: string;
   certificateStoragePath: string;
+  satelliteImageStoragePath: string;
+  satelliteBboxSizeKm: number;
+  satelliteMaxCloud: number;
+  satelliteDaysBack: number;
+  earthSearchEnabled: boolean;
   smtpServer?: string;
   smtpPort?: number;
   smtpUsername?: string;
@@ -184,6 +189,21 @@ export const env: Env = {
   },
   get certificateStoragePath() {
     return process.env.CERTIFICATE_STORAGE_PATH ?? './storage/certificates';
+  },
+  get satelliteImageStoragePath() {
+    return process.env.SATELLITE_IMAGE_STORAGE_PATH ?? './storage/satellite';
+  },
+  get satelliteBboxSizeKm() {
+    return numberEnv('SATELLITE_BBOX_SIZE_KM', 2);
+  },
+  get satelliteMaxCloud() {
+    return numberEnv('SATELLITE_MAX_CLOUD', 30);
+  },
+  get satelliteDaysBack() {
+    return numberEnv('SATELLITE_DAYS_BACK', 20);
+  },
+  get earthSearchEnabled() {
+    return booleanEnv('EARTH_SEARCH_ENABLED', true);
   },
   get smtpServer() {
     return optionalEnv('SMTP_SERVER');

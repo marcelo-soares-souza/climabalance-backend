@@ -172,6 +172,12 @@ export function buildRouter(
   addRoute('POST', '/api/v1/areas/:id/planted-trees', 'protected', withAuth((ctx) => areaHandlers.savePlantedTrees(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
   addRoute('DELETE', '/api/v1/areas/:id/planted-trees', 'protected', withAuth((ctx) => areaHandlers.deletePlantedTrees(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
 
+  // Satellite image routes
+  addRoute('POST', '/api/v1/areas/:id/satellite-image', 'protected', withAuth((ctx) => areaHandlers.fetchSatelliteImage(ctx, ctx.params.id), { roles: ['producer', 'administrator'] }));
+  addRoute('GET', '/api/v1/areas/:id/satellite-image/latest', 'public', withOptionalAuth((ctx) => areaHandlers.getLatestSatelliteImage(ctx, ctx.params.id)));
+  addRoute('GET', '/api/v1/satellite-images/:imageId/file', 'media', withOptionalAuth((ctx) => areaHandlers.getSatelliteImageFile(ctx, ctx.params.imageId)));
+  addRoute('GET', '/api/v1/satellite-images/:imageId/thumbnail', 'media', withOptionalAuth((ctx) => areaHandlers.getSatelliteImageThumbnail(ctx, ctx.params.imageId)));
+
   // Update/Version routes (public for frontend version checking)
   addRoute('GET', '/api/v1/updates/version', 'public', (ctx) => updateHandlers.getVersion(ctx));
   addRoute('GET', '/api/v1/updates/stream', 'public', (ctx) => updateHandlers.streamUpdates(ctx));

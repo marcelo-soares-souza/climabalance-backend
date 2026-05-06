@@ -174,3 +174,10 @@ export const getMapAreasQuerySchema = z.object({
 });
 
 export type GetMapAreasQuery = z.infer<typeof getMapAreasQuerySchema>;
+
+/**
+ * Schema for fetching a new satellite image for an area
+ */
+export const fetchSatelliteImageSchema = z.object({});
+
+export type FetchSatelliteImageRequest = z.infer<typeof fetchSatelliteImageSchema>;

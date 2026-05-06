@@ -4,6 +4,8 @@ import type { AreaCriteriaRepository } from '../../domain/areas/repositories/are
 import type { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
 import type { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
+import type { AreaSatelliteImageRepository } from '../../domain/areas/repositories/area-satellite-image-repository';
+import type { SatelliteImageStorage } from '../../domain/areas/services/satellite-image-storage';
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { UnitOfWork } from '../persistence/unit-of-work';
 import type { IdGenerator } from '../../domain/services/id-generator';
@@ -44,6 +46,9 @@ import { listAreaMedia } from '../../application/areas/list-area-media';
 import { deleteAreaMedia } from '../../application/areas/delete-area-media';
 import { getAreaMediaFile } from '../../application/areas/get-area-media-file';
 import { getAreaMediaThumbnail } from '../../application/areas/get-area-media-thumbnail';
+import { fetchAreaSatelliteImage } from '../../application/areas/fetch-area-satellite-image';
+import { getLatestSatelliteImage } from '../../application/areas/get-latest-satellite-image';
+import { serveSatelliteImageFile, serveSatelliteImageThumbnail } from '../../application/areas/serve-satellite-image-file';
 import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
 import { CarbonStockService } from '../../domain/areas/services/carbon-stock.service';
 import { buildLogContext } from '../../shared/http/log-context';
@@ -57,12 +62,18 @@ export interface AreaHandlersDeps {
   areaCriteriaRepository: AreaCriteriaRepository;
   areaMediaRepository: AreaMediaRepository;
   areaMediaStorage: AreaMediaStorage;
+  areaSatelliteImageRepository: AreaSatelliteImageRepository;
+  satelliteImageStorage: SatelliteImageStorage;
   treePlantingRepository: TreePlantingRepository;
   auditLog: Pick<AuditLogRepository, 'log'>;
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
   clock: Clock;
   jobQueue: JobQueue;
+  satelliteBboxSizeKm: number;
+  satelliteMaxCloud: number;
+  satelliteDaysBack: number;
+  earthSearchEnabled: boolean;
 }
 
 export function createAreaHandlers(deps: AreaHandlersDeps) {
@@ -770,6 +781,115 @@ return jsonResponse(200, { data: result }, logContext);
           status: 200,
           headers: {
             'content-type': thumb.mimeType,
+            'cache-control': 'public, max-age=86400',
+          },
+        });
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * POST /api/v1/areas/:id/satellite-image
+     * Fetch a new satellite image for the area (replaces previous)
+     */
+    async fetchSatelliteImage(ctx: HttpContext, id: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const auth = requireAuth(ctx);
+
+        if (!deps.earthSearchEnabled) {
+          return jsonResponse(503, { message_key: 'satellite.disabled' }, logContext);
+        }
+
+        const result = await fetchAreaSatelliteImage(
+          {
+            areaRepository: deps.areaRepository,
+            satelliteImageRepository: deps.areaSatelliteImageRepository,
+            satelliteImageStorage: deps.satelliteImageStorage,
+            idGenerator: deps.idGenerator,
+            clock: deps.clock,
+          },
+          {
+            areaId: id,
+            actorUserId: auth.userId,
+            actorRoles: auth.roles,
+            bboxSizeKm: deps.satelliteBboxSizeKm,
+            maxCloud: deps.satelliteMaxCloud,
+            daysBack: deps.satelliteDaysBack,
+          },
+        );
+
+        return jsonResponse(201, { data: result, message_key: 'satellite.fetched' }, logContext);
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * GET /api/v1/areas/:id/satellite-image/latest
+     * Get the latest satellite image for an area
+     */
+    async getLatestSatelliteImage(ctx: HttpContext, id: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const result = await getLatestSatelliteImage(
+          { satelliteImageRepository: deps.areaSatelliteImageRepository },
+          id,
+        );
+
+        return jsonResponse(200, { data: result }, logContext);
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * GET /api/v1/satellite-images/:id/file
+     * Download satellite image file
+     */
+    async getSatelliteImageFile(ctx: HttpContext, imageId: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const file = await serveSatelliteImageFile(
+          {
+            satelliteImageRepository: deps.areaSatelliteImageRepository,
+            satelliteImageStorage: deps.satelliteImageStorage,
+          },
+          imageId,
+        );
+
+        return new Response(file.bytes, {
+          status: 200,
+          headers: {
+            'content-type': file.mimeType,
+            'cache-control': 'public, max-age=86400',
+          },
+        });
+      } catch (error) {
+        return handleError(error, undefined, logContext);
+      }
+    },
+
+    /**
+     * GET /api/v1/satellite-images/:id/thumbnail
+     * Download satellite image thumbnail
+     */
+    async getSatelliteImageThumbnail(ctx: HttpContext, imageId: string) {
+      const logContext = buildLogContext(ctx);
+      try {
+        const file = await serveSatelliteImageThumbnail(
+          {
+            satelliteImageRepository: deps.areaSatelliteImageRepository,
+            satelliteImageStorage: deps.satelliteImageStorage,
+          },
+          imageId,
+        );
+
+        return new Response(file.bytes, {
+          status: 200,
+          headers: {
+            'content-type': file.mimeType,
             'cache-control': 'public, max-age=86400',
           },
         });

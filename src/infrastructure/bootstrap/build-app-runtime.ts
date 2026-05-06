@@ -5,6 +5,7 @@ import { ConsoleEmailSender } from '../email/console-email-sender';
 import { SMTPEmailSender } from '../email/smtp-email-sender';
 import { LocalAreaMediaStorage } from '../storage/local-area-media-storage';
 import { LocalCertificateStorage } from '../storage/local-certificate-storage';
+import { LocalSatelliteImageStorage } from '../storage/local-satellite-image-storage';
 import { SimpleCertificatePdfGenerator } from '../pdf/simple-certificate-pdf-generator';
 import { CardSimulatorPaymentGatewayAdapter } from '../payments/card-simulator-gateway';
 import { StripePaymentGatewayAdapter } from '../payments/stripe-gateway';
@@ -25,6 +26,7 @@ import { PostgresJobRepository } from '../persistence/postgres/job-repository';
 import { startJobWorker } from '../jobs/worker';
 import { PostgresAreaCriteriaRepository } from '../persistence/postgres/area-criteria-repository';
 import { PostgresAreaMediaRepository } from '../persistence/postgres/area-media-repository';
+import { PostgresAreaSatelliteImageRepository } from '../persistence/postgres/area-satellite-image-repository';
 import { PostgresTreePlantingRepository } from '../persistence/postgres/tree-planting-repository';
 import { PostgresCompensationAtomicStore } from '../persistence/postgres/compensation-atomic-store';
 import { PostgresCompensationHistoryRepository } from '../persistence/postgres/compensation-history-repository';
@@ -39,17 +41,21 @@ import { WebCryptoHashService } from '../crypto/web-crypto-hash-service';
 import { UUIDv7Generator } from '../id/uuidv7-generator';
 import { SystemClock } from '../time/system-clock';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
+import type { SatelliteImageStorage } from '../../domain/areas/services/satellite-image-storage';
+import type { AreaSatelliteImageRepository } from '../../domain/areas/repositories/area-satellite-image-repository';
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
 import { env } from '../../shared/utils/env';
 
 function createObjectStorage(): {
   areaMediaStorage: AreaMediaStorage;
   compensationCertificateStorage: CompensationCertificateStorage;
+  satelliteImageStorage: SatelliteImageStorage;
   logMeta: Record<string, unknown>;
 } {
   return {
     areaMediaStorage: new LocalAreaMediaStorage(env.areaMediaStoragePath),
     compensationCertificateStorage: new LocalCertificateStorage(env.certificateStoragePath),
+    satelliteImageStorage: new LocalSatelliteImageStorage(env.satelliteImageStoragePath),
     logMeta: { driver: 'local' },
   };
 }
@@ -93,7 +99,7 @@ export function buildAppRuntime() {
         clock,
         webhookSecret: env.paymentWebhookSecret,
       });
-  const { areaMediaStorage, compensationCertificateStorage, logMeta: storageLogMeta } =
+  const { areaMediaStorage, compensationCertificateStorage, satelliteImageStorage, logMeta: storageLogMeta } =
     createObjectStorage();
   const emailSender = createEmailSender();
   const compensationCertificatePdfGenerator = new SimpleCertificatePdfGenerator();
@@ -111,6 +117,8 @@ export function buildAppRuntime() {
   const areaRepository = new PostgresAreaRepository(pgPool);
   const areaCriteriaRepository = new PostgresAreaCriteriaRepository(pgPool);
   const areaMediaRepository = new PostgresAreaMediaRepository(pgPool);
+  const areaSatelliteImageRepository: AreaSatelliteImageRepository =
+    new PostgresAreaSatelliteImageRepository(pgPool);
   const treePlantingRepository = new PostgresTreePlantingRepository(pgPool);
   const compensationStore = new PostgresCompensationAtomicStore(pgPool);
   const compensationHistoryRepository = new PostgresCompensationHistoryRepository(pgPool);
@@ -141,6 +149,8 @@ export function buildAppRuntime() {
     areaCriteriaRepository,
     areaMediaRepository,
     areaMediaStorage,
+    areaSatelliteImageRepository,
+    satelliteImageStorage,
     treePlantingRepository,
     compensationStore,
     compensationHistoryRepository,
@@ -163,6 +173,10 @@ export function buildAppRuntime() {
     stripeConnectLookup: stripeConnectRepository,
     stripePlatformFeePercent: env.stripePlatformFeePercent,
     defaultMaxPurchasableTrees: env.defaultMaxPurchasableTrees,
+    satelliteBboxSizeKm: env.satelliteBboxSizeKm,
+    satelliteMaxCloud: env.satelliteMaxCloud,
+    satelliteDaysBack: env.satelliteDaysBack,
+    earthSearchEnabled: env.earthSearchEnabled,
   });
 
   return {
