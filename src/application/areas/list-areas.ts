@@ -101,6 +101,9 @@ export async function listAreas(
   } else {
     // Unauthenticated: only show active areas
     filters.status = AreaStatus.ACTIVE;
+    if (request.ownerUserId) {
+      filters.ownerUserId = request.ownerUserId;
+    }
   }
 
   const areas = await deps.areaRepository.findAll(filters);
