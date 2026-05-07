@@ -238,12 +238,29 @@ class MemoryRefreshTokenRepository {
   async revokeAllByUserId(userId: string, revokedAt: Date) { this.tokens.filter((t) => t.userId === userId && !t.revokedAt).forEach((t) => t.revokedAt = revokedAt); }
 }
 
+// In-memory consent repository for tests
+class MemoryConsentRepository {
+  records: any[] = [];
+  async recordConsent(input: any) {
+    this.records.push(input);
+    return { ...input, createdAt: new Date(), updatedAt: new Date() };
+  }
+  async getConsentsByUser(userId: string) {
+    return this.records.filter((r) => r.userId === userId);
+  }
+  async getConsent() { return null; }
+  async createSubjectRequest(input: any) { return input; }
+  async getSubjectRequestsByUser() { return []; }
+  async updateSubjectRequestStatus() { return null; }
+}
+
 // Factory function to create a mock UnitOfWork for tests
-function createMockUnitOfWork(repos: { users: any; confirmations: any }) {
+function createMockUnitOfWork(repos: { users: any; confirmations: any; consents?: any }) {
   return {
     async execute<T>(work: (tx: any) => Promise<T>): Promise<T> {
       const mockTransaction = {
         getUserRepository: () => repos.users,
+        getConsentRepository: () => repos.consents ?? new MemoryConsentRepository(),
         getEmailConfirmationRepository: () => repos.confirmations,
         getPasswordResetRepository: () => ({}),
         getAuditLogRepository: () => ({}),
@@ -263,16 +280,21 @@ test('register, confirm email, and authenticate user', async () => {
   const emailSender = new MemoryEmailSender();
   const unitOfWork = createMockUnitOfWork({ users, confirmations });
 
+  const mockConsents = new MemoryConsentRepository();
+
   const result = await registerUser(
     {
       email: 'user@example.com',
       password: 'secret123',
       locale: 'pt-BR',
-      roleKey: 'individual'
+      roleKey: 'individual',
+      acceptedPrivacy: true,
+      acceptedTerms: true,
     },
     {
       users,
       confirmations,
+      consents: mockConsents,
       passwordHasher: fakePasswordHasher,
       emailSender,
       unitOfWork,

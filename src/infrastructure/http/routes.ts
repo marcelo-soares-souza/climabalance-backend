@@ -2,6 +2,7 @@ import { Router, type Handler, type HttpContext } from '../../shared/http/router
 import { createAuthHandlers } from './auth-handlers';
 import { createAuditHandlers } from './audit-handlers';
 import { createUserHandlers } from './user-handlers';
+import { createPrivacyHandlers } from './privacy-handlers';
 import { createFootprintHandlers } from './footprint-handlers';
 import { createAreaHandlers } from './area-handlers';
 import { createUpdateHandlers } from './update-handlers';
@@ -18,6 +19,7 @@ import { withAuth, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
 import type { UserHandlersDeps } from './user-handlers';
+import type { PrivacyHandlersDeps } from './privacy-handlers';
 import type { FootprintHandlersDeps } from './footprint-handlers';
 import type { AreaHandlersDeps } from './area-handlers';
 import type { UpdateHandlersDeps } from './update-handlers';
@@ -47,6 +49,7 @@ export function buildRouter(
   deps: AuthHandlersDeps &
     UserHandlersDeps &
     AuditHandlersDeps &
+    PrivacyHandlersDeps &
     FootprintHandlersDeps &
     AreaHandlersDeps &
     UpdateHandlersDeps &
@@ -61,6 +64,7 @@ export function buildRouter(
   const authHandlers = createAuthHandlers(deps);
   const auditHandlers = createAuditHandlers(deps);
   const userHandlers = createUserHandlers(deps);
+  const privacyHandlers = createPrivacyHandlers(deps);
   const footprintHandlers = createFootprintHandlers(deps);
   const areaHandlers = createAreaHandlers(deps);
   const updateHandlers = createUpdateHandlers(deps);
@@ -116,6 +120,12 @@ export function buildRouter(
   addRoute('PUT', '/api/v1/users/:id/profile', 'protected', withAuthOrSelf((ctx) => userHandlers.createProfile(ctx, ctx.params.id)));
   addRoute('POST', '/api/v1/users/:id/profile/avatar', 'protected', withAuthOrSelf((ctx) => userHandlers.uploadAvatar(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/profile/avatar/file', 'media', withOptionalAuth((ctx) => userHandlers.getAvatarFile(ctx, ctx.params.id)));
+
+  // Privacy / GDPR / LGPD routes
+  addRoute('GET', '/api/v1/users/:id/data-export', 'protected', withAuthOrSelf((ctx) => privacyHandlers.exportData(ctx, ctx.params.id)));
+  addRoute('POST', '/api/v1/privacy/subject-request', 'protected', withAuth((ctx) => privacyHandlers.createSubjectRequest(ctx)));
+  addRoute('GET', '/api/v1/privacy/subject-requests', 'protected', withAuth((ctx) => privacyHandlers.listSubjectRequests(ctx)));
+  addRoute('POST', '/api/v1/privacy/cookie-consent', 'protected', withAuth((ctx) => privacyHandlers.recordCookieConsent(ctx)));
 
   // Location routes
   addRoute('GET', '/api/v1/locations/states', 'public', (ctx) => locationHandlers.listStates(ctx));

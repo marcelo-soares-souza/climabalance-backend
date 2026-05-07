@@ -1,5 +1,6 @@
 import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
+import type { ConsentRepository } from '../../domain/user/consent-repository';
 import type { EmailSender } from '../../infrastructure/email/email-sender';
 import type { PasswordHasher } from '../../infrastructure/crypto/password';
 import type { UnitOfWork } from '../../infrastructure/persistence/unit-of-work';
@@ -16,6 +17,9 @@ export type RegisterUserInput = {
   locale?: string;
   roleKey?: string;
   displayName?: string;
+  acceptedPrivacy?: boolean;
+  acceptedTerms?: boolean;
+  ipAddress?: string;
 };
 
 export type RegisterUserResult = {
@@ -29,6 +33,7 @@ export async function registerUser(
   deps: {
     users: UserRepository;
     confirmations: EmailConfirmationRepository;
+    consents: ConsentRepository;
     passwordHasher: PasswordHasher;
     emailSender: EmailSender;
     unitOfWork: UnitOfWork;
@@ -49,6 +54,7 @@ export async function registerUser(
   const { user, rawToken } = await deps.unitOfWork.execute(async (tx) => {
     const usersRepo = tx.getUserRepository();
     const confirmationsRepo = tx.getEmailConfirmationRepository();
+    const consentsRepo = tx.getConsentRepository();
 
     const id = deps.idGenerator.generate();
     const passwordHash = await deps.passwordHasher.hash(input.password);
@@ -67,6 +73,30 @@ export async function registerUser(
       await usersRepo.upsertProfile(user.id, {
         id: deps.idGenerator.generate(),
         displayName: input.displayName
+      });
+    }
+
+    // Record privacy policy consent
+    if (input.acceptedPrivacy !== undefined) {
+      await consentsRepo.recordConsent({
+        id: deps.idGenerator.generate(),
+        userId: user.id,
+        consentType: 'privacy_policy',
+        consented: input.acceptedPrivacy,
+        version: '2026-04-24',
+        ipAddress: input.ipAddress,
+      });
+    }
+
+    // Record terms of use consent
+    if (input.acceptedTerms !== undefined) {
+      await consentsRepo.recordConsent({
+        id: deps.idGenerator.generate(),
+        userId: user.id,
+        consentType: 'terms_of_use',
+        consented: input.acceptedTerms,
+        version: '2026-01',
+        ipAddress: input.ipAddress,
       });
     }
 

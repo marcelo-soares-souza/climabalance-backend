@@ -12,6 +12,7 @@ import { CardSimulatorPaymentGatewayAdapter } from '../payments/card-simulator-g
 import { StripePaymentGatewayAdapter } from '../payments/stripe-gateway';
 import { getStripeClient } from '../payments/stripe-client';
 import { PostgresUserRepository } from '../persistence/postgres/user-repository';
+import { PostgresConsentRepository } from '../persistence/postgres/consent-repository';
 import { PostgresEmailConfirmationRepository } from '../persistence/postgres/email-confirmation-repository';
 import { PostgresPasswordResetRepository } from '../persistence/postgres/password-reset-repository';
 import { PostgresRefreshTokenRepository } from '../persistence/postgres/refresh-token-repository';
@@ -107,6 +108,7 @@ export function buildAppRuntime() {
   const profileAvatarStorage = new LocalProfileAvatarStorage(env.profileAvatarStoragePath);
 
   const userRepository = new PostgresUserRepository(pgPool);
+  const consentRepository = new PostgresConsentRepository(pgPool);
   const emailConfirmationRepository = new PostgresEmailConfirmationRepository(pgPool);
   const passwordResetRepository = new PostgresPasswordResetRepository(pgPool);
   const refreshTokenRepository = new PostgresRefreshTokenRepository(pgPool);
@@ -138,6 +140,7 @@ export function buildAppRuntime() {
 
   const router = buildRouter({
     users: userRepository,
+    consents: consentRepository,
     confirmations: emailConfirmationRepository,
     passwordResets: passwordResetRepository,
     refreshTokens: refreshTokenRepository,

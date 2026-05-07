@@ -48,3 +48,29 @@ export type UserRole = {
   id: string;
   roleKey: string;
 };
+
+export type UserConsent = {
+  id: string;
+  userId: string;
+  consentType: string;
+  consented: boolean;
+  version?: string;
+  ipAddress?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date | null;
+};
+
+export type SubjectRequest = {
+  id: string;
+  userId?: string;
+  requestType: string;
+  status: string;
+  details?: string;
+  resolutionNotes?: string;
+  resolvedByUserId?: string;
+  resolvedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date | null;
+};

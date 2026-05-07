@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from 'pg';
 import type { UnitOfWork, Transaction } from '../unit-of-work';
 import { PostgresUserRepository } from './user-repository';
+import { PostgresConsentRepository } from './consent-repository';
 import { PostgresEmailConfirmationRepository } from './email-confirmation-repository';
 import { PostgresPasswordResetRepository } from './password-reset-repository';
 import { PostgresAuditLogRepository } from './audit-log-repository';
@@ -15,6 +16,10 @@ class PostgresTransaction implements Transaction {
 
   getUserRepository() {
     return new PostgresUserRepository(this.client);
+  }
+
+  getConsentRepository() {
+    return new PostgresConsentRepository(this.client);
   }
 
   getEmailConfirmationRepository() {

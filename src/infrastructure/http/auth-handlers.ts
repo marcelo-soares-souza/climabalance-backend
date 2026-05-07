@@ -2,6 +2,7 @@ import type { EmailConfirmationRepository } from '../../domain/user/email-confir
 import type { PasswordResetRepository } from '../../domain/user/password-reset-repository';
 import type { RefreshTokenRepository } from '../../domain/user/refresh-token-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
+import type { ConsentRepository } from '../../domain/user/consent-repository';
 import type { PasswordHasher } from '../crypto/password';
 import type { EmailSender } from '../email/email-sender';
 import type { UnitOfWork } from '../persistence/unit-of-work';
@@ -67,6 +68,7 @@ function clearRefreshCookieHeaders(): Record<string, string> {
 
 export type AuthHandlersDeps = {
   users: UserRepository;
+  consents: ConsentRepository;
   confirmations: EmailConfirmationRepository;
   passwordResets: PasswordResetRepository;
   refreshTokens: RefreshTokenRepository;
@@ -143,17 +145,26 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'auth.register.humanCheckInvalid', undefined, logContext);
         }
 
+        const ipAddress = ctx.request.headers.get('x-forwarded-for')
+          || ctx.request.headers.get('cf-connecting-ip')
+          || ctx.request.headers.get('x-real-ip')
+          || undefined;
+
         const result = await registerUser(
           {
             email: validated.email,
             password: validated.password,
             locale: validated.locale,
             roleKey: validated.role_key,
-            displayName: validated.name
+            displayName: validated.name,
+            acceptedPrivacy: validated.accepted_privacy,
+            acceptedTerms: validated.accepted_terms,
+            ipAddress,
           },
           {
             users: deps.users,
             confirmations: deps.confirmations,
+            consents: deps.consents,
             passwordHasher: deps.passwordHasher,
             emailSender: deps.emailSender,
             unitOfWork: deps.unitOfWork,

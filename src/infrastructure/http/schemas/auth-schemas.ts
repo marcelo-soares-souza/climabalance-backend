@@ -9,7 +9,9 @@ export const registerSchema = z.object({
   human_challenge_id: z.string().min(1, { message: 'required' }),
   human_answer: z.string().trim().min(1, { message: 'required' }).max(200, { message: 'too_long' }),
   locale: localeSchema,
-  role_key: z.enum(['individual', 'producer', 'legal_entity']).optional()
+  role_key: z.enum(['individual', 'producer', 'legal_entity']).optional(),
+  accepted_privacy: z.boolean().refine((val) => val === true, { message: 'required' }),
+  accepted_terms: z.boolean().refine((val) => val === true, { message: 'required' }),
 }).refine(
   (data) => data.password === data.password_confirm,
   { message: 'mismatch', path: ['password_confirm'] }

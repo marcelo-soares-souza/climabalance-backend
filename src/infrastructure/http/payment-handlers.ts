@@ -764,9 +764,10 @@ async function handleStripeAccountUpdatedWebhook(
   if (disabledReason && deps.jobQueue && deps.users) {
     const user = await deps.users.findById(record.userId);
     if (user) {
+      const profile = await deps.users.getProfile(record.userId);
       await deps.jobQueue.enqueue('stripe.onboarding_failed', {
         email: user.email,
-        producerName: user.name ?? user.email,
+        producerName: profile?.displayName ?? user.email,
         reason: disabledReason,
       }).catch(() => {});
     }
