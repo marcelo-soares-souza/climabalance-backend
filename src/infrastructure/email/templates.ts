@@ -104,3 +104,11 @@ export function buildContributionReceived(locale: string, to: string, areaName: 
     }),
   };
 }
+
+export function buildContactNotification(locale: string, to: string, name: string, email: string, message: string): EmailMessage {
+  return {
+    to,
+    subject: t('email.contactNotification.subject', locale, { name, email }),
+    text: t('email.contactNotification.body', locale, { name, email, message }),
+  };
+}

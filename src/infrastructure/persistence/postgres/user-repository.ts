@@ -377,4 +377,16 @@ export class PostgresUserRepository implements UserRepository {
       [uuidv7(), userId, now, roleKey]
     );
   }
+
+  async findUserIdsByRole(roleKey: string): Promise<string[]> {
+    const result = await this.db.query(
+      `SELECT user_roles.user_id FROM user_roles
+       JOIN roles ON roles.id = user_roles.role_id
+       WHERE roles.role_key = $1
+         AND user_roles.deleted_at IS NULL
+         AND roles.deleted_at IS NULL`,
+      [roleKey]
+    );
+    return result.rows.map((row) => row.user_id as string);
+  }
 }

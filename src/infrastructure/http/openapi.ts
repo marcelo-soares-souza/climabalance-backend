@@ -1163,6 +1163,17 @@ const routes: ApiRouteDoc[] = [
     successStatus: '201',
     successResponse: 'OkData',
   },
+  {
+    method: 'post',
+    path: '/api/v1/contact',
+    summary: 'Send contact message',
+    description: 'Sends a contact message from the authenticated user to all administrators.',
+    tags: ['Contact'],
+    secured: true,
+    successStatus: '200',
+    successResponse: 'OkData',
+    requestBodyRef: 'ContactRequest',
+  },
 ];
 
 export const OPENAPI_ROUTE_SIGNATURES = routes.map(
@@ -1376,6 +1387,13 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
           properties: {
             email: { type: 'string', format: 'email' },
             locale: { type: 'string', enum: ['pt-BR', 'es', 'en', 'fr'] },
+          },
+        },
+        ContactRequest: {
+          type: 'object',
+          required: ['message'],
+          properties: {
+            message: { type: 'string', minLength: 1, maxLength: 5000 },
           },
         },
         AuthChangePasswordRequest: {

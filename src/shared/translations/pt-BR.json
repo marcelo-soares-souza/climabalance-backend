@@ -20,5 +20,11 @@
   "email.areaMilestone.subject": "Sua área atingiu {{percentage}}% de capacidade!",
   "email.areaMilestone.body": "Ótimas notícias! Sua área \"{{areaName}}\" atingiu {{percentage}}% da sua capacidade total de compensação de carbono.\n\nContinue com o excelente trabalho!\n\nAcesso: {{url}}",
   "email.contributionReceived.subject": "Contribuição recebida",
-  "email.contributionReceived.body": "Sua área \"{{areaName}}\" recebeu uma contribuição!\n\nValor: {{amount}} {{currency}}\nÁrvores: {{treesCount}}\n\nAcesso: {{url}}"
+  "email.contributionReceived.body": "Sua área \"{{areaName}}\" recebeu uma contribuição!\n\nValor: {{amount}} {{currency}}\nÁrvores: {{treesCount}}\n\nAcesso: {{url}}",
+  "email.contactNotification.subject": "Mensagem de {{name}} ({{email}})",
+  "email.contactNotification.body": "Mensagem recebida através do formulário de contato.\n\nDe: {{name}}\nE-mail: {{email}}\n\nMensagem:\n{{message}}",
+  "password_no_number": "A senha deve conter pelo menos um número",
+  "password_no_special": "A senha deve conter pelo menos um caractere especial",
+  "password_sequential": "A senha não pode conter sequências (ex: 12345678, abcdefgh)",
+  "contact.message_sent": "Mensagem enviada com sucesso"
 }

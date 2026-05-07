@@ -42,4 +42,5 @@ export interface UserRepository {
   getRoles(userId: string): Promise<string[]>;
   getRolesByUserIds?(userIds: string[]): Promise<Record<string, string[]>>;
   assignRole(userId: string, roleKey: string): Promise<void>;
+  findUserIdsByRole(roleKey: string): Promise<string[]>;
 }

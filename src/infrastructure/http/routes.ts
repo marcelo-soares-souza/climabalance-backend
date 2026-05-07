@@ -12,6 +12,7 @@ import { createPaymentHandlers } from './payment-handlers';
 import { createLocationHandlers } from './location-handlers';
 import { createStatsHandlers } from './stats-handlers';
 import { createStripeConnectHandlers } from './stripe-connect-handlers';
+import { createContactHandlers, type ContactHandlersDeps } from './contact-handlers';
 import type { StatsHandlersDeps } from './stats-handlers';
 import type { StripeConnectHandlersDeps } from './stripe-connect-handlers';
 import { openApiJsonHandler, swaggerUiHandler } from './openapi';
@@ -57,7 +58,8 @@ export function buildRouter(
     CertificateHandlersDeps &
     PaymentHandlersDeps &
     StatsHandlersDeps &
-    StripeConnectHandlersDeps
+    StripeConnectHandlersDeps &
+    ContactHandlersDeps
   ): Router {
   const router = new Router();
   const rateLimiter = new InMemoryRateLimiter();
@@ -74,6 +76,7 @@ export function buildRouter(
   const locationHandlers = createLocationHandlers();
   const statsHandlers = createStatsHandlers(deps);
   const stripeConnectHandlers = createStripeConnectHandlers(deps);
+  const contactHandlers = createContactHandlers(deps);
 
   const addRoute = (
     method: string,
@@ -301,6 +304,9 @@ export function buildRouter(
       roles: ['producer', 'administrator'],
     })
   );
+
+  // Contact route
+  addRoute('POST', '/api/v1/contact', 'protected', withAuth((ctx) => contactHandlers.send(ctx)));
 
   return router;
 }
