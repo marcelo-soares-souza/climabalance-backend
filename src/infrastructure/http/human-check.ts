@@ -1,7 +1,6 @@
 import type { JwtService } from '../../domain/services/jwt-service';
 import type { TokenGenerator } from '../../domain/services/token-generator';
-
-type SupportedLocale = 'pt-BR' | 'en' | 'es' | 'fr';
+import { normalizeLocale, type SupportedLocale } from '../../shared/utils/locale';
 
 type HumanCheckQuestion = {
   question: string;
@@ -48,15 +47,6 @@ const QUESTIONS: Record<SupportedLocale, HumanCheckQuestion[]> = {
     { question: 'Quel jour vient après lundi ?', answers: ['mardi'] },
   ],
 };
-
-function normalizeLocale(input?: string | null): SupportedLocale {
-  const raw = (input ?? '').trim().toLowerCase();
-  if (raw === 'pt' || raw === 'pt-br') return 'pt-BR';
-  if (raw.startsWith('es')) return 'es';
-  if (raw.startsWith('fr')) return 'fr';
-  if (raw.startsWith('en')) return 'en';
-  return 'pt-BR';
-}
 
 function normalizeValue(value: string): string {
   return value
@@ -132,6 +122,4 @@ export async function verifyHumanCheckChallenge(
   return question.answers.some((answer) => normalizeValue(answer) === normalizedAnswer);
 }
 
-export function resolveHumanCheckLocale(input: { queryLocale?: string | null; acceptLanguage?: string | null }): SupportedLocale {
-  return normalizeLocale(input.queryLocale ?? input.acceptLanguage);
-}
+

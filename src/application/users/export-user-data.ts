@@ -69,8 +69,8 @@ export async function exportUserData(
   const profile = await deps.users.getProfile(userId);
   const roles = await deps.users.getRoles(userId);
   const consents = await deps.consents.getConsentsByUser(userId);
-  const compensationSummary = await deps.compensationHistoryRepository.getPaidContributionSummaryBySupporter(userId);
-  const compensatedTCO2e = await deps.calculationRepository.sumFinalizedTCO2eByUser(userId);
+  void deps.compensationHistoryRepository.getPaidContributionSummaryBySupporter(userId);
+  void deps.calculationRepository.sumFinalizedTCO2eByUser(userId);
 
   const [compensations, certificates, footprints] = await Promise.all([
     deps.compensationHistoryRepository.listBySupporter({

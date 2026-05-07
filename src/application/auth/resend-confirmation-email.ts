@@ -6,6 +6,7 @@ import type { HashService } from '../../domain/services/hash-service';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
+import { buildConfirmationEmail } from '../../infrastructure/email/templates';
 
 export type ResendConfirmationEmailInput = {
   email: string;
@@ -50,11 +51,7 @@ export async function resendConfirmationEmail(
   });
 
   const confirmUrl = `${deps.config.frontendUrl}/confirm-email?token=${rawToken}`;
-  await deps.emailSender.send({
-    to: user.email,
-    subject: 'Confirm your email',
-    text: `Confirm your email: ${confirmUrl}`
-  });
+  await deps.emailSender.send(buildConfirmationEmail(user.locale, user.email, confirmUrl));
 
   return { delivered: true };
 }

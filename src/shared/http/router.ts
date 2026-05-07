@@ -1,6 +1,7 @@
 import { getLogger } from '../utils/logger';
 import { uuidv7 } from '../utils/id';
 import { env } from '../utils/env';
+import { parseAcceptLanguage } from '../utils/locale';
 import { errorResponse } from './response';
 import { buildLogContext } from './log-context';
 import { parseContentLength, summarizeQueryForLog } from './log-summary';
@@ -18,6 +19,7 @@ export type HttpContext = {
     userId: string;
     roles: string[];
   };
+  locale: string;
 };
 
 export type Handler = (ctx: HttpContext) => Promise<Response> | Response;
@@ -89,13 +91,15 @@ export class Router {
         params[name] = match[index + 1];
       });
 
+      const locale = parseAcceptLanguage(request.headers.get('accept-language'));
       const ctx: HttpContext = {
         request,
         params,
         query: url.searchParams,
         requestId,
         clientIp,
-        routePath: route.path
+        routePath: route.path,
+        locale
       };
 
       const startedAt = Date.now();

@@ -6,6 +6,7 @@ import type { HashService } from '../../domain/services/hash-service';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
+import { buildPasswordResetEmail } from '../../infrastructure/email/templates';
 
 export type RequestPasswordResetInput = {
   email: string;
@@ -51,11 +52,8 @@ export async function requestPasswordReset(
   });
 
   const resetUrl = `${deps.config.frontendUrl}/password-reset/confirm?token=${rawToken}`;
-  await deps.emailSender.send({
-    to: user.email,
-    subject: 'Reset your password',
-    text: `Reset your password: ${resetUrl}`
-  });
+  const locale = input.locale ?? user.locale;
+  await deps.emailSender.send(buildPasswordResetEmail(locale, user.email, resetUrl));
 
   return { delivered: true };
 }

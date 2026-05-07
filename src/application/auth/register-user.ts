@@ -10,6 +10,7 @@ import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
 import { EmailAlreadyExistsError } from '../../domain/errors';
+import { buildConfirmationEmail } from '../../infrastructure/email/templates';
 
 export type RegisterUserInput = {
   email: string;
@@ -121,11 +122,8 @@ export async function registerUser(
 
   // External side effects after transaction (email)
   const confirmUrl = `${deps.config.frontendUrl}/confirm-email?token=${rawToken}`;
-  await deps.emailSender.send({
-    to: user.email,
-    subject: 'Confirm your email',
-    text: `Confirm your email: ${confirmUrl}`
-  });
+  const locale = input.locale ?? 'pt-BR';
+  await deps.emailSender.send(buildConfirmationEmail(locale, user.email, confirmUrl));
 
   return { id: user.id, email: user.email, status: user.status };
 }

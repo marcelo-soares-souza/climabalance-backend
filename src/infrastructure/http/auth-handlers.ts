@@ -39,7 +39,8 @@ import {
 } from './schemas';
 import { refreshTokenSchema, revokeTokenSchema, changePasswordSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
-import { createHumanCheckChallenge, resolveHumanCheckLocale, verifyHumanCheckChallenge } from './human-check';
+import { createHumanCheckChallenge, verifyHumanCheckChallenge } from './human-check';
+import { normalizeLocale } from '../../shared/utils/locale';
 import { checkLoginLockout, recordLoginAttempt } from './rate-limit';
 import {
   buildRefreshTokenCookie,
@@ -91,10 +92,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const locale = resolveHumanCheckLocale({
-          queryLocale: ctx.query.get('locale'),
-          acceptLanguage: ctx.request.headers.get('accept-language'),
-        });
+        const locale = normalizeLocale(ctx.query.get('locale') ?? ctx.locale);
         const challenge = await createHumanCheckChallenge(
           { locale },
           {
