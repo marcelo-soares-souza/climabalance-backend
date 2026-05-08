@@ -16,6 +16,11 @@ import { buildLogContext } from '../../shared/http/log-context';
 import { parseQueryWithSchema } from './schemas/validation-helper';
 import type { LocalProfileAvatarStorage } from '../storage/local-profile-avatar-storage';
 import { z } from 'zod';
+import {
+  maskBirthDate,
+  maskDocumentNumber,
+  maskEmail,
+} from '../../shared/utils/mask-sensitive';
 
 export type UserHandlersDeps = {
   users: UserRepository;
@@ -44,12 +49,22 @@ async function resolveUserId(idOrSlug: string, users: UserRepository): Promise<s
 }
 
 export function createUserHandlers(deps: UserHandlersDeps) {
+  const canViewSensitiveUserData = (
+    auth: HttpContext['auth'],
+    targetUserId: string,
+  ): boolean => {
+    if (!auth) return false;
+    return auth.userId === targetUserId || auth.roles.includes('administrator');
+  };
+
   const mapUserSummary = async (
     user: Awaited<ReturnType<typeof getUser>>,
+    includeSensitive: boolean,
     roleMap?: Record<string, string[]>,
   ) => ({
     id: user.id,
-    email: user.email,
+    email: includeSensitive ? user.email : undefined,
+    email_masked: maskEmail(user.email),
     slug: user.slug,
     status: user.status,
     locale: user.locale,
@@ -83,7 +98,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         return jsonResponse(
           200,
           {
-            data: await Promise.all(users.map((user) => mapUserSummary(user, roleMap)))
+            data: await Promise.all(users.map((user) => mapUserSummary(user, true, roleMap)))
           },
           logContext
         );
@@ -143,11 +158,12 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         }
 
         const user = await getUser(resolvedId, { users: deps.users });
+        const includeSensitive = canViewSensitiveUserData(ctx.auth, resolvedId);
         log.info('user.get', { user_id: resolvedId });
         return jsonResponse(
           200,
           {
-            data: await mapUserSummary(user)
+            data: await mapUserSummary(user, includeSensitive)
           },
           logContext
         );
@@ -169,6 +185,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         if (!profile) {
           return jsonResponse(200, { data: null }, logContext);
         }
+        const includeSensitive = canViewSensitiveUserData(ctx.auth, userId);
         return jsonResponse(
           200,
           {
@@ -176,9 +193,11 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               id: profile.id,
               user_id: profile.userId,
               display_name: profile.displayName,
-              document_type: profile.documentType,
-              document_number: profile.documentNumber,
-              birth_date: profile.birthDate,
+              document_type: includeSensitive ? profile.documentType : undefined,
+              document_number: includeSensitive ? profile.documentNumber : undefined,
+              document_number_masked: maskDocumentNumber(profile.documentNumber),
+              birth_date: includeSensitive ? profile.birthDate : undefined,
+              birth_date_masked: maskBirthDate(profile.birthDate),
               phone: profile.phone,
               country_code: profile.countryCode,
               address_line1: profile.addressLine1,

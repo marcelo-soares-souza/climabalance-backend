@@ -2,12 +2,14 @@ import { AreaRepository } from '../../domain/areas/repositories/area-repository'
 import { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
 import type { UserRepository } from '../../domain/user/user-repository';
 import { ForbiddenError, NotFoundError } from '../../domain/errors';
+import { maskEmail } from '../../shared/utils/mask-sensitive';
 
 export interface GetAreaResponse {
   id: string;
   ownerUserId: string;
   ownerSlug?: string;
   ownerEmail?: string;
+  ownerEmailMasked?: string;
   name: string;
   slug: string;
   description?: string;
@@ -79,6 +81,7 @@ export async function getArea(
     ownerUserId: area.ownerUserId,
     ownerSlug: owner?.slug,
     ownerEmail: owner?.email,
+    ownerEmailMasked: maskEmail(owner?.email),
     name: area.name,
     slug: area.slug,
     description: area.description,

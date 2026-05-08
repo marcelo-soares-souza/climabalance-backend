@@ -89,6 +89,18 @@ async function resolveAreaId(id: string, areaRepository: AreaRepository): Promis
 }
 
 export function createAreaHandlers(deps: AreaHandlersDeps) {
+  const canViewSensitiveAreaData = (
+    auth: HttpContext['auth'],
+    ownerUserId: string,
+  ): boolean => {
+    if (!auth) return false;
+    return (
+      auth.userId === ownerUserId
+      || auth.roles.includes('administrator')
+      || auth.roles.includes('analyst')
+    );
+  };
+
   const carbonStockService = new CarbonStockService({
     areaRepository: deps.areaRepository,
   });
@@ -176,8 +188,21 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           ctx.auth?.userId,
           ctx.auth?.roles
         );
+        const includeSensitive = canViewSensitiveAreaData(
+          ctx.auth,
+          result.ownerUserId,
+        );
 
-        return jsonResponse(200, { data: result }, logContext);
+        return jsonResponse(
+          200,
+          {
+            data: {
+              ...result,
+              ownerEmail: includeSensitive ? result.ownerEmail : undefined,
+            },
+          },
+          logContext
+        );
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
