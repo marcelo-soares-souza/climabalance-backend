@@ -137,15 +137,9 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        let resolvedId = userIdOrSlug;
-
-        if (!uuidRegex.test(userIdOrSlug)) {
-          const user = await deps.users.findBySlug(userIdOrSlug);
-          if (!user) {
-            return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
-          }
-          resolvedId = user.id;
+        const resolvedId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!resolvedId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
         }
 
         const user = await getUser(resolvedId, { users: deps.users });
@@ -247,6 +241,12 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const resolvedUserId = await resolveUserId(userId, deps.users);
+        if (!resolvedUserId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
+        userId = resolvedUserId;
+
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
           return errorResponse(400, 'request.invalid_body', undefined, logContext);
@@ -282,6 +282,11 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const resolvedUserId = await resolveUserId(userId, deps.users);
+        if (!resolvedUserId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
+        userId = resolvedUserId;
         await deleteUser(userId, { users: deps.users });
         log.warn('user.deleted', { user_id: userId });
         return jsonResponse(200, { data: { id: userId } }, logContext);
@@ -294,6 +299,12 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const resolvedUserId = await resolveUserId(userId, deps.users);
+        if (!resolvedUserId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
+        userId = resolvedUserId;
+
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
           return errorResponse(400, 'request.invalid_body', undefined, logContext);
@@ -370,6 +381,12 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const resolvedUserId = await resolveUserId(userId, deps.users);
+        if (!resolvedUserId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
+        userId = resolvedUserId;
+
         const body = await parseJson(ctx.request, ctx, 12 * 1024 * 1024);
         if (typeof body !== 'object' || body === null) {
           return errorResponse(400, 'request.invalid_body', undefined, logContext);

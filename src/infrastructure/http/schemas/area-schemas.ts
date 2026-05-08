@@ -155,7 +155,7 @@ export type UploadAreaMediaRequest = z.infer<typeof uploadAreaMediaSchema>;
  */
 export const listAreasQuerySchema = z.object({
   status: z.enum(['draft', 'pending_audit', 'approved', 'active', 'rejected', 'suspended']).optional(),
-  ownerUserId: z.string().uuid().optional(),
+  ownerUserId: z.string().optional(),
   biome: z.string().max(100).optional(),
   onlyActive: z.string().transform((val) => val === 'true').optional(),
   limit: z.string().transform((val) => parseInt(val, 10)).optional(),

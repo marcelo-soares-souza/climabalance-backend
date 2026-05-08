@@ -6,6 +6,7 @@ import { ForbiddenError, NotFoundError } from '../../domain/errors';
 export interface GetAreaResponse {
   id: string;
   ownerUserId: string;
+  ownerSlug?: string;
   ownerEmail?: string;
   name: string;
   slug: string;
@@ -76,6 +77,7 @@ export async function getArea(
   return {
     id: area.id,
     ownerUserId: area.ownerUserId,
+    ownerSlug: owner?.slug,
     ownerEmail: owner?.email,
     name: area.name,
     slug: area.slug,

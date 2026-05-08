@@ -27,6 +27,7 @@ export type CompensationHistoryItem = {
 export type AreaContributionItem = {
   compensationId: string;
   supporterUserId: string;
+  supporterSlug?: string | null;
   supporterDisplayName?: string | null;
   supporterEmail?: string | null;
   treesCount: number;

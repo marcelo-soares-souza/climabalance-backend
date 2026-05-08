@@ -263,6 +263,11 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       try {
         const query = parseQueryWithSchema(listAreasQuerySchema, ctx.query);
 
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const ownerUserId = query.ownerUserId && !uuidRegex.test(query.ownerUserId)
+          ? (await deps.users.findBySlug(query.ownerUserId))?.id
+          : query.ownerUserId;
+
         const result = await listAreas(
           {
             areaRepository: deps.areaRepository,
@@ -272,6 +277,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             userId: ctx.auth?.userId,
             roles: ctx.auth?.roles,
             ...query,
+            ownerUserId,
           }
         );
 

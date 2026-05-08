@@ -8,7 +8,7 @@ import type { UnitOfWork } from '../persistence/unit-of-work';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import { parseJson } from '../../shared/http/request';
-import { jsonResponse } from '../../shared/http/response';
+import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import {
   createCalculationSchema,
@@ -275,6 +275,14 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createProjectionSchema, body);
 
+        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const resolvedAreaId = areaUuidRegex.test(validated.area_id)
+          ? validated.area_id
+          : (await deps.areaRepository.findBySlug(validated.area_id))?.id;
+        if (!resolvedAreaId) {
+          return errorResponse(404, 'area.not_found', undefined, logContext);
+        }
+
         const result = await createCompensationProjection(
           {
             calculationRepository: deps.calculationRepository,
@@ -286,7 +294,8 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           {
             calculation_id: calculationId,
             user_id: auth.userId,
-            ...validated
+            ...validated,
+            area_id: resolvedAreaId,
           }
         );
 

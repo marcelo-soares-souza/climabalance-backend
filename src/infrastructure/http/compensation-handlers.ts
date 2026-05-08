@@ -4,7 +4,7 @@ import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { parseJson } from '../../shared/http/request';
-import { jsonResponse } from '../../shared/http/response';
+import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { parseWithSchema } from './schemas/validation-helper';
 import {
   createCompensationSchema,
@@ -53,6 +53,15 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createCompensationSchema, body);
+
+        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const areaId = areaUuidRegex.test(validated.area_id)
+          ? validated.area_id
+          : (await deps.areaRepository.findBySlug(validated.area_id))?.id;
+        if (!areaId) {
+          return errorResponse(404, 'area.not_found', undefined, logContext);
+        }
+
         const quote = await quoteTreePurchaseCompensation(
           {
             areaRepository: deps.areaRepository,
@@ -60,7 +69,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
-            areaId: validated.area_id,
+            areaId,
             treesRequested: validated.trees_requested!,
             currency: validated.currency,
           }
@@ -76,7 +85,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           },
           {
             supporterUserId: auth.userId,
-            areaId: validated.area_id,
+            areaId,
             calculationId: validated.calculation_id,
             compensationMode: 'tree_purchase',
             horizonYears: quote.horizonYears,
@@ -275,6 +284,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             data: result.map((item) => ({
               compensation_id: item.compensationId,
               supporter_user_id: item.supporterUserId,
+              supporter_slug: item.supporterSlug,
               supporter_display_name: item.supporterDisplayName,
               trees_count: item.treesCount,
               total_t_co2e: item.totalTCO2e,
@@ -298,6 +308,14 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(quoteTreePurchaseSchema, body);
 
+        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const areaId = areaUuidRegex.test(validated.area_id)
+          ? validated.area_id
+          : (await deps.areaRepository.findBySlug(validated.area_id))?.id;
+        if (!areaId) {
+          return errorResponse(404, 'area.not_found', undefined, logContext);
+        }
+
         const quote = await quoteTreePurchaseCompensation(
           {
             areaRepository: deps.areaRepository,
@@ -305,13 +323,13 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
-            areaId: validated.area_id,
+            areaId,
             treesRequested: validated.trees_requested,
             currency: validated.currency,
           }
         );
 
-        const area = await deps.areaRepository.findById(validated.area_id);
+        const area = await deps.areaRepository.findById(areaId);
         const ownerUserId = area?.ownerUserId ?? null;
         const stripeAccount = ownerUserId && deps.stripeConnectLookup
           ? await deps.stripeConnectLookup.getByUserId(ownerUserId)

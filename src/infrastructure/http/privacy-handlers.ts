@@ -70,6 +70,20 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(userId)) {
+          const userBySlug = await deps.users.findBySlug(userId);
+          if (userBySlug) {
+            userId = userBySlug.id;
+          } else {
+            const userById = await deps.users.findById(userId);
+            if (!userById) {
+              return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+            }
+            userId = userById.id;
+          }
+        }
+
         const data = await exportUserData(userId, {
           users: deps.users,
           consents: deps.consents,

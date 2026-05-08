@@ -35,17 +35,6 @@ import {
   type RateLimitBucket
 } from './rate-limit';
 
-function withAuthOrSelf(handler: Handler): Handler {
-  return withAuth(async (ctx: HttpContext) => {
-    const userId = ctx.params.id;
-    const isAdmin = ctx.auth?.roles.includes('administrator');
-    if (!isAdmin && ctx.auth?.userId !== userId) {
-      return errorResponse(403, 'auth.forbidden', undefined, buildLogContext(ctx));
-    }
-    return handler(ctx);
-  });
-}
-
 export function buildRouter(
   deps: AuthHandlersDeps &
     UserHandlersDeps &
@@ -77,6 +66,27 @@ export function buildRouter(
   const statsHandlers = createStatsHandlers(deps);
   const stripeConnectHandlers = createStripeConnectHandlers(deps);
   const contactHandlers = createContactHandlers(deps);
+
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  function withAuthOrSelf(handler: Handler): Handler {
+    return withAuth(async (ctx: HttpContext) => {
+      const rawId = ctx.params.id;
+      const isAdmin = ctx.auth?.roles.includes('administrator');
+
+      if (!UUID_REGEX.test(rawId)) {
+        const userBySlug = await deps.users.findBySlug(rawId);
+        if (userBySlug) {
+          ctx.params.id = userBySlug.id;
+        }
+      }
+
+      if (!isAdmin && ctx.auth?.userId !== ctx.params.id) {
+        return errorResponse(403, 'auth.forbidden', undefined, buildLogContext(ctx));
+      }
+      return handler(ctx);
+    });
+  }
 
   const addRoute = (
     method: string,

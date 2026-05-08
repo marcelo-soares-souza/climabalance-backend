@@ -224,8 +224,8 @@ const routes: ApiRouteDoc[] = [
     description: 'Public listing of users with profile, area count, and tree count.',
     tags: ['Users'],
     queryParameters: [
-      { name: 'limit', type: 'string', required: false, description: 'Max items' },
-      { name: 'offset', type: 'string', required: false, description: 'Pagination offset' },
+      { name: 'limit', schema: { type: 'string' }, required: false, description: 'Max items' },
+      { name: 'offset', schema: { type: 'string' }, required: false, description: 'Pagination offset' },
     ],
     successStatus: '200',
     successResponse: 'OkList',

@@ -40,6 +40,10 @@ function mapAreaContributionRow(
   return {
     compensationId: String(row.compensation_id),
     supporterUserId: String(row.supporter_user_id),
+    supporterSlug:
+      row.supporter_slug == null
+        ? null
+        : String(row.supporter_slug),
     supporterDisplayName:
       row.supporter_display_name == null
         ? null
@@ -118,6 +122,7 @@ export class PostgresCompensationHistoryRepository
       `SELECT
         c.id AS compensation_id,
         c.supporter_user_id,
+        u.slug AS supporter_slug,
         up.display_name AS supporter_display_name,
         u.email AS supporter_email,
         COALESCE(c.trees_count, c.trees_requested) AS trees_count,

@@ -19,6 +19,7 @@ export interface ListAreasRequest {
 export interface AreaListItem {
   id: string;
   ownerUserId: string;
+  ownerSlug?: string;
   name: string;
   slug: string;
   description?: string;
@@ -143,6 +144,7 @@ export async function listAreas(
     return {
       id: area.id,
       ownerUserId: area.ownerUserId,
+      ownerSlug: undefined,
       name: area.name,
       slug: area.slug,
       description: area.description,
