@@ -11,6 +11,7 @@ import type { Clock } from '../../domain/services/clock';
 import type { Config } from '../../domain/services/config';
 import { EmailAlreadyExistsError } from '../../domain/errors';
 import { buildConfirmationEmail } from '../../infrastructure/email/templates';
+import { slugify, slugWithSuffix } from '../../shared/utils/slugify';
 
 export type RegisterUserInput = {
   email: string;
@@ -59,10 +60,18 @@ export async function registerUser(
 
     const id = deps.idGenerator.generate();
     const passwordHash = await deps.passwordHasher.hash(input.password);
+
+    const slugSource = input.displayName
+      ? slugify(input.displayName)
+      : slugify(input.email.split('@')[0]);
+    const existingSlug = await usersRepo.findBySlug(slugSource);
+    const slug = existingSlug ? slugWithSuffix(slugSource, id) : slugSource;
+
     const user = await usersRepo.create({
       id,
       email: input.email,
       passwordHash,
+      slug,
       status: 'pending',
       locale: input.locale ?? 'pt-BR',
       emailConfirmedAt: null

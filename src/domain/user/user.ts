@@ -5,6 +5,7 @@ export type User = {
   email: string;
   passwordHash: string;
   passwordHashVersion?: string;
+  slug: string;
   status: UserStatus;
   locale: string;
   emailConfirmedAt?: Date | null;

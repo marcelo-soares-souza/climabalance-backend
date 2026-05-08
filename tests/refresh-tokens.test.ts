@@ -21,6 +21,7 @@ class MemoryUserRepository implements UserRepository {
     const now = new Date();
     const user: User = {
       id: input.id, email: input.email, passwordHash: input.passwordHash,
+      slug: input.slug,
       status: input.status, locale: input.locale,
       emailConfirmedAt: input.emailConfirmedAt ?? null,
       createdAt: now, updatedAt: now, deletedAt: null,
@@ -31,6 +32,7 @@ class MemoryUserRepository implements UserRepository {
   async update(_input: any): Promise<User | null> { return null; }
   async findById(id: string): Promise<User | null> { return this.users.find((u) => u.id === id) ?? null; }
   async findByEmail(email: string): Promise<User | null> { return this.users.find((u) => u.email === email) ?? null; }
+  async findBySlug(slug: string): Promise<User | null> { return this.users.find((u) => u.slug === slug) ?? null; }
   async list(_f: UserFilters): Promise<User[]> { return this.users; }
   async softDelete(_id: string): Promise<User | null> { return null; }
   async cascadeSoftDelete(_userId: string): Promise<void> {}

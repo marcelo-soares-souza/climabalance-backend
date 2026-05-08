@@ -28,12 +28,13 @@ class MemoryUserRepository implements UserRepository {
   roles = new Map<string, string[]>();
   profiles = new Map<string, UserProfile>();
 
-  async create(input: { id: string; email: string; passwordHash: string; status: User['status']; locale: string; emailConfirmedAt?: Date | null; }): Promise<User> {
+  async create(input: { id: string; email: string; passwordHash: string; slug: string; status: User['status']; locale: string; emailConfirmedAt?: Date | null; }): Promise<User> {
     const now = new Date();
     const user: User = {
       id: input.id,
       email: input.email,
       passwordHash: input.passwordHash,
+      slug: input.slug,
       status: input.status,
       locale: input.locale,
       emailConfirmedAt: input.emailConfirmedAt ?? null,
@@ -45,11 +46,12 @@ class MemoryUserRepository implements UserRepository {
     return user;
   }
 
-  async update(input: { id: string; email?: string; passwordHash?: string; status?: User['status']; locale?: string; emailConfirmedAt?: Date | null; deletedAt?: Date | null; }): Promise<User | null> {
+  async update(input: { id: string; email?: string; passwordHash?: string; slug?: string; status?: User['status']; locale?: string; emailConfirmedAt?: Date | null; deletedAt?: Date | null; }): Promise<User | null> {
     const user = this.users.find((u) => u.id === input.id) ?? null;
     if (!user) return null;
     if (input.email !== undefined) user.email = input.email;
     if (input.passwordHash !== undefined) user.passwordHash = input.passwordHash;
+    if (input.slug !== undefined) user.slug = input.slug;
     if (input.status !== undefined) user.status = input.status;
     if (input.locale !== undefined) user.locale = input.locale;
     if (input.emailConfirmedAt !== undefined) user.emailConfirmedAt = input.emailConfirmedAt;
@@ -64,6 +66,10 @@ class MemoryUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<User | null> {
     return this.users.find((u) => u.email === email) ?? null;
+  }
+
+  async findBySlug(slug: string): Promise<User | null> {
+    return this.users.find((u) => u.slug === slug) ?? null;
   }
 
   async list(_filters: UserFilters): Promise<User[]> {

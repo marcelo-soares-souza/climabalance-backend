@@ -4,6 +4,7 @@ export type CreateUserInput = {
   id: string;
   email: string;
   passwordHash: string;
+  slug: string;
   status: 'active' | 'pending' | 'suspended';
   locale: string;
   emailConfirmedAt?: Date | null;
@@ -13,6 +14,7 @@ export type UpdateUserInput = {
   id: string;
   email?: string;
   passwordHash?: string;
+  slug?: string;
   status?: 'active' | 'pending' | 'suspended';
   locale?: string;
   emailConfirmedAt?: Date | null;
@@ -33,6 +35,7 @@ export interface UserRepository {
   update(input: UpdateUserInput): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
+  findBySlug(slug: string): Promise<User | null>;
   list(filters: UserFilters): Promise<User[]>;
   softDelete(id: string): Promise<User | null>;
   cascadeSoftDelete(userId: string): Promise<void>;

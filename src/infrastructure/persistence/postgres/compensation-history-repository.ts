@@ -11,6 +11,7 @@ function mapRow(row: Record<string, unknown>): CompensationHistoryItem {
     supporterUserId: String(row.supporter_user_id),
     areaId: String(row.area_id),
     areaName: row.area_name == null ? null : String(row.area_name),
+    areaSlug: row.area_slug == null ? null : String(row.area_slug),
     calculationId: row.calculation_id == null ? null : String(row.calculation_id),
     compensationMode:
       row.compensation_mode == null
@@ -83,6 +84,7 @@ export class PostgresCompensationHistoryRepository
         c.supporter_user_id,
         c.area_id,
         a.name AS area_name,
+        a.slug AS area_slug,
         c.calculation_id,
         c.compensation_mode,
         c.horizon_years,
@@ -150,6 +152,7 @@ export class PostgresCompensationHistoryRepository
         c.supporter_user_id,
         c.area_id,
         a.name AS area_name,
+        a.slug AS area_slug,
         c.calculation_id,
         c.compensation_mode,
         c.horizon_years,

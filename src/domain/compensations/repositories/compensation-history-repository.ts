@@ -6,6 +6,7 @@ export type CompensationHistoryItem = {
   supporterUserId: string;
   areaId: string;
   areaName?: string | null;
+  areaSlug?: string | null;
   calculationId?: string | null;
   compensationMode?: 'tco2e' | 'tree_purchase';
   horizonYears?: number | null;

@@ -32,6 +32,14 @@ export type UserHandlersDeps = {
   };
 };
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveUserId(idOrSlug: string, users: UserRepository): Promise<string | null> {
+  if (UUID_REGEX.test(idOrSlug)) return idOrSlug;
+  const user = await users.findBySlug(idOrSlug);
+  return user?.id ?? null;
+}
+
 export function createUserHandlers(deps: UserHandlersDeps) {
   const mapUserSummary = async (
     user: Awaited<ReturnType<typeof getUser>>,
@@ -39,6 +47,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
   ) => ({
     id: user.id,
     email: user.email,
+    slug: user.slug,
     status: user.status,
     locale: user.locale,
     email_confirmed_at: user.emailConfirmedAt,
@@ -80,12 +89,23 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       }
     },
 
-    get: async (ctx: HttpContext, userId: string) => {
+    get: async (ctx: HttpContext, userIdOrSlug: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const user = await getUser(userId, { users: deps.users });
-        log.info('user.get', { user_id: userId });
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let resolvedId = userIdOrSlug;
+
+        if (!uuidRegex.test(userIdOrSlug)) {
+          const user = await deps.users.findBySlug(userIdOrSlug);
+          if (!user) {
+            return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          }
+          resolvedId = user.id;
+        }
+
+        const user = await getUser(resolvedId, { users: deps.users });
+        log.info('user.get', { user_id: resolvedId });
         return jsonResponse(
           200,
           {
@@ -98,10 +118,14 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       }
     },
 
-    getProfile: async (ctx: HttpContext, userId: string) => {
+    getProfile: async (ctx: HttpContext, userIdOrSlug: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const userId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!userId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
         const profile = await deps.users.getProfile(userId);
         log.info('user.profile.get', { user_id: userId, found: Boolean(profile) });
         if (!profile) {
@@ -144,10 +168,14 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       }
     },
 
-    getClimateBalance: async (ctx: HttpContext, userId: string) => {
+    getClimateBalance: async (ctx: HttpContext, userIdOrSlug: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const userId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!userId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
         const balance = await getClimateBalance(userId, {
           calculationRepository: deps.calculationRepository,
           compensationHistoryRepository: deps.compensationHistoryRepository,
@@ -349,10 +377,14 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       }
     },
 
-    getAvatarFile: async (ctx: HttpContext, userId: string) => {
+    getAvatarFile: async (ctx: HttpContext, userIdOrSlug: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const userId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!userId) {
+          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+        }
         const profile = await deps.users.getProfile(userId);
         if (!profile?.avatarPath) {
           return errorResponse(404, 'profile.avatar.not_found', undefined, logContext);

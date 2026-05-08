@@ -10,6 +10,7 @@ function mapUser(row: Record<string, unknown>): User {
     email: row.email as string,
     passwordHash: row.password_hash as string,
     passwordHashVersion: row.password_hash_version as string | undefined,
+    slug: row.slug as string,
     status: row.status as User['status'],
     locale: row.locale as string,
     emailConfirmedAt: row.email_confirmed_at ? new Date(row.email_confirmed_at as string) : null,
@@ -58,10 +59,10 @@ export class PostgresUserRepository implements UserRepository {
   async create(input: CreateUserInput): Promise<User> {
     const now = new Date();
     const result = await this.db.query(
-      `INSERT INTO users (id, email, password_hash, status, locale, email_confirmed_at, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+      `INSERT INTO users (id, email, password_hash, slug, status, locale, email_confirmed_at, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
        RETURNING *`,
-      [input.id, input.email, input.passwordHash, input.status, input.locale, input.emailConfirmedAt, now]
+      [input.id, input.email, input.passwordHash, input.slug, input.status, input.locale, input.emailConfirmedAt, now]
     );
     return mapUser(result.rows[0]);
   }
@@ -78,6 +79,10 @@ export class PostgresUserRepository implements UserRepository {
     if (input.passwordHash !== undefined) {
       fields.push(`password_hash = $${index++}`);
       values.push(input.passwordHash);
+    }
+    if (input.slug !== undefined) {
+      fields.push(`slug = $${index++}`);
+      values.push(input.slug);
     }
     if (input.status !== undefined) {
       fields.push(`status = $${index++}`);
@@ -123,6 +128,15 @@ export class PostgresUserRepository implements UserRepository {
     const result = await this.db.query(
       `SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
       [email]
+    );
+    if (result.rowCount === 0) return null;
+    return mapUser(result.rows[0]);
+  }
+
+  async findBySlug(slug: string): Promise<User | null> {
+    const result = await this.db.query(
+      `SELECT * FROM users WHERE slug = $1 AND deleted_at IS NULL`,
+      [slug]
     );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);

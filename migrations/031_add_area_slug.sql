@@ -1,7 +1,8 @@
 -- Add slug column to areas table for user-friendly URLs
 ALTER TABLE areas ADD COLUMN slug VARCHAR(200);
 
--- Backfill slugs for existing non-deleted areas
+-- Backfill slugs for existing non-deleted areas.
+-- Truncate base to 191 to leave room for 8-char suffix + hyphen.
 DO $$
 DECLARE
   r RECORD;
@@ -9,6 +10,7 @@ DECLARE
   candidate VARCHAR(200);
   suffix4 VARCHAR(4);
   suffix8 VARCHAR(8);
+  max_base_len CONSTANT INT := 191;
 BEGIN
   FOR r IN SELECT id, name FROM areas WHERE deleted_at IS NULL ORDER BY created_at LOOP
     base := regexp_replace(
@@ -22,7 +24,7 @@ BEGIN
       '-+', '-', 'g'
     );
     base := regexp_replace(base, '^-+|-+$', '', 'g');
-    base := left(base, 200);
+    base := left(base, max_base_len);
     IF base = '' THEN base := 'area'; END IF;
 
     suffix4 := left(replace(r.id::text, '-', ''), 4);
@@ -30,10 +32,10 @@ BEGIN
 
     candidate := base;
     IF EXISTS (SELECT 1 FROM areas WHERE slug = candidate AND id != r.id AND deleted_at IS NULL) THEN
-      candidate := base || '-' || suffix4;
+      candidate := left(base, max_base_len - 5) || '-' || suffix4;
     END IF;
     IF EXISTS (SELECT 1 FROM areas WHERE slug = candidate AND id != r.id AND deleted_at IS NULL) THEN
-      candidate := base || '-' || suffix8;
+      candidate := left(base, max_base_len - 9) || '-' || suffix8;
     END IF;
 
     UPDATE areas SET slug = candidate WHERE id = r.id;
