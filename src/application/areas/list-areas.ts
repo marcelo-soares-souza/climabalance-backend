@@ -3,6 +3,7 @@ import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-
 import { Area } from '../../domain/areas/entities/area';
 import { AreaStatus } from '../../domain/areas/value-objects/area-status';
 import { Biome } from '../../domain/areas/value-objects/biome';
+import type { UserRepository } from '../../domain/user/user-repository';
 
 export interface ListAreasRequest {
   userId?: string;
@@ -52,6 +53,7 @@ export interface PaginatedAreasResult {
 export interface ListAreasDeps {
   areaRepository: AreaRepository;
   areaMediaRepository: AreaMediaRepository;
+  userRepository?: Pick<UserRepository, 'findById'>;
 }
 
 const PRIVILEGED_ROLES = ['administrator', 'analyst'];
@@ -122,9 +124,18 @@ export async function listAreas(
   }
 
   const areaIds = pageAreas.map((a) => a.id);
+  const ownerIds = [...new Set(pageAreas.map((a) => a.ownerUserId))];
   const allMedia = areaIds.length > 0
     ? await deps.areaMediaRepository.listByAreaIds(areaIds)
     : [];
+  const owners = deps.userRepository && ownerIds.length > 0
+    ? await Promise.all(ownerIds.map(async (ownerId) => deps.userRepository!.findById(ownerId)))
+    : [];
+  const ownerSlugById = new Map(
+    owners
+      .filter((owner): owner is NonNullable<typeof owner> => owner != null)
+      .map((owner) => [owner.id, owner.slug])
+  );
 
   const mediaByAreaId = new Map<string, { thumbnailUrl: string; imageUrl: string }>();
   const usedAreas = new Set<string>();
@@ -144,7 +155,7 @@ export async function listAreas(
     return {
       id: area.id,
       ownerUserId: area.ownerUserId,
-      ownerSlug: undefined,
+      ownerSlug: ownerSlugById.get(area.ownerUserId),
       name: area.name,
       slug: area.slug,
       description: area.description,

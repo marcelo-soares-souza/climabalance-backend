@@ -272,6 +272,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           {
             areaRepository: deps.areaRepository,
             areaMediaRepository: deps.areaMediaRepository,
+            userRepository: deps.users,
           },
           {
             userId: ctx.auth?.userId,

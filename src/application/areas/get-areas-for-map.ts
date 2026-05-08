@@ -6,6 +6,7 @@ import { AreaStatus } from '../../domain/areas/value-objects/area-status';
 
 export interface AreaMapItem {
   id: string;
+  slug: string;
   name: string;
   latitude: number;
   longitude: number;
@@ -82,6 +83,7 @@ export async function getAreasForMap(
     const media = mediaByAreaId.get(area.id);
     return {
       id: area.id,
+      slug: area.slug,
       name: area.name,
       latitude: area.location.latitude,
       longitude: area.location.longitude,
