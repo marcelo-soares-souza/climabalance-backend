@@ -2,8 +2,7 @@
 ALTER TABLE areas ADD COLUMN slug VARCHAR(200);
 
 -- Backfill slugs for existing non-deleted areas.
--- IMPORTANT: use r.name directly, NOT convert_to(..., 'UTF8')::text
--- which produces bytea hex output (e.g. \x4d79...) instead of readable text.
+-- Truncate base to 191 to leave room for 8-char suffix + hyphen.
 DO $$
 DECLARE
   r RECORD;
@@ -17,7 +16,7 @@ BEGIN
     base := regexp_replace(
       regexp_replace(
         regexp_replace(
-          lower(r.name),
+          lower(convert_to(r.name, 'UTF8')::text),
           '[^\w\s-]', '', 'g'
         ),
         '[\s_]+', '-', 'g'

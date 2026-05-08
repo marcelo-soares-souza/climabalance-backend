@@ -1,7 +1,5 @@
 ALTER TABLE users ADD COLUMN slug VARCHAR(100);
 
--- IMPORTANT: use email_prefix directly, NOT convert_to(..., 'UTF8')::text
--- which produces bytea hex output instead of readable text.
 DO $$
 DECLARE
   r RECORD;
@@ -18,7 +16,7 @@ BEGIN
     base := regexp_replace(
       regexp_replace(
         regexp_replace(
-          lower(email_prefix),
+          lower(convert_to(email_prefix, 'UTF8')::text),
           '[^\w\s-]', '', 'g'
         ),
         '[\s_]+', '-', 'g'
