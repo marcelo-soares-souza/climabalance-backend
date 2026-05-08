@@ -15,6 +15,7 @@ import { listUsersQuerySchema, updateUserSchema, upsertProfileSchema, uploadProf
 import { buildLogContext } from '../../shared/http/log-context';
 import { parseQueryWithSchema } from './schemas/validation-helper';
 import type { LocalProfileAvatarStorage } from '../storage/local-profile-avatar-storage';
+import { z } from 'zod';
 
 export type UserHandlersDeps = {
   users: UserRepository;
@@ -81,6 +82,45 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           200,
           {
             data: await Promise.all(users.map((user) => mapUserSummary(user, roleMap)))
+          },
+          logContext
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    listPublicDirectory: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const query = parseQueryWithSchema(
+          z.object({
+            limit: z.string().transform((v) => parseInt(v, 10)).optional(),
+            offset: z.string().transform((v) => parseInt(v, 10)).optional(),
+          }),
+          ctx.query
+        );
+        const limit = query.limit ?? 20;
+        const offset = query.offset ?? 0;
+
+        const items = await deps.users.listPublicDirectory(limit, offset);
+        log.info('user.directory.list', { count: items.length });
+
+        return jsonResponse(
+          200,
+          {
+            data: items.map((item) => ({
+              slug: item.slug,
+              display_name: item.displayName,
+              avatar_url: item.avatarPath
+                ? `/api/v1/users/${item.slug}/profile/avatar/file`
+                : null,
+              about: item.about,
+              total_areas: item.totalAreas,
+              total_trees: item.totalTrees,
+              created_at: item.createdAt,
+            })),
           },
           logContext
         );

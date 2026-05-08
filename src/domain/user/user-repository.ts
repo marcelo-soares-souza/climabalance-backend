@@ -30,6 +30,16 @@ export type UserFilters = {
   offset?: number;
 };
 
+export type PublicDirectoryItem = {
+  slug: string;
+  displayName: string | null;
+  avatarPath: string | null;
+  about: string | null;
+  totalAreas: number;
+  totalTrees: number;
+  createdAt: Date;
+};
+
 export interface UserRepository {
   create(input: CreateUserInput): Promise<User>;
   update(input: UpdateUserInput): Promise<User | null>;
@@ -46,4 +56,5 @@ export interface UserRepository {
   getRolesByUserIds?(userIds: string[]): Promise<Record<string, string[]>>;
   assignRole(userId: string, roleKey: string): Promise<void>;
   findUserIdsByRole(roleKey: string): Promise<string[]>;
+  listPublicDirectory(limit: number, offset: number): Promise<PublicDirectoryItem[]>;
 }

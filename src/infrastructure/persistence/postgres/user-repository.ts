@@ -403,4 +403,45 @@ export class PostgresUserRepository implements UserRepository {
     );
     return result.rows.map((row) => row.user_id as string);
   }
+
+  async listPublicDirectory(limit: number, offset: number): Promise<PublicDirectoryItem[]> {
+    const result = await this.db.query(
+      `SELECT
+        u.slug,
+        up.display_name,
+        up.avatar_path,
+        up.about,
+        COALESCE(ac.total, 0)::int AS total_areas,
+        COALESCE(ts.total, 0)::int AS total_trees,
+        u.created_at
+      FROM users u
+      JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
+      LEFT JOIN (
+        SELECT owner_user_id, COUNT(*) AS total
+        FROM areas
+        WHERE deleted_at IS NULL AND status = 'active'
+        GROUP BY owner_user_id
+      ) ac ON ac.owner_user_id = u.id
+      LEFT JOIN (
+        SELECT supporter_user_id, SUM(trees_count) AS total
+        FROM compensations
+        WHERE deleted_at IS NULL AND status = 'paid'
+        GROUP BY supporter_user_id
+      ) ts ON ts.supporter_user_id = u.id
+      WHERE u.deleted_at IS NULL AND u.status = 'active'
+      ORDER BY total_trees DESC, u.created_at DESC
+      LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    return result.rows.map((row) => ({
+      slug: row.slug as string,
+      displayName: (row.display_name as string) ?? null,
+      avatarPath: (row.avatar_path as string) ?? null,
+      about: (row.about as string) ?? null,
+      totalAreas: Number(row.total_areas),
+      totalTrees: Number(row.total_trees),
+      createdAt: new Date(row.created_at as string),
+    }));
+  }
 }

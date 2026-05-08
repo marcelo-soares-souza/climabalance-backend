@@ -7,7 +7,7 @@ import { revokeRefreshToken } from '../src/application/auth/revoke-refresh-token
 
 // Types
 import type { User, UserProfile } from '../src/domain/user/user';
-import type { UserRepository, UserFilters } from '../src/domain/user/user-repository';
+import type { UserRepository, UserFilters, PublicDirectoryItem } from '../src/domain/user/user-repository';
 import type { RefreshToken, RefreshTokenRepository } from '../src/domain/user/refresh-token-repository';
 
 // --- In-memory repositories ---
@@ -33,6 +33,7 @@ class MemoryUserRepository implements UserRepository {
   async findById(id: string): Promise<User | null> { return this.users.find((u) => u.id === id) ?? null; }
   async findByEmail(email: string): Promise<User | null> { return this.users.find((u) => u.email === email) ?? null; }
   async findBySlug(slug: string): Promise<User | null> { return this.users.find((u) => u.slug === slug) ?? null; }
+  async listPublicDirectory(_limit: number, _offset: number): Promise<PublicDirectoryItem[]> { return []; }
   async list(_f: UserFilters): Promise<User[]> { return this.users; }
   async softDelete(_id: string): Promise<User | null> { return null; }
   async cascadeSoftDelete(_userId: string): Promise<void> {}

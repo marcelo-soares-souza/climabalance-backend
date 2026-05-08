@@ -18,7 +18,7 @@ const { resetPassword } = await import('../src/application/auth/reset-password')
 
 import type { User } from '../src/domain/user/user';
 import type { UserProfile } from '../src/domain/user/user';
-import type { UserFilters, UserRepository } from '../src/domain/user/user-repository';
+import type { UserFilters, UserRepository, PublicDirectoryItem } from '../src/domain/user/user-repository';
 import type { PasswordResetToken, PasswordResetRepository } from '../src/domain/user/password-reset-repository';
 import type { EmailSender, EmailMessage } from '../src/infrastructure/email/email-sender';
 import type { PasswordHasher } from '../src/infrastructure/crypto/password';
@@ -85,6 +85,10 @@ class MemoryUserRepository implements UserRepository {
   }
 
   async cascadeSoftDelete(_userId: string): Promise<void> {}
+
+  async listPublicDirectory(_limit: number, _offset: number): Promise<PublicDirectoryItem[]> {
+    return [];
+  }
 
   async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> {
     const existing = this.profiles.get(userId);

@@ -112,6 +112,7 @@ export function buildRouter(
 
   // User routes
   addRoute('GET', '/api/v1/users', 'admin', withAuth(async (ctx) => userHandlers.list(ctx), { roles: ['administrator'] }));
+  addRoute('GET', '/api/v1/directory/users', 'public', async (ctx) => userHandlers.listPublicDirectory(ctx));
   addRoute('GET', '/api/v1/users/:id', 'public', withOptionalAuth((ctx) => userHandlers.get(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/profile', 'public', withOptionalAuth((ctx) => userHandlers.getProfile(ctx, ctx.params.id)));
   addRoute('GET', '/api/v1/users/:id/climate-balance', 'public', withOptionalAuth((ctx) => userHandlers.getClimateBalance(ctx, ctx.params.id)));

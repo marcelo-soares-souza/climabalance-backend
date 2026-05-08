@@ -18,7 +18,7 @@ const { confirmEmail } = await import('../src/application/auth/confirm-email');
 
 import type { User } from '../src/domain/user/user';
 import type { UserProfile } from '../src/domain/user/user';
-import type { UserRepository, UserFilters } from '../src/domain/user/user-repository';
+import type { UserRepository, UserFilters, PublicDirectoryItem } from '../src/domain/user/user-repository';
 import type { EmailConfirmation, EmailConfirmationRepository } from '../src/domain/user/email-confirmation-repository';
 import type { EmailSender, EmailMessage } from '../src/infrastructure/email/email-sender';
 import type { PasswordHasher } from '../src/infrastructure/crypto/password';
@@ -151,6 +151,10 @@ class MemoryUserRepository implements UserRepository {
     if (!user) return;
     user.lastLoginAt = lastLoginAt;
     user.updatedAt = lastLoginAt;
+  }
+
+  async listPublicDirectory(_limit: number, _offset: number): Promise<PublicDirectoryItem[]> {
+    return [];
   }
 }
 
