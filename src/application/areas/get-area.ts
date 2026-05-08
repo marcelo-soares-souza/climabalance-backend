@@ -8,6 +8,7 @@ export interface GetAreaResponse {
   ownerUserId: string;
   ownerEmail?: string;
   name: string;
+  slug: string;
   description?: string;
   latitude: number;
   longitude: number;
@@ -77,6 +78,7 @@ export async function getArea(
     ownerUserId: area.ownerUserId,
     ownerEmail: owner?.email,
     name: area.name,
+    slug: area.slug,
     description: area.description,
     latitude: area.location.latitude,
     longitude: area.location.longitude,

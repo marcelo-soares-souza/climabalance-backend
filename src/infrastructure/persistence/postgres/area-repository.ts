@@ -15,16 +15,17 @@ export class PostgresAreaRepository implements AreaRepository {
 
     await db.query(
       `INSERT INTO areas (
-        id, owner_user_id, name, description, location,
+        id, owner_user_id, name, slug, description, location,
         biome, country_code, state, city, status, audit_status, audit_notes,
         audited_by_user_id, audited_at, total_capacity_t_co2e,
         committed_t_co2e, t_co2e_per_tree_per_year, price_per_tree,
         default_horizon_years, max_purchasable_trees, created_at, updated_at, deleted_at
-      ) VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($6, $5), 4326), $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+      ) VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($7, $6), 4326), $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
       [
         area.id,
         area.ownerUserId,
         area.name,
+        area.slug,
         area.description || null,
         area.location.latitude,
         area.location.longitude,
@@ -56,6 +57,19 @@ export class PostgresAreaRepository implements AreaRepository {
     const result = await db.query(
       'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE id = $1 AND deleted_at IS NULL',
       [id]
+    );
+
+    if (result.rows.length === 0) return null;
+
+    return this.mapRowToArea(result.rows[0]);
+  }
+
+  async findBySlug(slug: string, client?: PoolClient): Promise<Area | null> {
+    const db = client || this.pool;
+
+    const result = await db.query(
+      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE slug = $1 AND deleted_at IS NULL',
+      [slug]
     );
 
     if (result.rows.length === 0) return null;
@@ -206,29 +220,31 @@ ORDER BY updated_at DESC, id DESC`,
     await db.query(
       `UPDATE areas SET
         name = $2,
-        description = $3,
-        location = ST_SetSRID(ST_MakePoint($5, $4), 4326),
-        biome = $6,
-        country_code = $7,
-        state = $8,
-        city = $9,
-        status = $10,
-        audit_status = $11,
-        audit_notes = $12,
-        audited_by_user_id = $13,
-        audited_at = $14,
-        total_capacity_t_co2e = $15,
-        committed_t_co2e = $16,
-        t_co2e_per_tree_per_year = $17,
-        price_per_tree = $18,
-        default_horizon_years = $19,
-        max_purchasable_trees = $20,
-        updated_at = $21,
-        deleted_at = $22
+        slug = $3,
+        description = $4,
+        location = ST_SetSRID(ST_MakePoint($6, $5), 4326),
+        biome = $7,
+        country_code = $8,
+        state = $9,
+        city = $10,
+        status = $11,
+        audit_status = $12,
+        audit_notes = $13,
+        audited_by_user_id = $14,
+        audited_at = $15,
+        total_capacity_t_co2e = $16,
+        committed_t_co2e = $17,
+        t_co2e_per_tree_per_year = $18,
+        price_per_tree = $19,
+        default_horizon_years = $20,
+        max_purchasable_trees = $21,
+        updated_at = $22,
+        deleted_at = $23
        WHERE id = $1 AND deleted_at IS NULL`,
       [
         area.id,
         area.name,
+        area.slug,
         area.description || null,
         area.location.latitude,
         area.location.longitude,
@@ -329,6 +345,7 @@ ORDER BY updated_at DESC, id DESC`,
       id: row.id,
       ownerUserId: row.owner_user_id,
       name: row.name,
+      slug: row.slug,
       description: row.description,
       location,
       biome: row.biome ? new Biome(row.biome) : undefined,

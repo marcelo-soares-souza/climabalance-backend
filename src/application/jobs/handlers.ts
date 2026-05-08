@@ -25,6 +25,12 @@ async function resolveUserLocale(email: string, users: UserRepository): Promise<
   return user?.locale ?? 'pt-BR';
 }
 
+async function resolveAreaUrl(areaId: string, frontendUrl: string, areas?: AreaRepository): Promise<string> {
+  if (!areas) return `${frontendUrl}/areas/${areaId}`;
+  const area = await areas.findById(areaId);
+  return `${frontendUrl}/areas/${area?.slug ?? areaId}`;
+}
+
 export async function handleUserRegistered(
   payload: { email: string; roleKey: string },
   deps: JobHandlerDeps
@@ -44,7 +50,8 @@ export async function handleAreaCreated(
 ): Promise<void> {
   const admins = await findAdminEmails(deps.users);
   if (admins.length === 0) return;
-  const url = `${deps.frontendUrl}/areas/${payload.areaId}`;
+  const area = deps.areas ? await deps.areas.findById(payload.areaId) : null;
+  const url = `${deps.frontendUrl}/areas/${area?.slug ?? payload.areaId}`;
   await Promise.all(
     admins.map((email) =>
       deps.emailSender.send(buildAreaCreatedNotification('pt-BR', email, payload.areaName, payload.producerEmail, url))
@@ -71,7 +78,7 @@ export async function handleAreaApproved(
   deps: JobHandlerDeps
 ): Promise<void> {
   const locale = await resolveUserLocale(payload.producerEmail, deps.users);
-  const url = `${deps.frontendUrl}/areas/${payload.areaId}`;
+  const url = await resolveAreaUrl(payload.areaId, deps.frontendUrl, deps.areas);
   await deps.emailSender.send(buildAreaApproved(locale, payload.producerEmail, payload.areaName, url));
 }
 
@@ -80,7 +87,7 @@ export async function handleAreaRejected(
   deps: JobHandlerDeps
 ): Promise<void> {
   const locale = await resolveUserLocale(payload.producerEmail, deps.users);
-  const url = `${deps.frontendUrl}/areas/${payload.areaId}`;
+  const url = await resolveAreaUrl(payload.areaId, deps.frontendUrl, deps.areas);
   await deps.emailSender.send(buildAreaRejected(locale, payload.producerEmail, payload.areaName, payload.reason, url));
 }
 
@@ -97,7 +104,7 @@ export async function handleContributionRefunded(
   deps: JobHandlerDeps
 ): Promise<void> {
   const locale = await resolveUserLocale(payload.producerEmail, deps.users);
-  const url = `${deps.frontendUrl}/areas/${payload.areaId}`;
+  const url = await resolveAreaUrl(payload.areaId, deps.frontendUrl, deps.areas);
   await deps.emailSender.send(buildContributionRefunded(locale, payload.producerEmail, payload.areaName, payload.amount, payload.currency, url));
 }
 
@@ -106,7 +113,7 @@ export async function handleCompensationMilestone(
   deps: JobHandlerDeps
 ): Promise<void> {
   const locale = await resolveUserLocale(payload.producerEmail, deps.users);
-  const url = `${deps.frontendUrl}/areas/${payload.areaId}`;
+  const url = await resolveAreaUrl(payload.areaId, deps.frontendUrl, deps.areas);
   await deps.emailSender.send(buildAreaMilestone(locale, payload.producerEmail, payload.areaName, payload.percentage, url));
 }
 
@@ -115,7 +122,7 @@ export async function handleContributionReceived(
   deps: JobHandlerDeps
 ): Promise<void> {
   const locale = await resolveUserLocale(payload.producerEmail, deps.users);
-  const url = `${deps.frontendUrl}/areas/${payload.areaId}`;
+  const url = await resolveAreaUrl(payload.areaId, deps.frontendUrl, deps.areas);
   await deps.emailSender.send(buildContributionReceived(locale, payload.producerEmail, payload.areaName, payload.amount, payload.currency, payload.treesCount, url));
 }
 

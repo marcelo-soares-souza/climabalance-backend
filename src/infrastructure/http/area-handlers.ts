@@ -148,17 +148,29 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
 
     /**
      * GET /api/v1/areas/:id
+     * Accepts both UUID and slug
      */
     async get(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        let areaId = id;
+
+        if (!uuidRegex.test(id)) {
+          const area = await deps.areaRepository.findBySlug(id);
+          if (!area) {
+            return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+          }
+          areaId = area.id;
+        }
+
         const result = await getArea(
           {
             areaRepository: deps.areaRepository,
             areaCriteriaRepository: deps.areaCriteriaRepository,
             userRepository: deps.users,
           },
-          id,
+          areaId,
           ctx.auth?.userId,
           ctx.auth?.roles
         );

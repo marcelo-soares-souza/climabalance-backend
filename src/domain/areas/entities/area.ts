@@ -8,6 +8,7 @@ export interface AreaProps {
   id: string;
   ownerUserId: string;
   name: string;
+  slug: string;
   description?: string;
   location: Location;
   biome?: Biome;
@@ -37,6 +38,7 @@ export class Area {
   readonly id: string;
   readonly ownerUserId: string;
   name: string;
+  slug: string;
   description?: string;
   location: Location;
   biome?: Biome;
@@ -61,6 +63,7 @@ export class Area {
     this.id = props.id;
     this.ownerUserId = props.ownerUserId;
     this.name = props.name;
+    this.slug = props.slug;
     this.description = props.description;
     this.location = props.location;
     this.biome = props.biome;
@@ -234,6 +237,7 @@ export class Area {
   update(
     updates: {
       name?: string;
+      slug?: string;
       description?: string;
       location?: Location;
       biome?: Biome;
@@ -257,6 +261,10 @@ export class Area {
         throw new Error('Name must be at least 3 characters');
       }
       this.name = updates.name;
+    }
+
+    if (updates.slug !== undefined) {
+      this.slug = updates.slug;
     }
 
     if (updates.description !== undefined) {

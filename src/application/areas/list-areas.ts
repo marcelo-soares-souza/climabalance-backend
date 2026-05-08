@@ -20,6 +20,7 @@ export interface AreaListItem {
   id: string;
   ownerUserId: string;
   name: string;
+  slug: string;
   description?: string;
   latitude: number;
   longitude: number;
@@ -143,6 +144,7 @@ export async function listAreas(
       id: area.id,
       ownerUserId: area.ownerUserId,
       name: area.name,
+      slug: area.slug,
       description: area.description,
       latitude: area.location.latitude,
       longitude: area.location.longitude,

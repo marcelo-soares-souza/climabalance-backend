@@ -36,6 +36,11 @@ export interface AreaRepository {
   findById(id: string, client?: any): Promise<Area | null>;
 
   /**
+   * Find area by slug
+   */
+  findBySlug(slug: string, client?: any): Promise<Area | null>;
+
+  /**
    * Find areas by owner
    */
   findByOwnerId(ownerUserId: string, client?: any): Promise<Area[]>;

@@ -2,6 +2,7 @@ import { AreaRepository } from '../../domain/areas/repositories/area-repository'
 import { Location } from '../../domain/areas/value-objects/location';
 import { Biome } from '../../domain/areas/value-objects/biome';
 import { AreaStatus } from '../../domain/areas/value-objects/area-status';
+import { slugify, slugWithSuffix } from '../../shared/utils/slugify';
 
 export interface UpdateAreaRequest {
   userId: string;
@@ -44,7 +45,16 @@ export async function updateArea(
 
   const updates: any = {};
 
-  if (request.name !== undefined) updates.name = request.name;
+  if (request.name !== undefined) {
+    updates.name = request.name;
+    const baseSlug = slugify(request.name);
+    const existing = await deps.areaRepository.findBySlug(baseSlug);
+    if (!existing || existing.id === area.id) {
+      updates.slug = baseSlug;
+    } else {
+      updates.slug = slugWithSuffix(baseSlug, area.id);
+    }
+  }
   if (request.description !== undefined) updates.description = request.description;
   if (request.countryCode !== undefined) updates.countryCode = request.countryCode;
   if (request.state !== undefined) updates.state = request.state;

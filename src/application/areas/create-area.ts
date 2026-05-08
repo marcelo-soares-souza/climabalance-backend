@@ -4,6 +4,7 @@ import { AreaStatus } from '../../domain/areas/value-objects/area-status';
 import { Biome } from '../../domain/areas/value-objects/biome';
 import { CarbonCapacity } from '../../domain/areas/value-objects/carbon-capacity';
 import { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import { slugify, slugWithSuffix } from '../../shared/utils/slugify';
 
 export interface CreateAreaRequest {
   ownerUserId: string;
@@ -25,6 +26,7 @@ export interface CreateAreaRequest {
 export interface CreateAreaResponse {
   id: string;
   name: string;
+  slug: string;
   status: string;
   latitude: number;
   longitude: number;
@@ -61,12 +63,19 @@ export async function createArea(
       ? new CarbonCapacity(request.totalCapacityTCO2e, 0)
       : undefined;
 
+  // Generate slug
+  const areaId = deps.idGenerator.generate();
+  const baseSlug = slugify(request.name);
+  const existing = await deps.areaRepository.findBySlug(baseSlug);
+  const slug = existing ? slugWithSuffix(baseSlug, areaId) : baseSlug;
+
   // Create area entity
   const now = deps.clock.now();
   const area = new Area({
-    id: deps.idGenerator.generate(),
+    id: areaId,
     ownerUserId: request.ownerUserId,
     name: request.name,
+    slug,
     description: request.description,
     location,
     biome,
@@ -98,6 +107,7 @@ export async function createArea(
   return {
     id: area.id,
     name: area.name,
+    slug: area.slug,
     status: area.status.toString(),
     latitude: area.location.latitude,
     longitude: area.location.longitude,
