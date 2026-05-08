@@ -1,5 +1,6 @@
 import type { HttpContext } from '../../shared/http/router';
 import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import { NotFoundError } from '../../domain/errors';
 import type { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
 import type { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
 import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
@@ -74,6 +75,17 @@ export interface AreaHandlersDeps {
   satelliteMaxCloud: number;
   satelliteDaysBack: number;
   earthSearchEnabled: boolean;
+}
+
+const AREA_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function resolveAreaId(id: string, areaRepository: AreaRepository): Promise<string> {
+  if (AREA_UUID_REGEX.test(id)) return id;
+  const area = await areaRepository.findBySlug(id);
+  if (area) return area.id;
+  const areaById = await areaRepository.findById(id);
+  if (areaById) return areaById.id;
+  throw new NotFoundError('area.not_found');
 }
 
 export function createAreaHandlers(deps: AreaHandlersDeps) {
@@ -153,24 +165,14 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async get(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        let areaId = id;
-
-        if (!uuidRegex.test(id)) {
-          const area = await deps.areaRepository.findBySlug(id);
-          if (!area) {
-            return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
-          }
-          areaId = area.id;
-        }
-
+        id = await resolveAreaId(id, deps.areaRepository);
         const result = await getArea(
           {
             areaRepository: deps.areaRepository,
             areaCriteriaRepository: deps.areaCriteriaRepository,
             userRepository: deps.users,
           },
-          areaId,
+          id,
           ctx.auth?.userId,
           ctx.auth?.roles
         );
@@ -188,6 +190,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async update(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(updateAreaSchema, body);
@@ -223,6 +226,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
     async remove(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         await deleteArea(
           {
@@ -285,6 +289,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const area = await deps.areaRepository.findById(id);
         await submitAreaForAudit(
@@ -322,6 +327,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(approveAreaSchema, body);
@@ -369,6 +375,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(rejectAreaSchema, body);
@@ -414,6 +421,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         await activateArea(
           {
@@ -443,6 +451,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const auditService = createAuditService(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         await suspendArea(
           {
@@ -495,6 +504,7 @@ return jsonResponse(200, { data: result }, logContext);
     async getPlantedTrees(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const result = await getPlantedTrees(
           { treePlantingRepository: deps.treePlantingRepository },
           id,
@@ -512,6 +522,7 @@ return jsonResponse(200, { data: result }, logContext);
     async getPendingTreeCount(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const result = await getPendingTreeCount(
           { treePlantingRepository: deps.treePlantingRepository },
           id,
@@ -529,6 +540,7 @@ return jsonResponse(200, { data: result }, logContext);
     async savePlantedTrees(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const { points } = parseWithSchema(
@@ -576,6 +588,7 @@ return jsonResponse(200, { data: result }, logContext);
     async deletePlantedTrees(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const area = await deps.areaRepository.findById(id);
         if (!area) {
@@ -601,6 +614,7 @@ return jsonResponse(200, { data: result }, logContext);
     async getCapacity(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const result = await getAreaCapacity(
           {
             carbonStockService,
@@ -622,6 +636,7 @@ return jsonResponse(200, { data: result }, logContext);
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx, 35 * 1024 * 1024);
         const validated = parseWithSchema(uploadAreaMediaSchema, body);
@@ -670,6 +685,7 @@ return jsonResponse(200, { data: result }, logContext);
     async listMedia(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const result = await listAreaMedia(
           {
             areaRepository: deps.areaRepository,
@@ -808,6 +824,7 @@ return jsonResponse(200, { data: result }, logContext);
     async fetchSatelliteImage(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
 
         if (!deps.earthSearchEnabled) {
@@ -845,6 +862,7 @@ return jsonResponse(200, { data: result }, logContext);
     async getLatestSatelliteImage(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
       try {
+        id = await resolveAreaId(id, deps.areaRepository);
         const result = await getLatestSatelliteImage(
           { satelliteImageRepository: deps.areaSatelliteImageRepository },
           id,

@@ -19,6 +19,7 @@ import type { CompensationHistoryRepository } from '../../domain/compensations/r
 import { listCompensations } from '../../application/compensations/list-compensations';
 import { listAreaContributions } from '../../application/compensations/list-area-contributions';
 import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import type { UserRepository } from '../../domain/user/user-repository';
 import type { StripeConnectLookup } from '../../application/payments/create-stripe-payment-intent';
 import {
   quoteTreePurchaseCompensation,
@@ -29,6 +30,7 @@ import { parseQueryWithSchema } from './schemas/validation-helper';
 
 export interface CompensationHandlersDeps {
   areaRepository: AreaRepository;
+  users: UserRepository;
   stripeConnectLookup?: StripeConnectLookup;
   compensationStore: CompensationAtomicStore;
   compensationHistoryRepository: CompensationHistoryRepository;
@@ -177,6 +179,19 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByUser(ctx: HttpContext, userId: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const userUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!userUuidRegex.test(userId)) {
+          const user = await deps.users.findBySlug(userId);
+          if (user) {
+            userId = user.id;
+          } else {
+            const userById = await deps.users.findById(userId);
+            if (!userById) {
+              return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+            }
+            userId = userById.id;
+          }
+        }
         const validated = parseQueryWithSchema(listCompensationsQuerySchema, ctx.query);
         const result = await listCompensations(
           {
@@ -229,6 +244,19 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByArea(ctx: HttpContext, areaId: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!areaUuidRegex.test(areaId)) {
+          const area = await deps.areaRepository.findBySlug(areaId);
+          if (area) {
+            areaId = area.id;
+          } else {
+            const areaById = await deps.areaRepository.findById(areaId);
+            if (!areaById) {
+              return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+            }
+            areaId = areaById.id;
+          }
+        }
         const validated = parseQueryWithSchema(listAreaContributionsQuerySchema, ctx.query);
         const result = await listAreaContributions(
           {

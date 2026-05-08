@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/main.ts",
+    "dev": "bun --watch src/main.ts --host 0.0.0.0",
     "start": "bun src/main.ts",
     "build": "bun x tsc -p tsconfig.json",
     "lint": "eslint .",

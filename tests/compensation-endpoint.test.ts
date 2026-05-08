@@ -144,6 +144,10 @@ class InMemoryCompensationCertificatePdfGenerator
   }
 }
 
+const mockUsers = {
+  findBySlug: async (slug: string) => ({ id: slug }) as any,
+} as any;
+
 class InMemoryAreaRepository {
   constructor(private readonly area: Area) {}
 
@@ -152,6 +156,11 @@ class InMemoryAreaRepository {
       return null;
     }
     return this.area;
+  }
+
+  async findBySlug(slug: string): Promise<Area | null> {
+    if (slug === this.area.id || slug === this.area.slug) return this.area;
+    return null;
   }
 }
 
@@ -242,6 +251,7 @@ describe('POST /api/v1/compensations handler', () => {
     const certificateRepository = new InMemoryCompensationCertificateRepository();
     let idSequence = 0;
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
@@ -289,6 +299,7 @@ describe('POST /api/v1/compensations handler', () => {
 
   test('returns 400 when request is invalid', async () => {
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
@@ -328,6 +339,7 @@ describe('POST /api/v1/compensations handler', () => {
 
   test('lists own compensations', async () => {
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
@@ -380,6 +392,7 @@ describe('POST /api/v1/compensations handler', () => {
 
   test('lists compensations by user id for self/admin route', async () => {
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
@@ -434,6 +447,7 @@ describe('POST /api/v1/compensations handler', () => {
 
   test('lists paid tree contributions by area without financial amount', async () => {
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
@@ -488,6 +502,7 @@ describe('POST /api/v1/compensations handler', () => {
 
   test('quotes tree purchase contribution using project metrics', async () => {
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',
@@ -534,6 +549,7 @@ describe('POST /api/v1/compensations handler', () => {
   test('creates compensation in tree purchase mode', async () => {
     let idSequence = 0;
     const handlers = createCompensationHandlers({
+      users: mockUsers,
       areaRepository: new InMemoryAreaRepository(activeArea) as any,
       compensationStore: new InMemoryCompensationStore({
         id: 'area-1',

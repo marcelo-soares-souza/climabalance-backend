@@ -31,10 +31,12 @@ export type UserFilters = {
 };
 
 export type PublicDirectoryItem = {
+  id: string;
   slug: string;
   displayName: string | null;
   avatarPath: string | null;
   about: string | null;
+  countryCode: string | null;
   totalAreas: number;
   totalTrees: number;
   createdAt: Date;

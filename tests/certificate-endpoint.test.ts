@@ -225,6 +225,7 @@ describe('certificate endpoints', () => {
 
   test('lists certificates by user', async () => {
     const handlers = createCertificateHandlers({
+      users: { findBySlug: async (slug: string) => ({ id: slug }) } as any,
       compensationCertificateRepository: new InMemoryCertificateRepository(
         certificate
       ),

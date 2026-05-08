@@ -407,10 +407,12 @@ export class PostgresUserRepository implements UserRepository {
   async listPublicDirectory(limit: number, offset: number): Promise<PublicDirectoryItem[]> {
     const result = await this.db.query(
       `SELECT
+        u.id,
         u.slug,
         up.display_name,
         up.avatar_path,
         up.about,
+        up.country_code,
         COALESCE(ac.total, 0)::int AS total_areas,
         COALESCE(ts.total, 0)::int AS total_trees,
         u.created_at
@@ -435,10 +437,12 @@ export class PostgresUserRepository implements UserRepository {
     );
 
     return result.rows.map((row) => ({
+      id: row.id as string,
       slug: row.slug as string,
       displayName: (row.display_name as string) ?? null,
       avatarPath: (row.avatar_path as string) ?? null,
       about: (row.about as string) ?? null,
+      countryCode: (row.country_code as string) ?? null,
       totalAreas: Number(row.total_areas),
       totalTrees: Number(row.total_trees),
       createdAt: new Date(row.created_at as string),

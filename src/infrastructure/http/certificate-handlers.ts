@@ -11,6 +11,7 @@ import { logger } from '../../shared/utils/logger';
 import { parseQueryWithSchema } from './schemas/validation-helper';
 import { z } from 'zod';
 import { requireAuth } from '../../shared/http/auth-context';
+import type { UserRepository } from '../../domain/user/user-repository';
 
 const listCertificatesQuerySchema = z.object({
   status: z.enum(['issued', 'revoked']).optional(),
@@ -24,6 +25,7 @@ const validateCertificateQuerySchema = z.object({
 });
 
 export interface CertificateHandlersDeps {
+  users: UserRepository;
   compensationCertificateRepository: CompensationCertificateRepository;
   compensationCertificateStorage: CompensationCertificateStorage;
   compensationCertificatePdfGenerator: CompensationCertificatePdfGenerator;
@@ -39,6 +41,19 @@ export function createCertificateHandlers(deps: CertificateHandlersDeps) {
     async listByUser(ctx: HttpContext, userId: string) {
       const logContext = buildLogContext(ctx);
       try {
+        const userUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!userUuidRegex.test(userId)) {
+          const user = await deps.users.findBySlug(userId);
+          if (user) {
+            userId = user.id;
+          } else {
+            const userById = await deps.users.findById(userId);
+            if (!userById) {
+              return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+            }
+            userId = userById.id;
+          }
+        }
         const query = parseQueryWithSchema(listCertificatesQuerySchema, ctx.query);
 
         const certificates =

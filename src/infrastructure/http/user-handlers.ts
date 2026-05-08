@@ -38,7 +38,9 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 async function resolveUserId(idOrSlug: string, users: UserRepository): Promise<string | null> {
   if (UUID_REGEX.test(idOrSlug)) return idOrSlug;
   const user = await users.findBySlug(idOrSlug);
-  return user?.id ?? null;
+  if (user) return user.id;
+  const userById = await users.findById(idOrSlug);
+  return userById?.id ?? null;
 }
 
 export function createUserHandlers(deps: UserHandlersDeps) {
@@ -111,12 +113,14 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           200,
           {
             data: items.map((item) => ({
+              id: item.id,
               slug: item.slug,
               display_name: item.displayName,
               avatar_url: item.avatarPath
-                ? `/api/v1/users/${item.slug}/profile/avatar/file`
+                ? `/api/v1/users/${item.id}/profile/avatar/file`
                 : null,
               about: item.about,
+              country_code: item.countryCode,
               total_areas: item.totalAreas,
               total_trees: item.totalTrees,
               created_at: item.createdAt,
