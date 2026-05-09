@@ -99,7 +99,7 @@ export class PostgresAreaMediaRepository implements AreaMediaRepository {
 
   async updateThumbnail(id: string, thumbnailStoragePath: string, thumbnailGeneratedAt: Date): Promise<void> {
     await this.pool.query(
-      `UPDATE area_media SET thumbnail_storage_path = $2, thumbnail_generated_at = $3, updated_at = $3 WHERE id = $1`,
+      `UPDATE area_media SET thumbnail_storage_path = $2, thumbnail_generated_at = $3, updated_at = $3 WHERE id = $1 AND deleted_at IS NULL`,
       [id, thumbnailStoragePath, thumbnailGeneratedAt]
     );
   }

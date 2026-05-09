@@ -136,6 +136,11 @@ export async function listAreas(
       .filter((owner): owner is NonNullable<typeof owner> => owner != null)
       .map((owner) => [owner.id, owner.slug])
   );
+  const deletedOwnerIds = new Set(
+    owners
+      .filter((owner): owner is NonNullable<typeof owner> => owner != null && owner.deletedAt != null)
+      .map((owner) => owner.id)
+  );
 
   const mediaByAreaId = new Map<string, { thumbnailUrl: string; imageUrl: string }>();
   const usedAreas = new Set<string>();
@@ -150,7 +155,7 @@ export async function listAreas(
     }
   }
 
-  const data = pageAreas.map((area) => {
+  const allAreas = pageAreas.map((area) => {
     const media = mediaByAreaId.get(area.id);
     return {
       id: area.id,
@@ -183,6 +188,8 @@ export async function listAreas(
       updatedAt: area.updatedAt,
     };
   });
+
+  const data = allAreas.filter((item) => !deletedOwnerIds.has(item.ownerUserId));
 
   return { data, nextCursor };
 }

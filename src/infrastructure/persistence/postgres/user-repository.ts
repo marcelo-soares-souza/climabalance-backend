@@ -119,7 +119,7 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    const result = await this.db.query(`SELECT * FROM users WHERE id = $1`, [id]);
+    const result = await this.db.query(`SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL`, [id]);
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
@@ -333,7 +333,7 @@ export class PostgresUserRepository implements UserRepository {
   }
 
   async getProfile(userId: string): Promise<UserProfile | null> {
-    const result = await this.db.query(`SELECT * FROM user_profiles WHERE user_id = $1`, [userId]);
+    const result = await this.db.query(`SELECT * FROM user_profiles WHERE user_id = $1 AND deleted_at IS NULL`, [userId]);
     if (result.rowCount === 0) return null;
     return mapProfile(result.rows[0]);
   }

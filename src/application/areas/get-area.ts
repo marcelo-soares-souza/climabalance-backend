@@ -76,8 +76,8 @@ export async function getArea(
   const owner = deps.userRepository
     ? await deps.userRepository.findById(area.ownerUserId)
     : null;
-  const ownerProfile = deps.userRepository && owner
-    ? await deps.userRepository.getProfile(area.ownerUserId)
+  const ownerProfile = deps.userRepository
+    ? await deps.userRepository.getProfile(area.ownerUserId).catch(() => null)
     : null;
 
   return {

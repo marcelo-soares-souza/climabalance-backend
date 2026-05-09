@@ -45,7 +45,7 @@ export class PostgresJobRepository {
 
   async complete(id: string): Promise<void> {
     await this.db.query(
-      `UPDATE job_queue SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+      `UPDATE job_queue SET status = 'completed', updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL`,
       [id]
     );
   }
@@ -58,7 +58,7 @@ export class PostgresJobRepository {
            status = CASE WHEN retry_count + 1 >= max_retries THEN 'failed' ELSE 'pending' END,
            scheduled_at = CASE WHEN retry_count + 1 < max_retries THEN NOW() + interval '1 minute' * POWER(2, retry_count) ELSE scheduled_at END,
            updated_at = NOW()
-       WHERE id = $1`,
+       WHERE id = $1 AND deleted_at IS NULL`,
       [id, error]
     );
   }
