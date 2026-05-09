@@ -81,7 +81,7 @@ export async function getArea(
     ownerUserId: area.ownerUserId,
     ownerSlug: owner?.slug,
     ownerEmail: owner?.email,
-    ownerEmailMasked: maskEmail(owner?.email),
+    ownerEmailMasked: maskEmail(owner?.email) ?? undefined,
     name: area.name,
     slug: area.slug,
     description: area.description,

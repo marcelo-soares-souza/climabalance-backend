@@ -288,7 +288,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         return jsonResponse(
           200,
           {
-            data: await mapUserSummary(user)
+            data: await mapUserSummary(user, false)
           },
           logContext
         );
