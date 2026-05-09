@@ -7,6 +7,7 @@ import { maskEmail } from '../../shared/utils/mask-sensitive';
 export interface GetAreaResponse {
   id: string;
   ownerUserId: string;
+  ownerName?: string;
   ownerSlug?: string;
   ownerEmail?: string;
   ownerEmailMasked?: string;
@@ -45,7 +46,7 @@ export interface GetAreaResponse {
 export interface GetAreaDeps {
   areaRepository: AreaRepository;
   areaCriteriaRepository: AreaCriteriaRepository;
-  userRepository?: Pick<UserRepository, 'findById'>;
+  userRepository?: Pick<UserRepository, 'findById' | 'getProfile'>;
 }
 
 export async function getArea(
@@ -75,10 +76,14 @@ export async function getArea(
   const owner = deps.userRepository
     ? await deps.userRepository.findById(area.ownerUserId)
     : null;
+  const ownerProfile = deps.userRepository && owner
+    ? await deps.userRepository.getProfile(area.ownerUserId)
+    : null;
 
   return {
     id: area.id,
     ownerUserId: area.ownerUserId,
+    ownerName: ownerProfile?.displayName,
     ownerSlug: owner?.slug,
     ownerEmail: owner?.email,
     ownerEmailMasked: maskEmail(owner?.email) ?? undefined,
