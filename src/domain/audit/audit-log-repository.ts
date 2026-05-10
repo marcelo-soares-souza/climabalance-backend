@@ -49,6 +49,8 @@ export type AuditLogFilters = {
   clientIp?: string;
   entityType?: string;
   entityId?: string;
+  severity?: AuditLogSeverity;
+  isSensitive?: boolean;
   limit?: number;
   offset?: number;
 };

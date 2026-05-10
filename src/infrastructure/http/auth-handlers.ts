@@ -39,14 +39,17 @@ import {
 } from './schemas';
 import { refreshTokenSchema, revokeTokenSchema, changePasswordSchema } from './schemas/auth-schemas';
 import { buildLogContext } from '../../shared/http/log-context';
+import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 import { createHumanCheckChallenge, verifyHumanCheckChallenge } from './human-check';
 import { normalizeLocale } from '../../shared/utils/locale';
+import { maskEmail } from '../../shared/utils/mask-sensitive';
 import { checkLoginLockout, recordLoginAttempt } from './rate-limit';
 import {
   buildRefreshTokenCookie,
   buildRefreshTokenCookieCleared,
   getRefreshTokenFromCookie,
 } from '../../shared/http/cookies';
+import { buildCsrfToken } from '../../shared/http/csrf';
 
 const authResponseHeaders = {
   'cache-control': 'no-store',
@@ -254,6 +257,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         });
 
         log.info('auth.login.success', { email: validated.email });
+        const csrfToken = await buildCsrfToken(token.refreshToken);
         return jsonResponse(
           200,
           {
@@ -262,6 +266,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
               tokenType: token.tokenType,
               expiresIn: token.expiresIn,
               refreshExpiresIn: token.refreshExpiresIn,
+              csrfToken,
             },
           },
           logContext,
@@ -331,6 +336,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
     requestPasswordReset: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
@@ -354,6 +360,17 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.password_reset_request.accepted', { email: validated.email });
+        await requestAuditLog.log({
+          actorUserId: 'anonymous',
+          action: 'auth.password_reset.requested',
+          entityType: 'password_reset_request',
+          entityId: maskEmail(validated.email) ?? 'unknown-email',
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['security'],
+          isSensitive: true,
+        });
         return jsonResponse(200, { message_key: 'auth.password_reset_requested' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
@@ -363,6 +380,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
     resetPassword: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
@@ -371,7 +389,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
 
         const validated = parseWithSchema(resetPasswordSchema, body);
 
-        await resetPassword(
+        const result = await resetPassword(
           { token: validated.token, password: validated.password },
           {
             passwordResets: deps.passwordResets,
@@ -383,6 +401,18 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.password_reset.success');
+        await requestAuditLog.log({
+          actorUserId: result.userId,
+          action: 'auth.password_reset.completed',
+          entityType: 'user',
+          entityId: result.userId,
+          success: true,
+          httpStatus: 200,
+          severity: 'warning',
+          category: ['security', 'user_management'],
+          isSensitive: true,
+          changedFields: ['passwordHash'],
+        });
         return jsonResponse(200, { message_key: 'auth.password_reset_success' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
@@ -392,6 +422,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
     changePassword: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
@@ -417,6 +448,18 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.password_changed');
+        await requestAuditLog.log({
+          actorUserId: ctx.auth.userId,
+          action: 'auth.password_changed',
+          entityType: 'user',
+          entityId: ctx.auth.userId,
+          success: true,
+          httpStatus: 200,
+          severity: 'warning',
+          category: ['security', 'user_management'],
+          isSensitive: true,
+          changedFields: ['passwordHash'],
+        });
         return jsonResponse(200, { message_key: 'auth.password_changed' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
@@ -459,6 +502,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.refresh.success');
+        const csrfToken = await buildCsrfToken(result.refreshToken);
         return jsonResponse(
           200,
           {
@@ -467,6 +511,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
               tokenType: result.tokenType,
               expiresIn: result.expiresIn,
               refreshExpiresIn: result.refreshExpiresIn,
+              csrfToken,
             },
           },
           logContext,

@@ -571,6 +571,7 @@ return jsonResponse(200, { data: result }, logContext);
      */
     async savePlantedTrees(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
@@ -607,6 +608,23 @@ return jsonResponse(200, { data: result }, logContext);
           { areaId: id, plantedByUserId: auth.userId, points },
         );
 
+        await requestAuditLog.log({
+          actorUserId: auth.userId,
+          action: 'area.trees_planted',
+          entityType: 'tree_planting',
+          entityId: id,
+          success: true,
+          httpStatus: 201,
+          severity: 'info',
+          category: ['compliance', 'data_modification'],
+          isSensitive: true,
+          newState: {
+            areaId: id,
+            plantedCount: points.length,
+          },
+          changedFields: ['points'],
+          resourceChanges: points.length,
+        });
         return jsonResponse(201, { message_key: 'area.trees_planted' }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -619,6 +637,7 @@ return jsonResponse(200, { data: result }, logContext);
      */
     async deletePlantedTrees(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
@@ -629,10 +648,32 @@ return jsonResponse(200, { data: result }, logContext);
         if (area.ownerUserId !== auth.userId && !auth.roles.includes('administrator')) {
           return jsonResponse(403, { message_key: 'auth.forbidden' }, logContext);
         }
+        const previousCount = await deps.treePlantingRepository.countByAreaId(id);
         await deletePlantedTrees(
           { treePlantingRepository: deps.treePlantingRepository },
           id,
         );
+        await requestAuditLog.log({
+          actorUserId: auth.userId,
+          action: 'area.trees_deleted',
+          entityType: 'tree_planting',
+          entityId: id,
+          success: true,
+          httpStatus: 200,
+          severity: 'warning',
+          category: ['compliance', 'data_modification'],
+          isSensitive: true,
+          previousState: {
+            areaId: id,
+            plantedCount: previousCount,
+          },
+          newState: {
+            areaId: id,
+            plantedCount: 0,
+          },
+          changedFields: ['deletedAt'],
+          resourceChanges: previousCount,
+        });
         return jsonResponse(200, { message_key: 'area.trees_deleted' }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -855,6 +896,7 @@ return jsonResponse(200, { data: result }, logContext);
      */
     async fetchSatelliteImage(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
@@ -881,6 +923,26 @@ return jsonResponse(200, { data: result }, logContext);
           },
         );
 
+        await requestAuditLog.log({
+          actorUserId: auth.userId,
+          action: 'area.satellite_image.fetched',
+          entityType: 'area_satellite_image',
+          entityId: result.id,
+          success: true,
+          httpStatus: 201,
+          severity: 'info',
+          category: ['compliance', 'data_modification'],
+          isSensitive: true,
+          newState: {
+            areaId: id,
+            sceneId: result.sceneId,
+            collection: result.collection,
+            captureDate: result.captureDate,
+            cloudCover: result.cloudCover,
+            isFallback: result.isFallback,
+          },
+          changedFields: ['satelliteImage'],
+        });
         return jsonResponse(201, { data: result, message_key: 'satellite.fetched' }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);

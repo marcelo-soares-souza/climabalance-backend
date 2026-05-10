@@ -7,6 +7,7 @@
     "start": "bun src/main.ts",
     "build": "bun x tsc -p tsconfig.json",
     "lint": "eslint .",
+    "audit": "bun audit",
     "typecheck": "bun x tsc --noEmit",
     "db:create": "bun src/scripts/create-db.ts",
     "seed:admin": "bun src/scripts/seed-admin.ts",

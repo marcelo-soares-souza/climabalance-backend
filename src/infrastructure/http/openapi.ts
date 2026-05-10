@@ -1801,6 +1801,7 @@ export function swaggerUiHandler(ctx: HttpContext): Response {
     status: 200,
     headers: {
       'content-type': 'text/html; charset=utf-8',
+      'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data:; font-src 'self' data: https://unpkg.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
     },
   });
 }

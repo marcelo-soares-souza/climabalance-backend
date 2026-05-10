@@ -85,6 +85,7 @@ describe('public sensitive data masking', () => {
   test('public user summary returns masked email only', async () => {
     const handlers = createUserHandlers({
       users: usersRepo,
+      auditLog: { log: async () => {} },
       passwordHasher: {} as any,
       profileAvatarStorage: {} as any,
       calculationRepository: {
@@ -113,6 +114,7 @@ describe('public sensitive data masking', () => {
   test('public user profile returns masked document only', async () => {
     const handlers = createUserHandlers({
       users: usersRepo,
+      auditLog: { log: async () => {} },
       passwordHasher: {} as any,
       profileAvatarStorage: {} as any,
       calculationRepository: {
@@ -144,6 +146,7 @@ describe('public sensitive data masking', () => {
   test('self user profile still returns real document', async () => {
     const handlers = createUserHandlers({
       users: usersRepo,
+      auditLog: { log: async () => {} },
       passwordHasher: {} as any,
       profileAvatarStorage: {} as any,
       calculationRepository: {
@@ -177,6 +180,7 @@ describe('public sensitive data masking', () => {
 
   test('self update rejects sensitive fields', async () => {
     let updateCalled = false;
+    const auditLogs: any[] = [];
     const handlers = createUserHandlers({
       users: {
         ...usersRepo,
@@ -185,6 +189,7 @@ describe('public sensitive data masking', () => {
           return user;
         },
       },
+      auditLog: { log: async (entry: any) => { auditLogs.push(entry); } },
       passwordHasher: {
         hash: async () => 'new-hash',
       } as any,
@@ -212,10 +217,21 @@ describe('public sensitive data masking', () => {
 
     expect(response.status).toBe(403);
     expect(updateCalled).toBe(false);
+    expect(auditLogs).toHaveLength(1);
+    expect(auditLogs[0]).toMatchObject({
+      action: 'user.update.forbidden_sensitive_self_update',
+      entityType: 'user',
+      entityId: user.id,
+      success: false,
+      httpStatus: 403,
+      isSensitive: true,
+    });
+    expect(auditLogs[0].changedFields).toEqual(['status']);
   });
 
   test('self update still allows locale', async () => {
     let updatedLocale: string | undefined;
+    const auditLogs: any[] = [];
     const handlers = createUserHandlers({
       users: {
         ...usersRepo,
@@ -224,6 +240,7 @@ describe('public sensitive data masking', () => {
           return { ...user, locale: input.locale ?? user.locale };
         },
       },
+      auditLog: { log: async (entry: any) => { auditLogs.push(entry); } },
       passwordHasher: {} as any,
       profileAvatarStorage: {} as any,
       calculationRepository: {
@@ -249,6 +266,23 @@ describe('public sensitive data masking', () => {
 
     expect(response.status).toBe(200);
     expect(updatedLocale).toBe('en');
+    expect(auditLogs).toHaveLength(1);
+    expect(auditLogs[0]).toMatchObject({
+      action: 'user.updated',
+      entityType: 'user',
+      entityId: user.id,
+      success: true,
+      isSensitive: true,
+      previousState: {
+        emailMasked: 'ma***@example.com',
+        locale: 'pt-BR',
+      },
+      newState: {
+        emailMasked: 'ma***@example.com',
+        locale: 'en',
+      },
+    });
+    expect(auditLogs[0].changedFields).toEqual(['locale']);
   });
 
   test('public area detail returns masked owner email only', async () => {

@@ -268,6 +268,14 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
       conditions.push(`al.entity_id = $${index++}`);
       values.push(filters.entityId);
     }
+    if (filters.severity) {
+      conditions.push(`al.severity = $${index++}`);
+      values.push(filters.severity);
+    }
+    if (filters.isSensitive !== undefined) {
+      conditions.push(`al.is_sensitive = $${index++}`);
+      values.push(filters.isSensitive);
+    }
 
     const limit = filters.limit ?? 50;
     const offset = filters.offset ?? 0;

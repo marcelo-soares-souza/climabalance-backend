@@ -15,6 +15,8 @@ const listAuditLogQuerySchema = z.object({
   client_ip: z.string().trim().min(1).optional(),
   entity_type: z.string().trim().min(1).optional(),
   entity_id: z.string().trim().min(1).optional(),
+  severity: z.enum(['debug', 'info', 'warning', 'error', 'critical']).optional(),
+  is_sensitive: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().min(1).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -39,6 +41,8 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
             clientIp: query.client_ip,
             entityType: query.entity_type,
             entityId: query.entity_id,
+            severity: query.severity,
+            isSensitive: query.is_sensitive,
             limit: query.limit,
             offset: query.offset
           },

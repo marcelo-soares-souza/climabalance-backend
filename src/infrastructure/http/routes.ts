@@ -16,7 +16,7 @@ import { createContactHandlers, type ContactHandlersDeps } from './contact-handl
 import type { StatsHandlersDeps } from './stats-handlers';
 import type { StripeConnectHandlersDeps } from './stripe-connect-handlers';
 import { openApiJsonHandler, swaggerUiHandler } from './openapi';
-import { withAuth, withOptionalAuth } from './auth';
+import { withAuth, withCookieCsrf, withOptionalAuth } from './auth';
 import type { AuthHandlersDeps } from './auth-handlers';
 import type { AuditHandlersDeps } from './audit-handlers';
 import type { UserHandlersDeps } from './user-handlers';
@@ -116,8 +116,8 @@ export function buildRouter(
   addRoute('POST', '/api/v1/auth/password-reset/request', 'auth', (ctx) => authHandlers.requestPasswordReset(ctx));
   addRoute('POST', '/api/v1/auth/password-reset/confirm', 'auth', (ctx) => authHandlers.resetPassword(ctx));
   addRoute('POST', '/api/v1/users/change-password', 'protected', withAuth((ctx) => authHandlers.changePassword(ctx)));
-  addRoute('POST', '/api/v1/auth/refresh', 'auth', (ctx) => authHandlers.refresh(ctx));
-  addRoute('POST', '/api/v1/auth/revoke', 'auth', (ctx) => authHandlers.revoke(ctx));
+  addRoute('POST', '/api/v1/auth/refresh', 'auth', withCookieCsrf((ctx) => authHandlers.refresh(ctx)));
+  addRoute('POST', '/api/v1/auth/revoke', 'auth', withCookieCsrf((ctx) => authHandlers.revoke(ctx)));
   addRoute('GET', '/api/v1/auth/sessions', 'protected', withAuth((ctx) => authHandlers.listSessions(ctx)));
   addRoute('DELETE', '/api/v1/auth/sessions/:id', 'protected', withAuth((ctx) => authHandlers.revokeSession(ctx)));
   addRoute('DELETE', '/api/v1/auth/sessions', 'protected', withAuth((ctx) => authHandlers.revokeAllSessions(ctx)));

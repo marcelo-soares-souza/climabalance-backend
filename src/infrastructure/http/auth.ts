@@ -4,9 +4,7 @@ import { type JwtPayload, verifyJwt } from '../crypto/jwt';
 import { errorResponse } from '../../shared/http/response';
 import { getLogger } from '../../shared/utils/logger';
 import { buildLogContext } from '../../shared/http/log-context';
-
-const CSRF_HEADER = 'x-requested-by';
-const CSRF_EXPECTED = 'clm-balance';
+import { verifyRequestCsrfToken } from '../../shared/http/csrf';
 
 function getToken(request: Request): string | null {
   const header = request.headers.get('authorization');
@@ -19,16 +17,21 @@ function getToken(request: Request): string | null {
 function requireCsrfCheck(request: Request): boolean {
   const method = request.method;
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return false;
+  const path = new URL(request.url).pathname;
+  if (
+    path.startsWith('/api/v1/auth/login') ||
+    path.startsWith('/api/v1/auth/register') ||
+    path.startsWith('/api/v1/auth/confirm-email') ||
+    path.startsWith('/api/v1/auth/password-reset') ||
+    path.startsWith('/api/v1/auth/human-check')
+  ) {
+    return false;
+  }
   const contentType = request.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) return false;
   const cookie = request.headers.get('cookie');
   if (!cookie || !cookie.includes(env.refreshCookieName)) return false;
   return true;
-}
-
-function isValidCsrf(request: Request): boolean {
-  const header = request.headers.get(CSRF_HEADER);
-  return header === CSRF_EXPECTED;
 }
 
 function isValidAuthPayload(payload: JwtPayload): boolean {
@@ -43,7 +46,7 @@ export function withAuth(handler: Handler, options?: { roles?: string[] }): Hand
     const logContext = buildLogContext(ctx);
     const log = getLogger(logContext);
 
-    if (requireCsrfCheck(ctx.request) && !isValidCsrf(ctx.request)) {
+    if (requireCsrfCheck(ctx.request) && !(await verifyRequestCsrfToken(ctx.request))) {
       log.warn('auth.csrf_missing');
       return errorResponse(400, 'request.csrf_required', undefined, logContext);
     }
@@ -74,12 +77,26 @@ export function withAuth(handler: Handler, options?: { roles?: string[] }): Hand
   };
 }
 
+export function withCookieCsrf(handler: Handler): Handler {
+  return async (ctx: HttpContext) => {
+    const logContext = buildLogContext(ctx);
+    const log = getLogger(logContext);
+
+    if (requireCsrfCheck(ctx.request) && !(await verifyRequestCsrfToken(ctx.request))) {
+      log.warn('auth.csrf_missing');
+      return errorResponse(400, 'request.csrf_required', undefined, logContext);
+    }
+
+    return handler(ctx);
+  };
+}
+
 export function withOptionalAuth(handler: Handler): Handler {
   return async (ctx: HttpContext) => {
     const logContext = buildLogContext(ctx);
     const log = getLogger(logContext);
 
-    if (requireCsrfCheck(ctx.request) && !isValidCsrf(ctx.request)) {
+    if (requireCsrfCheck(ctx.request) && !(await verifyRequestCsrfToken(ctx.request))) {
       log.warn('auth.csrf_missing');
       return errorResponse(400, 'request.csrf_required', undefined, logContext);
     }

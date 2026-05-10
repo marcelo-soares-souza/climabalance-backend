@@ -1,4 +1,5 @@
 import type { UserRepository } from '../../domain/user/user-repository';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { PasswordHasher } from '../crypto/password';
 import type { HttpContext } from '../../shared/http/router';
 import { parseJson } from '../../shared/http/request';
@@ -13,6 +14,7 @@ import { uuidv7 } from '../../shared/utils/id';
 import { getLogger } from '../../shared/utils/logger';
 import { listUsersQuerySchema, updateUserSchema, upsertProfileSchema, uploadProfileAvatarSchema, parseWithSchema } from './schemas';
 import { buildLogContext } from '../../shared/http/log-context';
+import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 import { parseQueryWithSchema } from './schemas/validation-helper';
 import type { LocalProfileAvatarStorage } from '../storage/local-profile-avatar-storage';
 import { z } from 'zod';
@@ -24,6 +26,7 @@ import {
 
 export type UserHandlersDeps = {
   users: UserRepository;
+  auditLog: Pick<AuditLogRepository, 'log'>;
   passwordHasher: PasswordHasher;
   profileAvatarStorage: LocalProfileAvatarStorage;
   calculationRepository: {
@@ -259,6 +262,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
     update: async (ctx: HttpContext, userId: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
@@ -273,6 +277,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
 
         const validated = parseWithSchema(updateUserSchema, body);
         const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
+        const changedFields = changedKeys(validated);
         const hasSensitiveSelfUpdate =
           validated.email !== undefined ||
           validated.password !== undefined ||
@@ -280,9 +285,23 @@ export function createUserHandlers(deps: UserHandlersDeps) {
 
         if (!isAdmin && hasSensitiveSelfUpdate) {
           log.warn('user.update.forbidden_sensitive_self_update', { user_id: userId });
+          await requestAuditLog.log({
+            actorUserId: ctx.auth?.userId ?? 'anonymous',
+            action: 'user.update.forbidden_sensitive_self_update',
+            entityType: 'user',
+            entityId: userId,
+            success: false,
+            errorCode: 'AUTH_FORBIDDEN',
+            httpStatus: 403,
+            severity: 'warning',
+            category: ['security', 'user_management'],
+            isSensitive: true,
+            changedFields,
+          });
           return errorResponse(403, 'auth.forbidden', undefined, logContext);
         }
 
+        const previousUser = await deps.users.findById(userId);
         const user = await updateUser(
           {
             id: userId,
@@ -295,6 +314,20 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         );
 
         log.info('user.update', { user_id: userId });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: 'user.updated',
+          entityType: 'user',
+          entityId: userId,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['user_management', 'data_modification'],
+          isSensitive: true,
+          previousState: previousUser ? summarizeUserForAudit(previousUser) : undefined,
+          newState: summarizeUserForAudit(user),
+          changedFields,
+        });
         return jsonResponse(
           200,
           {
@@ -310,14 +343,30 @@ export function createUserHandlers(deps: UserHandlersDeps) {
     remove: async (ctx: HttpContext, userId: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
           return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
         }
         userId = resolvedUserId;
+        const previousUser = await deps.users.findById(userId);
         await deleteUser(userId, { users: deps.users });
         log.warn('user.deleted', { user_id: userId });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: 'user.deleted',
+          entityType: 'user',
+          entityId: userId,
+          success: true,
+          httpStatus: 200,
+          severity: 'warning',
+          category: ['user_management', 'data_modification'],
+          isSensitive: true,
+          previousState: previousUser ? summarizeUserForAudit(previousUser) : undefined,
+          newState: { deleted: true },
+          changedFields: ['deletedAt'],
+        });
         return jsonResponse(200, { data: { id: userId } }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
@@ -327,6 +376,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
     createProfile: async (ctx: HttpContext, userId: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
@@ -340,6 +390,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         }
 
         const validated = parseWithSchema(upsertProfileSchema, body);
+        const previousProfile = await deps.users.getProfile(userId);
 
         const profile = {
           id: uuidv7(),
@@ -369,6 +420,20 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         const profileResult = await deps.users.upsertProfile(userId, profile);
 
         log.info('user.profile.upsert', { user_id: userId });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: 'user.profile.upserted',
+          entityType: 'user_profile',
+          entityId: profileResult.id,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['user_management', 'data_modification', 'privacy'],
+          isSensitive: true,
+          previousState: previousProfile ? summarizeProfileForAudit(previousProfile) : undefined,
+          newState: summarizeProfileForAudit(profileResult),
+          changedFields: changedKeys(validated),
+        });
         return jsonResponse(
           200,
           {
@@ -409,6 +474,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
     uploadAvatar: async (ctx: HttpContext, userId: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
@@ -452,6 +518,20 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         });
 
         log.info('user.profile.avatar.uploaded', { user_id: userId });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: 'user.profile.avatar.uploaded',
+          entityType: 'user_profile',
+          entityId: existingProfile?.id ?? userId,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['user_management', 'data_modification', 'privacy'],
+          isSensitive: true,
+          previousState: { hasAvatar: Boolean(existingProfile?.avatarPath) },
+          newState: { hasAvatar: true },
+          changedFields: ['avatarPath'],
+        });
         return jsonResponse(
           200,
           {
@@ -494,5 +574,51 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         return handleError(error, log, logContext);
       }
     },
+  };
+}
+
+function changedKeys(value: Record<string, unknown>): string[] {
+  return Object.keys(value).filter((key) => value[key] !== undefined);
+}
+
+function summarizeUserForAudit(user: {
+  email: string;
+  status: string;
+  locale: string;
+  emailConfirmedAt?: Date | null;
+  deletedAt?: Date | null;
+}): Record<string, unknown> {
+  return {
+    emailMasked: maskEmail(user.email),
+    status: user.status,
+    locale: user.locale,
+    emailConfirmed: Boolean(user.emailConfirmedAt),
+    deleted: Boolean(user.deletedAt),
+  };
+}
+
+function summarizeProfileForAudit(profile: {
+  displayName?: string | null;
+  documentType?: string | null;
+  documentNumber?: string | null;
+  birthDate?: string | null;
+  phone?: string | null;
+  countryCode?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  addressCountry?: string | null;
+  avatarPath?: string | null;
+}): Record<string, unknown> {
+  return {
+    hasDisplayName: Boolean(profile.displayName),
+    documentType: profile.documentType ?? null,
+    hasDocumentNumber: Boolean(profile.documentNumber),
+    hasBirthDate: Boolean(profile.birthDate),
+    hasPhone: Boolean(profile.phone),
+    countryCode: profile.countryCode ?? null,
+    addressCity: profile.addressCity ?? null,
+    addressState: profile.addressState ?? null,
+    addressCountry: profile.addressCountry ?? null,
+    hasAvatar: Boolean(profile.avatarPath),
   };
 }

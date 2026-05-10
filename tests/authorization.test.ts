@@ -19,7 +19,8 @@ import { Biome } from '../src/domain/areas/value-objects/biome';
 import { listAreas } from '../src/application/areas/list-areas';
 import { AreaMediaRepository } from '../src/domain/areas/repositories/area-media-repository';
 import { signJwt } from '../src/infrastructure/crypto/jwt';
-import { withAuth } from '../src/infrastructure/http/auth';
+import { withAuth, withCookieCsrf } from '../src/infrastructure/http/auth';
+import { buildCsrfToken } from '../src/shared/http/csrf';
 import { env } from '../src/shared/utils/env';
 import type { AreaRepository, AreaFilters } from '../src/domain/areas/repositories/area-repository';
 
@@ -238,12 +239,15 @@ describe('Authorization - withAuth middleware (unit)', () => {
     );
   }
 
-  function makeCtx(token?: string): any {
+  function makeCtx(token?: string, init?: { method?: string; headers?: Record<string, string> }): any {
     return {
       request: {
         url: 'http://localhost/api/v1/test',
-        headers: new Headers(token ? { authorization: `Bearer ${token}` } : {}),
-        method: 'GET',
+        headers: new Headers({
+          ...(token ? { authorization: `Bearer ${token}` } : {}),
+          ...init?.headers,
+        }),
+        method: init?.method ?? 'GET',
       },
       params: {},
       auth: undefined,
@@ -287,15 +291,88 @@ describe('Authorization - withAuth middleware (unit)', () => {
   });
 
   test('allow request with valid token', async () => {
-const token = await makeToken(['individual']);
+    const token = await makeToken(['individual']);
     const handler = withAuth(successHandler);
     const ctx = makeCtx(token);
     const response = await handler(ctx);
     expect(response.status).toBe(200);
   });
 
+  test('reject mutating cookie request without dynamic csrf token', async () => {
+    const token = await makeToken(['individual']);
+    const handler = withAuth(successHandler);
+    const ctx = makeCtx(token, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${env.refreshCookieName}=refresh-token-1`,
+      },
+    });
+    const response = await handler(ctx);
+    expect(response.status).toBe(400);
+  });
+
+  test('reject mutating cookie request with csrf token from another refresh token', async () => {
+    const token = await makeToken(['individual']);
+    const handler = withAuth(successHandler);
+    const ctx = makeCtx(token, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${env.refreshCookieName}=refresh-token-1`,
+        'x-csrf-token': await buildCsrfToken('another-refresh-token'),
+      },
+    });
+    const response = await handler(ctx);
+    expect(response.status).toBe(400);
+  });
+
+  test('allow mutating cookie request with dynamic csrf token', async () => {
+    const token = await makeToken(['individual']);
+    const refreshToken = 'refresh-token-1';
+    const handler = withAuth(successHandler);
+    const ctx = makeCtx(token, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${env.refreshCookieName}=${refreshToken}`,
+        'x-csrf-token': await buildCsrfToken(refreshToken),
+      },
+    });
+    const response = await handler(ctx);
+    expect(response.status).toBe(200);
+  });
+
+  test('reject public cookie refresh request without dynamic csrf token', async () => {
+    const handler = withCookieCsrf(successHandler);
+    const ctx = makeCtx(undefined, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${env.refreshCookieName}=refresh-token-1`,
+      },
+    });
+    const response = await handler(ctx);
+    expect(response.status).toBe(400);
+  });
+
+  test('allow public cookie refresh request with dynamic csrf token', async () => {
+    const refreshToken = 'refresh-token-1';
+    const handler = withCookieCsrf(successHandler);
+    const ctx = makeCtx(undefined, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie: `${env.refreshCookieName}=${refreshToken}`,
+        'x-csrf-token': await buildCsrfToken(refreshToken),
+      },
+    });
+    const response = await handler(ctx);
+    expect(response.status).toBe(200);
+  });
+
   test('reject request with wrong role (403)', async () => {
-const token = await makeToken(['individual']);
+    const token = await makeToken(['individual']);
     const handler = withAuth(successHandler, { roles: ['administrator'] });
     const ctx = makeCtx(token);
     const response = await handler(ctx);
@@ -303,7 +380,7 @@ const token = await makeToken(['individual']);
   });
 
   test('allow admin to access admin route', async () => {
-const token = await makeToken(['administrator']);
+    const token = await makeToken(['administrator']);
     const handler = withAuth(successHandler, { roles: ['administrator'] });
     const ctx = makeCtx(token);
     const response = await handler(ctx);
@@ -311,7 +388,7 @@ const token = await makeToken(['administrator']);
   });
 
   test('allow analyst to access analyst/admin route', async () => {
-const token = await makeToken(['analyst']);
+    const token = await makeToken(['analyst']);
     const handler = withAuth(successHandler, { roles: ['analyst', 'administrator'] });
     const ctx = makeCtx(token);
     const response = await handler(ctx);
@@ -319,7 +396,7 @@ const token = await makeToken(['analyst']);
   });
 
   test('reject producer from analyst route (403)', async () => {
-const token = await makeToken(['producer']);
+    const token = await makeToken(['producer']);
     const handler = withAuth(successHandler, { roles: ['analyst', 'administrator'] });
     const ctx = makeCtx(token);
     const response = await handler(ctx);
@@ -327,7 +404,7 @@ const token = await makeToken(['producer']);
   });
 
   test('reject individual from producer route (403)', async () => {
-const token = await makeToken(['individual']);
+    const token = await makeToken(['individual']);
     const handler = withAuth(successHandler, { roles: ['producer', 'administrator'] });
     const ctx = makeCtx(token);
     const response = await handler(ctx);
@@ -335,7 +412,7 @@ const token = await makeToken(['individual']);
   });
 
   test('allow request with no role restriction', async () => {
-const token = await makeToken(['individual']);
+    const token = await makeToken(['individual']);
     const handler = withAuth(successHandler);
     const ctx = makeCtx(token);
     const response = await handler(ctx);

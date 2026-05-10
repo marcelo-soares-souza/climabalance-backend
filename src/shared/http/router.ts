@@ -259,4 +259,17 @@ function applySecurityHeaders(headers: Headers): void {
   headers.set('x-frame-options', 'DENY');
   headers.set('referrer-policy', 'strict-origin-when-cross-origin');
   headers.set('cross-origin-resource-policy', 'cross-origin');
+  headers.set(
+    'permissions-policy',
+    'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()'
+  );
+  if (!headers.has('content-security-policy')) {
+    headers.set(
+      'content-security-policy',
+      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    );
+  }
+  if (env.appEnv === 'production' || env.appEnv === 'staging') {
+    headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
+  }
 }

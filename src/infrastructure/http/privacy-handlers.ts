@@ -1,5 +1,6 @@
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { ConsentRepository } from '../../domain/user/consent-repository';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { HttpContext } from '../../shared/http/router';
 import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
@@ -7,6 +8,7 @@ import { handleError } from './error-mapper';
 import { exportUserData } from '../../application/users/export-user-data';
 import { getLogger } from '../../shared/utils/logger';
 import { buildLogContext } from '../../shared/http/log-context';
+import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
 import { parseWithSchema } from './schemas';
 import { uuidv7 } from '../../shared/utils/id';
 import { z } from 'zod';
@@ -14,6 +16,7 @@ import { z } from 'zod';
 export type PrivacyHandlersDeps = {
   users: UserRepository;
   consents: ConsentRepository;
+  auditLog: Pick<AuditLogRepository, 'log'>;
   compensationHistoryRepository: {
     getPaidContributionSummaryBySupporter(userId: string): Promise<{
       estimatedOffsetTCO2e: number;
@@ -69,6 +72,7 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
     exportData: async (ctx: HttpContext, userId: string) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!uuidRegex.test(userId)) {
@@ -92,6 +96,17 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
           calculationRepository: deps.calculationRepository,
         });
         log.info('privacy.data_export', { user_id: userId });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: 'privacy.data_exported',
+          entityType: 'user',
+          entityId: userId,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['privacy', 'data_access'],
+          isSensitive: true,
+        });
         return jsonResponse(200, { data }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
@@ -101,6 +116,7 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
     createSubjectRequest: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const userId = ctx.auth!.userId;
         const body = await parseJson(ctx.request, ctx);
@@ -120,6 +136,23 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
         log.info('privacy.subject_request.created', {
           user_id: userId,
           request_type: validated.request_type,
+        });
+        await requestAuditLog.log({
+          actorUserId: userId,
+          action: 'privacy.subject_request.created',
+          entityType: 'privacy_subject_request',
+          entityId: request.id,
+          success: true,
+          httpStatus: 201,
+          severity: 'info',
+          category: ['privacy', 'data_modification'],
+          isSensitive: true,
+          newState: {
+            requestType: request.requestType,
+            status: request.status,
+            hasDetails: Boolean(request.details),
+          },
+          changedFields: ['requestType', 'status', 'details'],
         });
 
         return jsonResponse(201, {
@@ -161,6 +194,7 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
     recordCookieConsent: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const userId = ctx.auth!.userId;
         const body = await parseJson(ctx.request, ctx);
@@ -182,6 +216,22 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
           user_id: userId,
           consent_type: validated.consent_type,
           consented: validated.consented,
+        });
+        await requestAuditLog.log({
+          actorUserId: userId,
+          action: 'privacy.cookie_consent.recorded',
+          entityType: 'user_consent',
+          entityId: consent.id,
+          success: true,
+          httpStatus: 201,
+          severity: 'info',
+          category: ['privacy', 'data_modification'],
+          isSensitive: true,
+          newState: {
+            consentType: consent.consentType,
+            consented: consent.consented,
+          },
+          changedFields: ['consentType', 'consented'],
         });
 
         return jsonResponse(201, {

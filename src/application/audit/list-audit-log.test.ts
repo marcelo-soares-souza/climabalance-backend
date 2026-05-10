@@ -37,11 +37,11 @@ describe('listAuditLog', () => {
     const repo = new SpyAuditLogRepository(entries);
 
     const result = await listAuditLog(
-      { actorUserId: 'user-1', actorEmail: 'john@test.com', action: 'update', clientIp: '192.168.', entityType: 'user', limit: 10, offset: 0 },
+      { actorUserId: 'user-1', actorEmail: 'john@test.com', action: 'update', clientIp: '192.168.', entityType: 'user', severity: 'warning', isSensitive: true, limit: 10, offset: 0 },
       { auditLog: repo }
     );
 
     expect(result).toEqual(entries);
-    expect(repo.lastFilters).toEqual({ actorUserId: 'user-1', actorEmail: 'john@test.com', action: 'update', clientIp: '192.168.', entityType: 'user', limit: 10, offset: 0 });
+    expect(repo.lastFilters).toEqual({ actorUserId: 'user-1', actorEmail: 'john@test.com', action: 'update', clientIp: '192.168.', entityType: 'user', severity: 'warning', isSensitive: true, limit: 10, offset: 0 });
   });
 });
