@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test';
+import sharp from 'sharp';
 import { Area } from '../src/domain/areas/entities/area';
 import { Location } from '../src/domain/areas/value-objects/location';
 import { AreaStatus } from '../src/domain/areas/value-objects/area-status';
@@ -138,6 +139,29 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
 
 const now = new Date('2026-02-07T00:00:00Z');
 
+async function buildPngBase64(): Promise<string> {
+  const image = await sharp({
+    create: {
+      width: 1,
+      height: 1,
+      channels: 3,
+      background: '#2f855a',
+    },
+  }).png().toBuffer();
+  return image.toString('base64');
+}
+
+function buildMp4Base64(): string {
+  return Buffer.from([
+    0x00, 0x00, 0x00, 0x18,
+    0x66, 0x74, 0x79, 0x70,
+    0x69, 0x73, 0x6f, 0x6d,
+    0x00, 0x00, 0x02, 0x00,
+    0x69, 0x73, 0x6f, 0x6d,
+    0x69, 0x73, 0x6f, 0x32,
+  ]).toString('base64');
+}
+
 describe('area media flow', () => {
   let areaRepository: MemoryAreaRepository;
   let areaMediaRepository: MemoryAreaMediaRepository;
@@ -196,9 +220,9 @@ describe('area media flow', () => {
         actorRoles: ['producer'],
         mediaType: 'photo',
         description: 'Vista frontal da área com árvores nativas',
-        mimeType: 'image/jpeg',
-        fileName: 'evidence.jpg',
-        fileBase64: Buffer.from('hello world').toString('base64'),
+        mimeType: 'image/png',
+        fileName: 'evidence.png',
+        fileBase64: await buildPngBase64(),
       }
     );
 
@@ -206,6 +230,7 @@ describe('area media flow', () => {
     expect(areaMediaStorage.lastSavedPath).toBe('memory://owner-1/media-1');
     const savedMedia = await areaMediaRepository.findById(upload.id);
     expect(savedMedia?.storagePath).toBe('memory://owner-1/media-1');
+    expect(savedMedia?.mimeType).toBe('image/webp');
 
     const listed = await listAreaMedia(
       {
@@ -219,7 +244,7 @@ describe('area media flow', () => {
       }
     );
     expect(listed.length).toBe(1);
-    expect(listed[0].fileName).toBe('evidence.jpg');
+    expect(listed[0].fileName).toBe('evidence.png');
     expect(listed[0].description).toBe('Vista frontal da área com árvores nativas');
 
     const file = await getAreaMediaFile(
@@ -234,8 +259,9 @@ describe('area media flow', () => {
         actorRoles: ['producer'],
       }
     );
-    expect(file.mimeType).toBe('image/jpeg');
-    expect(Buffer.from(file.bytes).toString('utf-8')).toBe('hello world');
+    expect(file.mimeType).toBe('image/webp');
+    expect(Buffer.from(file.bytes.slice(0, 4)).toString('ascii')).toBe('RIFF');
+    expect(Buffer.from(file.bytes.slice(8, 12)).toString('ascii')).toBe('WEBP');
 
     await deleteAreaMedia(
       {
@@ -321,7 +347,7 @@ describe('area media flow', () => {
         mediaType: 'video',
         mimeType: 'video/mp4',
         fileName: 'walkthrough.mp4',
-        fileBase64: Buffer.from('video').toString('base64'),
+        fileBase64: buildMp4Base64(),
       }
     );
 
@@ -347,6 +373,132 @@ describe('area media flow', () => {
         mediaId: upload.id,
       }
     );
-    expect(Buffer.from(file.bytes).toString('utf-8')).toBe('video');
+    expect(Buffer.from(file.bytes.slice(4, 8)).toString('ascii')).toBe('ftyp');
+  });
+
+  test('public cannot list or read media from draft area', async () => {
+    const upload = await uploadAreaMedia(
+      {
+        areaRepository,
+        areaMediaRepository,
+        areaMediaStorage,
+        idGenerator: {
+          generate: () => `media-${++ids}`,
+        },
+        clock: {
+          now: () => now,
+        },
+        auditLog: {
+          async log() {},
+        },
+      },
+      {
+        areaId: 'area-1',
+        actorUserId: 'owner-1',
+        actorRoles: ['producer'],
+        mediaType: 'photo',
+        mimeType: 'image/png',
+        fileName: 'draft.png',
+        fileBase64: await buildPngBase64(),
+      }
+    );
+
+    await expect(
+      listAreaMedia(
+        {
+          areaRepository,
+          areaMediaRepository,
+        },
+        {
+          areaId: 'area-1',
+        }
+      )
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+    await expect(
+      getAreaMediaFile(
+        {
+          areaRepository,
+          areaMediaRepository,
+          areaMediaStorage,
+        },
+        {
+          mediaId: upload.id,
+        }
+      )
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
+
+  test('analyst can read media from draft area', async () => {
+    const upload = await uploadAreaMedia(
+      {
+        areaRepository,
+        areaMediaRepository,
+        areaMediaStorage,
+        idGenerator: {
+          generate: () => `media-${++ids}`,
+        },
+        clock: {
+          now: () => now,
+        },
+        auditLog: {
+          async log() {},
+        },
+      },
+      {
+        areaId: 'area-1',
+        actorUserId: 'owner-1',
+        actorRoles: ['producer'],
+        mediaType: 'photo',
+        mimeType: 'image/png',
+        fileName: 'draft.png',
+        fileBase64: await buildPngBase64(),
+      }
+    );
+
+    const file = await getAreaMediaFile(
+      {
+        areaRepository,
+        areaMediaRepository,
+        areaMediaStorage,
+      },
+      {
+        mediaId: upload.id,
+        actorUserId: 'analyst-1',
+        actorRoles: ['analyst'],
+      }
+    );
+
+    expect(file.mimeType).toBe('image/webp');
+  });
+
+  test('upload rejects declared image mime type that does not match file signature', async () => {
+    await expect(
+      uploadAreaMedia(
+        {
+          areaRepository,
+          areaMediaRepository,
+          areaMediaStorage,
+          idGenerator: {
+            generate: () => `media-${++ids}`,
+          },
+          clock: {
+            now: () => now,
+          },
+          auditLog: {
+            async log() {},
+          },
+        },
+        {
+          areaId: 'area-1',
+          actorUserId: 'owner-1',
+          actorRoles: ['producer'],
+          mediaType: 'photo',
+          mimeType: 'image/png',
+          fileName: 'fake.png',
+          fileBase64: Buffer.from('not an image').toString('base64'),
+        }
+      )
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 });

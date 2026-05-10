@@ -807,7 +807,7 @@ return jsonResponse(200, { data: result }, logContext);
           headers: {
             'content-type': file.mimeType,
             'cache-control': 'public, max-age=3600',
-            'content-disposition': contentDispositionHeader('inline', file.fileName),
+            'content-disposition': contentDispositionHeader(resolveMediaDisposition(file.mimeType), file.fileName),
           },
         });
       } catch (error) {
@@ -960,4 +960,8 @@ return jsonResponse(200, { data: result }, logContext);
       }
     },
   };
+}
+
+function resolveMediaDisposition(mimeType: string): 'inline' | 'attachment' {
+  return mimeType.startsWith('image/') ? 'inline' : 'attachment';
 }
