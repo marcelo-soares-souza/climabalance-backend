@@ -272,6 +272,16 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         }
 
         const validated = parseWithSchema(updateUserSchema, body);
+        const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
+        const hasSensitiveSelfUpdate =
+          validated.email !== undefined ||
+          validated.password !== undefined ||
+          validated.status !== undefined;
+
+        if (!isAdmin && hasSensitiveSelfUpdate) {
+          log.warn('user.update.forbidden_sensitive_self_update', { user_id: userId });
+          return errorResponse(403, 'auth.forbidden', undefined, logContext);
+        }
 
         const user = await updateUser(
           {

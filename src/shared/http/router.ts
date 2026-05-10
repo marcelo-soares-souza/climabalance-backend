@@ -63,7 +63,8 @@ export class Router {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
     const requestId = uuidv7();
-    const clientIp = getForwardedClientIp(request) ?? options?.clientIp;
+    const directClientIp = options?.clientIp;
+    const clientIp = getForwardedClientIp(request, directClientIp) ?? directClientIp;
     const corsHeaders = buildCorsHeaders(request);
 
     if (method === 'OPTIONS') {
@@ -175,7 +176,9 @@ export class Router {
   }
 }
 
-function getForwardedClientIp(request: Request): string | undefined {
+function getForwardedClientIp(request: Request, directClientIp?: string): string | undefined {
+  if (!isTrustedProxy(directClientIp)) return undefined;
+
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim();
@@ -186,6 +189,13 @@ function getForwardedClientIp(request: Request): string | undefined {
   const cfIp = request.headers.get('cf-connecting-ip');
   if (cfIp) return cfIp;
   return undefined;
+}
+
+function isTrustedProxy(directClientIp?: string): boolean {
+  if (!directClientIp) return false;
+  if (env.appEnv === 'local' || env.appEnv === 'test') return true;
+  const trustedProxyIps = env.trustedProxyIps;
+  return trustedProxyIps.includes('*') || trustedProxyIps.includes(directClientIp);
 }
 
 function buildCorsHeaders(request: Request): Headers {

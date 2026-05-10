@@ -143,10 +143,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return errorResponse(400, 'auth.register.humanCheckInvalid', undefined, logContext);
         }
 
-        const ipAddress = ctx.request.headers.get('x-forwarded-for')
-          || ctx.request.headers.get('cf-connecting-ip')
-          || ctx.request.headers.get('x-real-ip')
-          || undefined;
+        const ipAddress = ctx.clientIp;
 
         const result = await registerUser(
           {

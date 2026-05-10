@@ -48,4 +48,62 @@ describe('audit request context propagation', () => {
 
     expect(capturedClientIp).toBe('198.51.100.7');
   });
+
+  it('ignores forwarded IP headers from untrusted proxies', async () => {
+    const previousAppEnv = process.env.APP_ENV;
+    const previousTrustedProxyIps = process.env.TRUSTED_PROXY_IPS;
+    process.env.APP_ENV = 'production';
+    process.env.TRUSTED_PROXY_IPS = '192.0.2.10';
+
+    try {
+      const router = new Router();
+      let capturedClientIp: string | undefined;
+
+      router.add('GET', '/ping', async (ctx) => {
+        capturedClientIp = ctx.clientIp;
+        return new Response('ok', { status: 200 });
+      });
+
+      await router.handle(
+        new Request('http://localhost/ping', {
+          headers: { 'x-forwarded-for': '203.0.113.99' },
+        }),
+        { clientIp: '198.51.100.7' },
+      );
+
+      expect(capturedClientIp).toBe('198.51.100.7');
+    } finally {
+      process.env.APP_ENV = previousAppEnv;
+      process.env.TRUSTED_PROXY_IPS = previousTrustedProxyIps;
+    }
+  });
+
+  it('uses forwarded IP headers from trusted proxies', async () => {
+    const previousAppEnv = process.env.APP_ENV;
+    const previousTrustedProxyIps = process.env.TRUSTED_PROXY_IPS;
+    process.env.APP_ENV = 'production';
+    process.env.TRUSTED_PROXY_IPS = '198.51.100.7';
+
+    try {
+      const router = new Router();
+      let capturedClientIp: string | undefined;
+
+      router.add('GET', '/ping', async (ctx) => {
+        capturedClientIp = ctx.clientIp;
+        return new Response('ok', { status: 200 });
+      });
+
+      await router.handle(
+        new Request('http://localhost/ping', {
+          headers: { 'x-forwarded-for': '203.0.113.99, 198.51.100.7' },
+        }),
+        { clientIp: '198.51.100.7' },
+      );
+
+      expect(capturedClientIp).toBe('203.0.113.99');
+    } finally {
+      process.env.APP_ENV = previousAppEnv;
+      process.env.TRUSTED_PROXY_IPS = previousTrustedProxyIps;
+    }
+  });
 });

@@ -175,7 +175,7 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
           userId,
           consentType: `cookie_${validated.consent_type}`,
           consented: validated.consented,
-          ipAddress: ctx.request.headers.get('x-forwarded-for') || ctx.request.headers.get('cf-connecting-ip') || undefined,
+          ipAddress: ctx.clientIp,
         });
 
         log.info('privacy.cookie_consent.recorded', {

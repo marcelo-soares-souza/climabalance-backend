@@ -33,7 +33,7 @@ describe('rate limit middleware', () => {
     const limiter = new InMemoryRateLimiter(makePolicies(2), () => now);
     const handler = withRateLimit(
       limiter,
-      { bucket: 'auth', routeKey: 'POST /api/v1/auth/login' },
+      { bucket: 'auth', routeKey: 'POST /api/v1/auth/login', distributed: false },
       async () => new Response(JSON.stringify({ data: 'ok' }), { status: 200 })
     );
     const ctx = makeCtx('http://localhost/api/v1/auth/login', 'POST', '127.0.0.1');
@@ -67,12 +67,12 @@ describe('rate limit middleware', () => {
     const limiter = new InMemoryRateLimiter(makePolicies(1), () => 1_000);
     const loginHandler = withRateLimit(
       limiter,
-      { bucket: 'auth', routeKey: 'POST /api/v1/auth/login' },
+      { bucket: 'auth', routeKey: 'POST /api/v1/auth/login', distributed: false },
       async () => new Response('ok', { status: 200 })
     );
     const refreshHandler = withRateLimit(
       limiter,
-      { bucket: 'auth', routeKey: 'POST /api/v1/auth/refresh' },
+      { bucket: 'auth', routeKey: 'POST /api/v1/auth/refresh', distributed: false },
       async () => new Response('ok', { status: 200 })
     );
 
@@ -88,7 +88,7 @@ describe('rate limit middleware', () => {
     const limiter = new InMemoryRateLimiter(makePolicies(1), () => 1_000);
     const handler = withRateLimit(
       limiter,
-      { bucket: 'protected', routeKey: 'GET /api/v1/users' },
+      { bucket: 'protected', routeKey: 'GET /api/v1/users', distributed: false },
       async () => new Response('ok', { status: 200 })
     );
 

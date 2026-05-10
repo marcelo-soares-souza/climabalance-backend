@@ -29,6 +29,7 @@ import type { CertificateHandlersDeps } from './certificate-handlers';
 import type { PaymentHandlersDeps } from './payment-handlers';
 import { errorResponse } from '../../shared/http/response';
 import { buildLogContext } from '../../shared/http/log-context';
+import { env } from '../../shared/utils/env';
 import {
   InMemoryRateLimiter,
   withRateLimit,
@@ -68,6 +69,7 @@ export function buildRouter(
   const contactHandlers = createContactHandlers(deps);
 
   const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const paymentSimulatorEnabled = env.appEnv === 'local' || env.appEnv === 'test';
 
   function withAuthOrSelf(handler: Handler): Handler {
     return withAuth(async (ctx: HttpContext) => {
@@ -258,12 +260,14 @@ export function buildRouter(
     'protected',
     withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id))
   );
-  addRoute(
-    'POST',
-    '/api/v1/payments/simulate',
-    'protected',
-    withAuth((ctx) => paymentHandlers.simulate(ctx))
-  );
+  if (paymentSimulatorEnabled) {
+    addRoute(
+      'POST',
+      '/api/v1/payments/simulate',
+      'protected',
+      withAuth((ctx) => paymentHandlers.simulate(ctx))
+    );
+  }
   addRoute(
     'POST',
     '/api/v1/payments/create-payment-intent',

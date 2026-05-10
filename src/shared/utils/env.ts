@@ -40,6 +40,7 @@ export type Env = {
   smtpPort?: number;
   smtpUsername?: string;
   smtpPassword?: string;
+  trustedProxyIps: string[];
 };
 
 const defaultBuildTimestampMs = Date.now();
@@ -220,5 +221,11 @@ export const env: Env = {
   },
   get smtpPassword() {
     return optionalEnv('SMTP_PASSWORD');
+  },
+  get trustedProxyIps() {
+    return (process.env.TRUSTED_PROXY_IPS ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
   },
 };

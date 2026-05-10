@@ -73,7 +73,11 @@ export class InMemoryRateLimiter {
   }
 }
 
-export async function consumeValkeyRateLimit(input: RateLimitInput, policies?: RateLimitPolicies): Promise<RateLimitDecision> {
+export async function consumeValkeyRateLimit(
+  input: RateLimitInput,
+  policies?: RateLimitPolicies,
+  fallbackLimiter: InMemoryRateLimiter = new InMemoryRateLimiter(policies)
+): Promise<RateLimitDecision> {
   const p = (policies ?? defaultRateLimitPolicies)[input.bucket];
   const key = `rl:${input.bucket}:${input.clientId}:${input.routeKey}`;
   try {
@@ -101,8 +105,8 @@ export async function consumeValkeyRateLimit(input: RateLimitInput, policies?: R
 
     return { allowed: true, limit: p.limit, remaining, resetAtMs, retryAfterSeconds: 0 };
   } catch {
-    // Fallback to in-memory on valkey failure
-    return new InMemoryRateLimiter().consume(input);
+    // Fallback to process-local memory when Valkey is temporarily unavailable.
+    return fallbackLimiter.consume(input);
   }
 }
 
@@ -139,12 +143,14 @@ export async function recordLoginAttempt(identifier: string, success: boolean): 
 
 export function withRateLimit(
   limiter: InMemoryRateLimiter,
-  options: { bucket: RateLimitBucket; routeKey: string },
+  options: { bucket: RateLimitBucket; routeKey: string; distributed?: boolean },
   handler: Handler
 ): Handler {
   return async (ctx: HttpContext) => {
     const input = { bucket: options.bucket, routeKey: options.routeKey, clientId: ctx.clientIp ?? 'unknown' };
-    const decision = limiter.consume(input);
+    const decision = options.distributed === false
+      ? limiter.consume(input)
+      : await consumeValkeyRateLimit(input, undefined, limiter);
     if (!decision.allowed) {
       const response = errorResponse(429, 'request.rate_limited', { retry_after_seconds: decision.retryAfterSeconds }, buildLogContext(ctx));
       return applyRateLimitHeaders(response, decision);
