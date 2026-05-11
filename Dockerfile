@@ -1,4 +1,6 @@
-FROM oven/bun:1.3.13
+FROM oven/bun:latest
+
+RUN apt-get update && apt-get install -y apache2-utils --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
