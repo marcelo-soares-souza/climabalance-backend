@@ -25,6 +25,8 @@ export interface AreaProps {
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
+  treeSpecies?: string;
+  externalLink?: string;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -55,6 +57,8 @@ export class Area {
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
+  treeSpecies?: string;
+  externalLink?: string;
   readonly createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;
@@ -80,6 +84,8 @@ export class Area {
     this.tCO2ePerTreePerYear = props.tCO2ePerTreePerYear;
     this.pricePerTree = props.pricePerTree;
     this.defaultHorizonYears = props.defaultHorizonYears;
+    this.treeSpecies = props.treeSpecies;
+    this.externalLink = props.externalLink;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
     this.deletedAt = props.deletedAt;
@@ -249,6 +255,8 @@ export class Area {
       tCO2ePerTreePerYear?: number;
       pricePerTree?: number;
       defaultHorizonYears?: number;
+      treeSpecies?: string;
+      externalLink?: string;
     },
     options?: { forceEdit?: boolean }
   ): void {
@@ -316,6 +324,14 @@ export class Area {
         throw new Error('Default horizon years must be positive');
       }
       this.defaultHorizonYears = updates.defaultHorizonYears;
+    }
+
+    if (updates.treeSpecies !== undefined) {
+      this.treeSpecies = updates.treeSpecies;
+    }
+
+    if (updates.externalLink !== undefined) {
+      this.externalLink = updates.externalLink;
     }
 
     this.updatedAt = new Date();

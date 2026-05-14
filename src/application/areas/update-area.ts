@@ -21,6 +21,8 @@ export interface UpdateAreaRequest {
   tCO2ePerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
+  treeSpecies?: string;
+  externalLink?: string;
   status?: string;
 }
 
@@ -68,6 +70,8 @@ export async function updateArea(
     updates.defaultHorizonYears = request.defaultHorizonYears;
   if (request.maxPurchasableTrees !== undefined)
     updates.maxPurchasableTrees = request.maxPurchasableTrees;
+  if (request.treeSpecies !== undefined) updates.treeSpecies = request.treeSpecies;
+  if (request.externalLink !== undefined) updates.externalLink = request.externalLink;
 
   if (request.latitude !== undefined && request.longitude !== undefined) {
     updates.location = new Location(request.latitude, request.longitude);

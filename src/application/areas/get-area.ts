@@ -33,6 +33,8 @@ export interface GetAreaResponse {
   estimatedKgCO2PerTreePerYear?: number;
   pricePerTree?: number;
   defaultHorizonYears?: number;
+  treeSpecies?: string;
+  externalLink?: string;
   createdAt: Date;
   updatedAt: Date;
   criteria?: Array<{
@@ -112,6 +114,8 @@ export async function getArea(
         : undefined,
     pricePerTree: area.pricePerTree,
     defaultHorizonYears: area.defaultHorizonYears,
+    treeSpecies: area.treeSpecies,
+    externalLink: area.externalLink,
     createdAt: area.createdAt,
     updatedAt: area.updatedAt,
     criteria: criteria.map((c) => ({

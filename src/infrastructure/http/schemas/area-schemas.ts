@@ -22,6 +22,10 @@ export const createAreaSchema = z.object({
   price_per_tree: z.number().positive().optional(),
   defaultHorizonYears: z.number().int().positive().optional(),
   default_horizon_years: z.number().int().positive().optional(),
+  treeSpecies: z.string().max(2000).optional(),
+  tree_species: z.string().max(2000).optional(),
+  externalLink: z.string().url().max(2048).optional(),
+  external_link: z.string().url().max(2048).optional(),
 }).transform((data) => ({
   name: data.name,
   description: data.description,
@@ -35,6 +39,8 @@ export const createAreaSchema = z.object({
   tCO2ePerTreePerYear: data.tCO2ePerTreePerYear ?? data.t_co2e_per_tree_per_year,
   pricePerTree: data.pricePerTree ?? data.price_per_tree,
   defaultHorizonYears: data.defaultHorizonYears ?? data.default_horizon_years,
+  treeSpecies: data.treeSpecies ?? data.tree_species,
+  externalLink: data.externalLink ?? data.external_link,
 }));
 
 export type CreateAreaRequest = z.infer<typeof createAreaSchema>;
@@ -64,6 +70,10 @@ export const updateAreaSchema = z.object({
   default_horizon_years: z.number().int().positive().optional(),
   maxPurchasableTrees: z.number().int().positive().nullable().optional(),
   max_purchasable_trees: z.number().int().positive().nullable().optional(),
+  treeSpecies: z.string().max(2000).optional(),
+  tree_species: z.string().max(2000).optional(),
+  externalLink: z.string().url().max(2048).optional(),
+  external_link: z.string().url().max(2048).optional(),
 }).transform((data) => ({
   name: data.name,
   description: data.description,
@@ -79,6 +89,8 @@ export const updateAreaSchema = z.object({
   pricePerTree: data.pricePerTree ?? data.price_per_tree,
   defaultHorizonYears: data.defaultHorizonYears ?? data.default_horizon_years,
   maxPurchasableTrees: data.maxPurchasableTrees ?? data.max_purchasable_trees ?? undefined,
+  treeSpecies: data.treeSpecies ?? data.tree_species,
+  externalLink: data.externalLink ?? data.external_link,
 }));
 
 export type UpdateAreaRequest = z.infer<typeof updateAreaSchema>;

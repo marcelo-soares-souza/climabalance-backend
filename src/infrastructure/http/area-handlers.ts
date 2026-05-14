@@ -147,6 +147,8 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             tCO2ePerTreePerYear: validated.tCO2ePerTreePerYear,
             pricePerTree: validated.pricePerTree,
             defaultHorizonYears: validated.defaultHorizonYears,
+            treeSpecies: validated.treeSpecies,
+            externalLink: validated.externalLink,
           }
         );
 

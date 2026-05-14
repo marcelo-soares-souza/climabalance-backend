@@ -21,6 +21,8 @@ export interface CreateAreaRequest {
   pricePerTree?: number;
   defaultHorizonYears?: number;
   maxPurchasableTrees?: number | null;
+  treeSpecies?: string;
+  externalLink?: string;
 }
 
 export interface CreateAreaResponse {
@@ -88,6 +90,8 @@ export async function createArea(
     tCO2ePerTreePerYear: request.tCO2ePerTreePerYear,
     pricePerTree: request.pricePerTree,
     defaultHorizonYears: request.defaultHorizonYears,
+    treeSpecies: request.treeSpecies,
+    externalLink: request.externalLink,
     createdAt: now,
     updatedAt: now,
   });
