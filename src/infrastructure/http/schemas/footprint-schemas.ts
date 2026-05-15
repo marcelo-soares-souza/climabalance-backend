@@ -18,7 +18,7 @@ export const createCalculationSchema = z.object({
   period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   period_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   inputs: z.array(footprintInputSchema).min(1, 'At least one input is required'),
-  data_quality: z.enum(['real', 'estimated', 'standard']).optional(),
+  data_quality: z.enum(['real', 'estimated']).optional(),
   factors_version: z.string().optional(),
   region: z.string().optional()
 });
@@ -31,7 +31,7 @@ export const calculateGuestSchema = z.object({
   period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   period_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   inputs: z.array(footprintInputSchema).min(1, 'At least one input is required'),
-  data_quality: z.enum(['real', 'estimated', 'standard']).optional(),
+  data_quality: z.enum(['real', 'estimated']).optional(),
   factors_version: z.string().optional(),
   region: z.string().optional()
 });
@@ -43,7 +43,7 @@ export const updateCalculationSchema = z.object({
   period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),
   period_end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)').optional(),
   inputs: z.array(footprintInputSchema).min(1).optional(),
-  data_quality: z.enum(['real', 'estimated', 'standard']).optional()
+  data_quality: z.enum(['real', 'estimated']).optional()
 });
 
 /**

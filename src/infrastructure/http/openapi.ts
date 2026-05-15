@@ -1497,7 +1497,7 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
             profile_type: { type: 'string', enum: ['individual', 'legal_entity'] },
             period_start: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
             period_end: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
-            data_quality: { type: 'string', enum: ['real', 'estimated', 'standard'] },
+            data_quality: { type: 'string', enum: ['real', 'estimated'] },
             factors_version: { type: 'string' },
             region: { type: 'string' },
             inputs: {
@@ -1524,7 +1524,7 @@ export function buildOpenApiDocument(serverUrl: string): Record<string, unknown>
           properties: {
             period_start: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
             period_end: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
-            data_quality: { type: 'string', enum: ['real', 'estimated', 'standard'] },
+            data_quality: { type: 'string', enum: ['real', 'estimated'] },
             inputs: { type: 'array', items: { type: 'object', additionalProperties: true } },
           },
         },
