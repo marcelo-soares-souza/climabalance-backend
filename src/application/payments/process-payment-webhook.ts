@@ -40,6 +40,9 @@ export async function processPaymentWebhook(
         entityType: string;
         entityId: string;
         metadata?: Record<string, any>;
+        severity?: string;
+        success?: boolean;
+        errorCode?: string;
       }): Promise<void>;
     };
   },
@@ -58,6 +61,15 @@ export async function processPaymentWebhook(
     });
 
     if (!payment) {
+      await deps.auditLog.log({
+        actorUserId: input.actorUserId,
+        action: 'payment.webhook_payment_not_found',
+        entityType: 'payment',
+        entityId: input.providerReference,
+        metadata: { provider: input.provider, provider_reference: input.providerReference },
+        success: false,
+        errorCode: 'PAYMENT_NOT_FOUND',
+      });
       return { processed: false } as ProcessPaymentWebhookResult;
     }
 

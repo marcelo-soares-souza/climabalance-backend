@@ -580,7 +580,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext, clearRefreshCookieHeaders());
         }
 
-        await revokeRefreshToken(
+        const revokeResult = await revokeRefreshToken(
           { refreshToken },
           {
             refreshTokens: deps.refreshTokens,
@@ -590,6 +590,19 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         );
 
         log.info('auth.revoke.success');
+        if (revokeResult) {
+          await deps.auditLog.log({
+            actorUserId: revokeResult.userId,
+            action: 'user.logout',
+            entityType: 'session',
+            entityId: revokeResult.tokenId,
+            ctx,
+            success: true,
+            httpStatus: 200,
+            severity: 'info',
+            category: ['security'],
+          });
+        }
         return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext, clearRefreshCookieHeaders());
       } catch (error) {
         return handleError(error, log, logContext);
@@ -628,6 +641,17 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         }
         await deps.refreshTokens.revoke(sessionId, deps.clock.now());
         log.info('auth.session_revoked', { session_id: sessionId });
+        await deps.auditLog.log({
+          actorUserId: ctx.auth!.userId,
+          action: 'user.logout',
+          entityType: 'session',
+          entityId: sessionId,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['security'],
+        });
         return jsonResponse(200, { message_key: 'auth.session_revoked' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
@@ -641,6 +665,17 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         const userId = ctx.auth!.userId;
         await deps.refreshTokens.revokeAllByUserId(userId, deps.clock.now());
         log.info('auth.all_sessions_revoked', { user_id: userId });
+        await deps.auditLog.log({
+          actorUserId: userId,
+          action: 'user.logout',
+          entityType: 'user',
+          entityId: userId,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'warning',
+          category: ['security'],
+        });
         return jsonResponse(200, { message_key: 'auth.all_sessions_revoked' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);

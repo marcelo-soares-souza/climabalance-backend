@@ -14,7 +14,7 @@ export async function revokeRefreshToken(
     hashService: HashService;
     clock: Clock;
   }
-): Promise<void> {
+): Promise<{ userId: string; tokenId: string } | null> {
   const tokenHash = await deps.hashService.sha256(input.refreshToken);
   const stored = await deps.refreshTokens.findByTokenHash(tokenHash);
 
@@ -23,8 +23,9 @@ export async function revokeRefreshToken(
   }
 
   if (stored.revokedAt) {
-    return; // Already revoked, idempotent
+    return null; // Already revoked, idempotent
   }
 
   await deps.refreshTokens.revoke(stored.id, deps.clock.now());
+  return { userId: stored.userId, tokenId: stored.id };
 }

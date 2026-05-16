@@ -102,6 +102,16 @@ export async function createStripePaymentIntent(
     const existingPendingPayment =
       await tx.lockLatestPendingPaymentByCompensationId(compensation.id);
     if (existingPendingPayment) {
+      await deps.auditLog.log({
+        actorUserId: input.actorUserId,
+        action: 'payment.intent_duplicate_attempted',
+        entityType: 'compensation',
+        entityId: compensation.id,
+        metadata: {
+          existing_payment_id: existingPendingPayment.id,
+          payment_method: input.paymentMethod,
+        },
+      });
       throw new ValidationError([
         { field: 'compensation_id', message: 'payment_already_pending' },
       ]);

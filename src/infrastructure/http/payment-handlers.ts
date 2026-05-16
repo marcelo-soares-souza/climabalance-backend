@@ -334,6 +334,15 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
               parsed.type
             );
             if (!registered) {
+              await requestAuditLog.log({
+                actorUserId: 'system:webhook',
+                action: 'payment.webhook_duplicate_discarded',
+                entityType: 'stripe_event',
+                entityId: parsed.eventId,
+                metadata: { stripe_event_type: parsed.type },
+                severity: 'info' as const,
+                success: true,
+              });
               return jsonResponse(
                 202,
                 {
@@ -347,7 +356,19 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             if (parsed.type === 'charge.refunded' && parsed.paymentIntentId) {
               const refundResult = await deps.paymentStore.runInTransaction(async (tx) => {
                 const payment = await tx.lockPaymentByStripePaymentIntentId(parsed.paymentIntentId!);
-                if (!payment) return { processed: false };
+                if (!payment) {
+                  await requestAuditLog.log({
+                    actorUserId: 'system:webhook',
+                    action: 'payment.webhook_payment_not_found',
+                    entityType: 'stripe_payment_intent',
+                    entityId: parsed.paymentIntentId!,
+                    metadata: { stripe_event_type: parsed.type },
+                    severity: 'warning' as const,
+                    success: false,
+                    errorCode: 'PAYMENT_NOT_FOUND',
+                  });
+                  return { processed: false };
+                }
                 const now = deps.clock.now();
                 await tx.updatePaymentStatus({ paymentId: payment.id, status: 'refunded', updatedAt: now });
                 await tx.updateCompensationStatus({ compensationId: payment.compensationId, status: 'refunded', updatedAt: now });
@@ -395,10 +416,18 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                 );
               }
 
-              logger.warn('payment.webhook_unhandled_event_type', {
-                event_id: parsed.eventId,
-                event_type: parsed.type,
-                payment_intent_id: parsed.paymentIntentId ?? null,
+              await requestAuditLog.log({
+                actorUserId: 'system:webhook',
+                action: 'payment.webhook_unhandled_type',
+                entityType: 'stripe_event',
+                entityId: parsed.eventId,
+                metadata: {
+                  stripe_event_type: parsed.type,
+                  payment_intent_id: parsed.paymentIntentId ?? null,
+                },
+                severity: 'warning' as const,
+                success: false,
+                errorCode: 'UNHANDLED_EVENT_TYPE',
               });
 
               return jsonResponse(
@@ -418,6 +447,16 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                 );
 
               if (!payment) {
+                await requestAuditLog.log({
+                  actorUserId: 'system:webhook',
+                  action: 'payment.webhook_payment_not_found',
+                  entityType: 'stripe_payment_intent',
+                  entityId: parsed.paymentIntentId!,
+                  metadata: { stripe_event_type: parsed.type },
+                  severity: 'warning' as const,
+                  success: false,
+                  errorCode: 'PAYMENT_NOT_FOUND',
+                });
                 return { processed: false };
               }
 
@@ -761,15 +800,31 @@ async function handleStripeAccountUpdatedWebhook(
 
   // Detect onboarding failure and notify producer
   const disabledReason = account.requirements?.disabled_reason ?? null;
-  if (disabledReason && deps.jobQueue && deps.users) {
-    const user = await deps.users.findById(record.userId);
-    if (user) {
-      const profile = await deps.users.getProfile(record.userId);
-      await deps.jobQueue.enqueue('stripe.onboarding_failed', {
-        email: user.email,
-        producerName: profile?.displayName ?? user.email,
-        reason: disabledReason,
-      }).catch(() => {});
+  if (disabledReason) {
+    await auditLog.log({
+      actorUserId: 'system:webhook',
+      action: 'producer.stripe_onboarding_failed',
+      entityType: 'stripe_connect_account',
+      entityId: record.id,
+      metadata: {
+        stripe_account_id: stripeAccountId,
+        disabled_reason: disabledReason,
+      },
+      severity: 'error' as const,
+      success: false,
+      errorCode: 'STRIPE_ONBOARDING_FAILED',
+    });
+
+    if (deps.jobQueue && deps.users) {
+      const user = await deps.users.findById(record.userId);
+      if (user) {
+        const profile = await deps.users.getProfile(record.userId);
+        await deps.jobQueue.enqueue('stripe.onboarding_failed', {
+          email: user.email,
+          producerName: profile?.displayName ?? user.email,
+          reason: disabledReason,
+        }).catch(() => {});
+      }
     }
   }
 
