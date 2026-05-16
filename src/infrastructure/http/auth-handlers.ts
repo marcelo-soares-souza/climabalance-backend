@@ -45,6 +45,11 @@ import { normalizeLocale } from '../../shared/utils/locale';
 import { maskEmail } from '../../shared/utils/mask-sensitive';
 import { checkLoginLockout, recordLoginAttempt } from './rate-limit';
 import {
+  EmailNotConfirmedError,
+  UserNotActiveError,
+  DomainError
+} from '../../domain/errors';
+import {
   buildRefreshTokenCookie,
   buildRefreshTokenCookieCleared,
   getRefreshTokenFromCookie,
@@ -176,6 +181,18 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
 
         log.info('auth.register.created', { user_id: result.id, email: result.email });
 
+        await deps.auditLog.log({
+          actorUserId: result.id,
+          action: 'user.registered',
+          entityType: 'user',
+          entityId: result.id,
+          ctx,
+          success: true,
+          httpStatus: 201,
+          severity: 'info',
+          category: ['security', 'user_management'],
+        });
+
         await deps.jobQueue.enqueue('user.registered', {
           email: result.email,
           roleKey: validated.role_key ?? 'individual',
@@ -241,6 +258,29 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           await recordLoginAttempt(validated.email, true);
         } catch (error) {
           await recordLoginAttempt(validated.email, false);
+
+          let actorId = 'unknown';
+          let entityId = validated.email;
+          if (error instanceof UserNotActiveError) {
+            actorId = error.metadata?.userId as string ?? 'unknown';
+            entityId = actorId;
+          } else if (error instanceof EmailNotConfirmedError) {
+            entityId = error.metadata?.email as string ?? validated.email;
+          }
+
+          await deps.auditLog.log({
+            actorUserId: actorId,
+            action: 'user.login_failed',
+            entityType: 'user',
+            entityId: entityId,
+            ctx,
+            success: false,
+            httpStatus: error instanceof DomainError ? error.httpStatus : 401,
+            severity: 'warning',
+            category: ['security'],
+            errorCode: error instanceof DomainError ? error.code : 'UNKNOWN',
+          });
+
           throw error;
         }
 

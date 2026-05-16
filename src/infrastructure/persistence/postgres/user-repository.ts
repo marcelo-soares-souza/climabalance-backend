@@ -392,6 +392,25 @@ export class PostgresUserRepository implements UserRepository {
     );
   }
 
+  async replaceRoles(userId: string, roleKeys: string[]): Promise<void> {
+    const now = new Date();
+    await this.db.query(
+      `UPDATE user_roles
+       SET deleted_at = $2, updated_at = $2
+       WHERE user_id = $1 AND deleted_at IS NULL`,
+      [userId, now]
+    );
+    for (const roleKey of roleKeys) {
+      await this.db.query(
+        `INSERT INTO user_roles (id, user_id, role_id, created_at, updated_at)
+         SELECT $1, $2, roles.id, $3, $3
+         FROM roles
+         WHERE roles.role_key = $4 AND roles.deleted_at IS NULL`,
+        [uuidv7(), userId, now, roleKey]
+      );
+    }
+  }
+
   async findUserIdsByRole(roleKey: string): Promise<string[]> {
     const result = await this.db.query(
       `SELECT user_roles.user_id FROM user_roles

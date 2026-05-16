@@ -23,11 +23,14 @@ const optionalUrl = (max: number) =>
     z.string().max(max, { message: 'too_long' }).url({ message: 'invalid_url' }).optional()
   ).optional();
 
+const roleSchema = z.enum(['individual', 'producer', 'legal_entity', 'analyst', 'administrator']);
+
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
   password: z.string().min(8, { message: 'too_short' }).max(200, { message: 'too_long' }).optional(),
   locale: z.string().min(1).max(10).optional(),
-  status: userStatusSchema.optional()
+  status: userStatusSchema.optional(),
+  role: roleSchema.optional()
 });
 
 export const listUsersQuerySchema = z.object({

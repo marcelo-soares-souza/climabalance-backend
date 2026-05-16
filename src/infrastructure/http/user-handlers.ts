@@ -281,7 +281,8 @@ export function createUserHandlers(deps: UserHandlersDeps) {
         const hasSensitiveSelfUpdate =
           validated.email !== undefined ||
           validated.password !== undefined ||
-          validated.status !== undefined;
+          validated.status !== undefined ||
+          validated.role !== undefined;
 
         if (!isAdmin && hasSensitiveSelfUpdate) {
           log.warn('user.update.forbidden_sensitive_self_update', { user_id: userId });
@@ -313,6 +314,12 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           { users: deps.users, passwordHasher: deps.passwordHasher }
         );
 
+        let previousRoles: string[] | undefined;
+        if (validated.role !== undefined) {
+          previousRoles = await deps.users.getRoles(userId);
+          await deps.users.replaceRoles(userId, [validated.role]);
+        }
+
         log.info('user.update', { user_id: userId });
         await requestAuditLog.log({
           actorUserId: ctx.auth?.userId ?? userId,
@@ -328,6 +335,25 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           newState: summarizeUserForAudit(user),
           changedFields,
         });
+
+        if (validated.role !== undefined && previousRoles) {
+          const currentRoles = await deps.users.getRoles(userId);
+          await requestAuditLog.log({
+            actorUserId: ctx.auth?.userId ?? userId,
+            action: 'user.role_changed',
+            entityType: 'user',
+            entityId: userId,
+            success: true,
+            httpStatus: 200,
+            severity: 'warning',
+            category: ['user_management', 'security', 'authorization'],
+            isSensitive: true,
+            previousState: { roles: previousRoles },
+            newState: { roles: currentRoles },
+            changedFields: ['roles'],
+          });
+        }
+
         return jsonResponse(
           200,
           {

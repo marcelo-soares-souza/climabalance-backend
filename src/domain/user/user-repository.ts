@@ -57,6 +57,7 @@ export interface UserRepository {
   getRoles(userId: string): Promise<string[]>;
   getRolesByUserIds?(userIds: string[]): Promise<Record<string, string[]>>;
   assignRole(userId: string, roleKey: string): Promise<void>;
+  replaceRoles(userId: string, roleKeys: string[]): Promise<void>;
   findUserIdsByRole(roleKey: string): Promise<string[]>;
   listPublicDirectory(limit: number, offset: number): Promise<PublicDirectoryItem[]>;
 }
