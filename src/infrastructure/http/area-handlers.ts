@@ -216,11 +216,14 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async update(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(updateAreaSchema, body);
+
+        const previousArea = await deps.areaRepository.findById(id);
 
         await updateArea(
           {
@@ -233,6 +236,22 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             ...validated,
           }
         );
+
+        const updatedArea = await deps.areaRepository.findById(id);
+
+        await requestAuditLog.log({
+          actorUserId: auth.userId,
+          action: 'area.updated',
+          entityType: 'area',
+          entityId: id,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['data_modification'],
+          previousState: previousArea ? summarizeAreaForAudit(previousArea) : undefined,
+          newState: updatedArea ? summarizeAreaForAudit(updatedArea) : undefined,
+          changedFields: Object.keys(validated).filter((k) => validated[k as keyof typeof validated] !== undefined),
+        });
 
         return jsonResponse(
           200,
@@ -252,9 +271,12 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      */
     async remove(ctx: HttpContext, id: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
+        const previousArea = await deps.areaRepository.findById(id);
+
         await deleteArea(
           {
             areaRepository: deps.areaRepository,
@@ -268,6 +290,21 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             isAdmin: auth.roles.includes('administrator'),
           }
         );
+
+        await requestAuditLog.log({
+          actorUserId: auth.userId,
+          action: 'area.deleted',
+          entityType: 'area',
+          entityId: id,
+          success: true,
+          httpStatus: 200,
+          severity: 'warning',
+          category: ['data_modification'],
+          isSensitive: true,
+          previousState: previousArea ? summarizeAreaForAudit(previousArea) : undefined,
+          newState: { deleted: true },
+          changedFields: ['deletedAt'],
+        });
 
         return jsonResponse(
           200,
@@ -1023,6 +1060,30 @@ return jsonResponse(200, { data: result }, logContext);
         return handleError(error, undefined, logContext);
       }
     },
+  };
+}
+
+function summarizeAreaForAudit(area: {
+  name: string;
+  status: { value: string };
+  slug: string;
+  biome?: { value: string };
+  countryCode?: string;
+  state?: string;
+  city?: string;
+  description?: string;
+  carbonCapacity?: { totalCapacityTCO2e: number; pricePerTree?: number; maxPurchasableTrees?: number | null };
+}): Record<string, unknown> {
+  return {
+    name: area.name,
+    status: area.status.value,
+    slug: area.slug,
+    biome: area.biome?.value ?? null,
+    countryCode: area.countryCode ?? null,
+    state: area.state ?? null,
+    city: area.city ?? null,
+    hasDescription: Boolean(area.description),
+    hasCarbonCapacity: Boolean(area.carbonCapacity),
   };
 }
 
