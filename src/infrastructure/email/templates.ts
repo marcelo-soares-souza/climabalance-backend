@@ -112,3 +112,31 @@ export function buildContactNotification(locale: string, to: string, name: strin
     text: t('email.contactNotification.body', locale, { name, email, message }),
   };
 }
+
+export function buildCertificateIssued(locale: string, to: string, certificateNumber: string, url: string): EmailMessage {
+  return {
+    to,
+    subject: t('email.certificateIssued.subject', locale),
+    text: t('email.certificateIssued.body', locale, { certificateNumber, url }),
+  };
+}
+
+export function buildPasswordChanged(locale: string, to: string): EmailMessage {
+  return {
+    to,
+    subject: t('email.passwordChanged.subject', locale),
+    text: t('email.passwordChanged.body', locale),
+  };
+}
+
+export function buildPaymentFailed(locale: string, to: string, amount: number, currency: string, url: string): EmailMessage {
+  return {
+    to,
+    subject: t('email.paymentFailed.subject', locale),
+    text: t('email.paymentFailed.body', locale, {
+      amount: amount.toFixed(2),
+      currency,
+      url,
+    }),
+  };
+}

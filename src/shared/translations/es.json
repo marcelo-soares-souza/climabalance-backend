@@ -26,5 +26,11 @@
   "password_no_number": "La contraseña debe contener al menos un número",
   "password_no_special": "La contraseña debe contener al menos un carácter especial",
   "password_sequential": "La contraseña no puede contener secuencias (ej: 12345678, abcdefgh)",
-  "contact.message_sent": "Mensaje enviado con éxito"
+  "contact.message_sent": "Mensaje enviado con éxito",
+  "email.certificateIssued.subject": "Su certificado de compensación está disponible",
+  "email.certificateIssued.body": "¡Hola!\n\nSu certificado de compensación de carbono ya está disponible.\n\nNúmero de certificado: {{certificateNumber}}\n\nAcceda al siguiente enlace para ver y descargar:\n{{url}}",
+  "email.passwordChanged.subject": "Su contraseña ha sido cambiada",
+  "email.passwordChanged.body": "¡Hola!\n\nLa contraseña de su cuenta se ha cambiado correctamente.\n\nSi no realizó este cambio, comuníquese con el soporte de inmediato.\n\nSaludos cordiales,\nEquipo Climabalance",
+  "email.paymentFailed.subject": "Pago no aprobado",
+  "email.paymentFailed.body": "¡Hola!\n\nEl pago de su compensación no fue aprobado.\n\nMonto: {{amount}} {{currency}}\n\nPuede intentarlo nuevamente accediendo a su cuenta y realizando un nuevo pago.\n\nAcceso: {{url}}"
 }

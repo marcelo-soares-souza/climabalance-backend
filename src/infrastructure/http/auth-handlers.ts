@@ -500,6 +500,15 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           isSensitive: true,
           changedFields: ['passwordHash'],
         });
+
+        const userForNotification = await deps.users.findById(ctx.auth.userId);
+        if (userForNotification) {
+          await deps.jobQueue.enqueue('notification.password_changed', {
+            email: userForNotification.email,
+            locale: userForNotification.locale,
+          }).catch(() => {});
+        }
+
         return jsonResponse(200, { message_key: 'auth.password_changed' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);

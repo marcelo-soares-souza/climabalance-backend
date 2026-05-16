@@ -12,6 +12,9 @@ import {
   handleStripeOnboardingFailed,
   handleContributionRefunded,
   handleCompensationMilestone,
+  handleCertificateIssued,
+  handlePasswordChanged,
+  handlePaymentFailed,
 } from '../../application/jobs/handlers';
 
 const HANDLERS: Record<
@@ -27,6 +30,9 @@ const HANDLERS: Record<
   'stripe.onboarding_failed': handleStripeOnboardingFailed,
   'contribution.refunded': handleContributionRefunded,
   'area.compensation_milestone': handleCompensationMilestone,
+  'notification.certificate_issued': handleCertificateIssued,
+  'notification.password_changed': handlePasswordChanged,
+  'notification.payment_failed': handlePaymentFailed,
 };
 
 export function startJobWorker(

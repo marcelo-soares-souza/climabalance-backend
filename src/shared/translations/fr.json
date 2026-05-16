@@ -26,5 +26,11 @@
   "password_no_number": "Le mot de passe doit contenir au moins un chiffre",
   "password_no_special": "Le mot de passe doit contenir au moins un caractère spécial",
   "password_sequential": "Le mot de passe ne peut pas contenir de séquences (ex: 12345678, abcdefgh)",
-  "contact.message_sent": "Message envoyé avec succès"
+  "contact.message_sent": "Message envoyé avec succès",
+  "email.certificateIssued.subject": "Votre certificat de compensation est disponible",
+  "email.certificateIssued.body": "Bonjour !\n\nVotre certificat de compensation carbone est désormais disponible.\n\nNuméro du certificat : {{certificateNumber}}\n\nAccédez au lien ci-dessous pour voir et télécharger :\n{{url}}",
+  "email.passwordChanged.subject": "Votre mot de passe a été modifié",
+  "email.passwordChanged.body": "Bonjour !\n\nLe mot de passe de votre compte a été modifié avec succès.\n\nSi vous n'avez pas effectué cette modification, veuillez contacter le support immédiatement.\n\nCordialement,\nL'équipe Climabalance",
+  "email.paymentFailed.subject": "Paiement non approuvé",
+  "email.paymentFailed.body": "Bonjour !\n\nLe paiement de votre compensation n'a pas été approuvé.\n\nMontant : {{amount}} {{currency}}\n\nVous pouvez réessayer en vous connectant à votre compte et en effectuant un nouveau paiement.\n\nAccès : {{url}}"
 }

@@ -11,6 +11,9 @@ import {
   buildContributionRefunded,
   buildAreaMilestone,
   buildContributionReceived,
+  buildCertificateIssued,
+  buildPasswordChanged,
+  buildPaymentFailed,
 } from '../../infrastructure/email/templates';
 
 export type JobHandlerDeps = {
@@ -124,6 +127,32 @@ export async function handleContributionReceived(
   const locale = await resolveUserLocale(payload.producerEmail, deps.users);
   const url = await resolveAreaUrl(payload.areaId, deps.frontendUrl, deps.areas);
   await deps.emailSender.send(buildContributionReceived(locale, payload.producerEmail, payload.areaName, payload.amount, payload.currency, payload.treesCount, url));
+}
+
+export async function handleCertificateIssued(
+  payload: { email: string; certificateNumber: string; locale?: string; frontendUrl: string },
+  deps: JobHandlerDeps
+): Promise<void> {
+  const locale = payload.locale ?? await resolveUserLocale(payload.email, deps.users);
+  const url = `${deps.frontendUrl}/compensations`;
+  await deps.emailSender.send(buildCertificateIssued(locale, payload.email, payload.certificateNumber, url));
+}
+
+export async function handlePasswordChanged(
+  payload: { email: string; locale?: string },
+  deps: JobHandlerDeps
+): Promise<void> {
+  const locale = payload.locale ?? await resolveUserLocale(payload.email, deps.users);
+  await deps.emailSender.send(buildPasswordChanged(locale, payload.email));
+}
+
+export async function handlePaymentFailed(
+  payload: { email: string; amount: number; currency: string; locale?: string; frontendUrl: string },
+  deps: JobHandlerDeps
+): Promise<void> {
+  const locale = payload.locale ?? await resolveUserLocale(payload.email, deps.users);
+  const url = `${deps.frontendUrl}/compensations`;
+  await deps.emailSender.send(buildPaymentFailed(locale, payload.email, payload.amount, payload.currency, url));
 }
 
 async function findAdminEmails(users: UserRepository): Promise<string[]> {

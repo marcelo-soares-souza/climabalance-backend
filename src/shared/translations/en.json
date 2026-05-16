@@ -26,5 +26,11 @@
   "password_no_number": "Password must contain at least one number",
   "password_no_special": "Password must contain at least one special character",
   "password_sequential": "Password cannot contain sequences (e.g. 12345678, abcdefgh)",
-  "contact.message_sent": "Message sent successfully"
+  "contact.message_sent": "Message sent successfully",
+  "email.certificateIssued.subject": "Your compensation certificate is available",
+  "email.certificateIssued.body": "Hello!\n\nYour carbon offset certificate is now available.\n\nCertificate number: {{certificateNumber}}\n\nAccess the link below to view and download:\n{{url}}",
+  "email.passwordChanged.subject": "Your password has been changed",
+  "email.passwordChanged.body": "Hello!\n\nYour account password has been changed successfully.\n\nIf you did not make this change, please contact support immediately.\n\nBest regards,\nClimabalance Team",
+  "email.paymentFailed.subject": "Payment not approved",
+  "email.paymentFailed.body": "Hello!\n\nYour compensation payment was not approved.\n\nAmount: {{amount}} {{currency}}\n\nYou can try again by accessing your account and making a new payment.\n\nAccess: {{url}}"
 }

@@ -521,13 +521,29 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                   result.paymentStatus === 'failed' ? ('warning' as const) : ('info' as const),
                 success: result.paymentStatus !== 'failed',
               });
+
+              if (result.paymentStatus === 'failed' && deps.jobQueue && deps.users && result.compensationId) {
+                const comp = await deps.paymentStore.getCompensationForCertificate(result.compensationId);
+                if (comp) {
+                  const supporter = await deps.users.findById(comp.supporterUserId);
+                  if (supporter) {
+                    await deps.jobQueue.enqueue('notification.payment_failed', {
+                      email: supporter.email,
+                      amount: comp.totalAmount,
+                      currency: comp.currency,
+                      locale: supporter.locale,
+                      frontendUrl: env.frontendUrl,
+                    }).catch(() => {});
+                  }
+                }
+              }
             }
 
             const certificate =
               result.processed && result.compensationId
                 ? await ensureCertificateAfterPaidCompensation(
                     deps,
-                    result.compensationId!,
+                    result.compensationId,
                     'system:webhook',
                     requestAuditLog
                   )
@@ -555,7 +571,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           }
         }
 
-        // Card simulator webhook path (unchanged)
+        // Card simulator webhook path
         const parsedJson = rawPayload.length > 0 ? JSON.parse(rawPayload) : {};
         const body = parseWithSchema(paymentWebhookSchema, parsedJson);
 
@@ -572,6 +588,23 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             actorUserId: 'system:webhook',
           }
         );
+
+        if (result.paymentStatus === 'failed' && deps.jobQueue && deps.users && result.compensationId) {
+          const comp = await deps.paymentStore.getCompensationForCertificate(result.compensationId);
+          if (comp) {
+            const supporter = await deps.users.findById(comp.supporterUserId);
+            if (supporter) {
+              await deps.jobQueue.enqueue('notification.payment_failed', {
+                email: supporter.email,
+                amount: comp.totalAmount,
+                currency: comp.currency,
+                locale: supporter.locale,
+                frontendUrl: env.frontendUrl,
+              }).catch(() => {});
+            }
+          }
+        }
+
         const certificate =
           result.processed && result.compensationId
             ? await ensureCertificateAfterPaidCompensation(
@@ -581,6 +614,10 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                 requestAuditLog
               )
             : null;
+
+        if (result.paymentStatus === 'paid' && deps.jobQueue && deps.areaRepository && deps.users) {
+          notifyCompensationMilestone(deps, result.compensationId!).catch(() => {});
+        }
 
         return jsonResponse(
           202,
@@ -918,6 +955,18 @@ async function ensureCertificateAfterPaidCompensation(
         currency: compensation.currency,
       }
     );
+
+    if (deps.jobQueue && deps.users) {
+      const supporter = await deps.users.findById(compensation.supporterUserId);
+      if (supporter) {
+        await deps.jobQueue.enqueue('notification.certificate_issued', {
+          email: supporter.email,
+          certificateNumber: issued.certificateNumber,
+          locale: supporter.locale,
+          frontendUrl: env.frontendUrl,
+        }).catch(() => {});
+      }
+    }
 
     return {
       id: issued.certificateId,
