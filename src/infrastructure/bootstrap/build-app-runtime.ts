@@ -47,6 +47,7 @@ import type { SatelliteImageStorage } from '../../domain/areas/services/satellit
 import type { AreaSatelliteImageRepository } from '../../domain/areas/repositories/area-satellite-image-repository';
 import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
 import { env } from '../../shared/utils/env';
+import { buildAlertNotifier } from '../alerts/alert-notifier';
 
 function createObjectStorage(): {
   areaMediaStorage: AreaMediaStorage;
@@ -112,7 +113,12 @@ export function buildAppRuntime() {
   const emailConfirmationRepository = new PostgresEmailConfirmationRepository(pgPool);
   const passwordResetRepository = new PostgresPasswordResetRepository(pgPool);
   const refreshTokenRepository = new PostgresRefreshTokenRepository(pgPool);
-  const auditLogRepository = new PostgresAuditLogRepository(pgPool);
+  const alertNotifier = buildAlertNotifier({
+    alertEmailTo: env.alertEmailTo,
+    alertWebhookUrl: env.alertWebhookUrl,
+    emailSender: env.alertEmailTo ? emailSender : undefined,
+  });
+  const auditLogRepository = new PostgresAuditLogRepository(pgPool, alertNotifier ?? undefined);
   const footprintCalculationRepository = new PostgresFootprintCalculationRepository(pgPool);
   const emissionFactorRepository = new PostgresEmissionFactorRepository(pgPool);
   const footprintInputRepository = new PostgresFootprintInputRepository(pgPool);
@@ -136,7 +142,7 @@ export function buildAppRuntime() {
     users: userRepository,
     emailSender,
     frontendUrl: env.frontendUrl,
-  });
+  }, auditLogRepository);
 
   const router = buildRouter({
     users: userRepository,

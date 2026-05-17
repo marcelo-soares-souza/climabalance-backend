@@ -55,6 +55,8 @@ import {
   getRefreshTokenFromCookie,
 } from '../../shared/http/cookies';
 import { buildCsrfToken } from '../../shared/http/csrf';
+import { blocklistJti } from '../crypto/jwt';
+import { base64UrlDecode } from '../../shared/utils/base64url';
 
 const authResponseHeaders = {
   'cache-control': 'no-store',
@@ -483,7 +485,9 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           },
           {
             users: deps.users,
+            refreshTokens: deps.refreshTokens,
             passwordHasher: deps.passwordHasher,
+            clock: deps.clock,
           }
         );
 
@@ -575,6 +579,24 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
+        const authHeader = ctx.request.headers.get('authorization');
+        if (authHeader?.startsWith('Bearer ')) {
+          const accessToken = authHeader.slice(7);
+          const parts = accessToken.split('.');
+          if (parts.length === 3) {
+            try {
+              const payloadRaw = Buffer.from(base64UrlDecode(parts[1])).toString('utf-8');
+              const payload = JSON.parse(payloadRaw) as { jti?: string; exp?: number };
+              if (payload.jti && payload.exp) {
+                const ttlSeconds = payload.exp - Math.floor(Date.now() / 1000);
+                if (ttlSeconds > 0) {
+                  await blocklistJti(payload.jti, ttlSeconds);
+                }
+              }
+            } catch { /* ignore malformed token payload */ }
+          }
+        }
+
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== 'object' || body === null) {
           return errorResponse(400, 'request.invalid_body', undefined, logContext);

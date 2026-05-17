@@ -40,6 +40,9 @@ export type AuditLogEntry = {
   // Performance
   durationMs?: number | null;
   resourceChanges?: number;
+
+  // Hash chain integrity
+  previousEntryHash?: string | null;
 };
 
 export type AuditLogFilters = {
@@ -51,13 +54,21 @@ export type AuditLogFilters = {
   entityId?: string;
   severity?: AuditLogSeverity;
   isSensitive?: boolean;
+  createdAtFrom?: string;
+  createdAtTo?: string;
   limit?: number;
   offset?: number;
+};
+
+export type AuditLogListResult = {
+  entries: AuditLogEntry[];
+  total: number;
 };
 
 export interface AuditLogRepository {
   create(entry: AuditLogEntry): Promise<void>;
   list(filters: AuditLogFilters): Promise<AuditLogEntry[]>;
+  listWithTotal(filters: AuditLogFilters): Promise<AuditLogListResult>;
   log(entry: {
     actorUserId: string;
     action: string;
@@ -87,4 +98,6 @@ export interface AuditLogRepository {
     durationMs?: number;
     resourceChanges?: number;
   }): Promise<void>;
+  verifyChain(): Promise<{ valid: boolean; totalEntries: number; verifiedEntries: number; firstBrokenEntry?: string }>;
+  archive(retentionDays: number, archiveDays: number): Promise<{ archived: number; deleted: number }>;
 }

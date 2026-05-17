@@ -2,8 +2,9 @@ import type { Handler, HttpContext } from '../../shared/http/router';
 import { buildLogContext } from '../../shared/http/log-context';
 import { errorResponse } from '../../shared/http/response';
 import { valkey } from '../cache/valkey-client';
+import { env } from '../../shared/utils/env';
 
-export type RateLimitBucket = 'auth' | 'public' | 'protected' | 'admin' | 'media';
+export type RateLimitBucket = 'auth' | 'public' | 'protected' | 'admin' | 'media' | 'user';
 
 export type RateLimitPolicy = {
   limit: number;
@@ -18,6 +19,7 @@ export const defaultRateLimitPolicies: RateLimitPolicies = {
   protected: { limit: 180, windowSeconds: 60 },
   admin: { limit: 60, windowSeconds: 60 },
   media: { limit: 600, windowSeconds: 60 },
+  user: { limit: 30, windowSeconds: 60 },
 };
 
 type RateLimitInput = {
@@ -105,7 +107,9 @@ export async function consumeValkeyRateLimit(
 
     return { allowed: true, limit: p.limit, remaining, resetAtMs, retryAfterSeconds: 0 };
   } catch {
-    // Fallback to process-local memory when Valkey is temporarily unavailable.
+    if (env.appEnv === 'production' || env.appEnv === 'staging') {
+      return { allowed: false, limit: p.limit, remaining: 0, resetAtMs: Date.now() + 60_000, retryAfterSeconds: 60 };
+    }
     return fallbackLimiter.consume(input);
   }
 }
@@ -148,6 +152,27 @@ export function withRateLimit(
 ): Handler {
   return async (ctx: HttpContext) => {
     const input = { bucket: options.bucket, routeKey: options.routeKey, clientId: ctx.clientIp ?? 'unknown' };
+    const decision = options.distributed === false
+      ? limiter.consume(input)
+      : await consumeValkeyRateLimit(input, undefined, limiter);
+    if (!decision.allowed) {
+      const response = errorResponse(429, 'request.rate_limited', { retry_after_seconds: decision.retryAfterSeconds }, buildLogContext(ctx));
+      return applyRateLimitHeaders(response, decision);
+    }
+    const response = await handler(ctx);
+    return applyRateLimitHeaders(response, decision);
+  };
+}
+
+export function withUserRateLimit(
+  limiter: InMemoryRateLimiter,
+  options: { bucket: RateLimitBucket; routeKey: string; distributed?: boolean },
+  handler: Handler
+): Handler {
+  return async (ctx: HttpContext) => {
+    const userId = ctx.auth?.userId;
+    const clientId = userId ? `user:${userId}` : ctx.clientIp ?? 'unknown';
+    const input = { bucket: options.bucket, routeKey: options.routeKey, clientId };
     const decision = options.distributed === false
       ? limiter.consume(input)
       : await consumeValkeyRateLimit(input, undefined, limiter);

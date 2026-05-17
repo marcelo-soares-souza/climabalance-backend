@@ -3,6 +3,7 @@ process.env.APP_PORT = '3000';
 process.env.APP_URL = 'http://localhost:3000';
 process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/test';
 process.env.JWT_SECRET = 'test-secret';
+process.env.CSRF_SECRET = 'test-csrf-secret';
 process.env.JWT_ISSUER = 'test-issuer';
 process.env.JWT_AUDIENCE = 'test-aud';
 process.env.JWT_TTL_SECONDS = '900';

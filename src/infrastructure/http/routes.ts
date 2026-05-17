@@ -33,6 +33,7 @@ import { env } from '../../shared/utils/env';
 import {
   InMemoryRateLimiter,
   withRateLimit,
+  withUserRateLimit,
   type RateLimitBucket
 } from './rate-limit';
 
@@ -103,9 +104,11 @@ export function buildRouter(
     );
   };
 
-  // API docs routes
-  addRoute('GET', '/api/v1/openapi.json', 'public', (ctx) => openApiJsonHandler(ctx));
-  addRoute('GET', '/api/v1/docs', 'public', (ctx) => swaggerUiHandler(ctx));
+  // API docs routes (disabled in production to avoid exposure)
+  if (env.appEnv !== 'production') {
+    addRoute('GET', '/api/v1/openapi.json', 'public', (ctx) => openApiJsonHandler(ctx));
+    addRoute('GET', '/api/v1/docs', 'public', (ctx) => swaggerUiHandler(ctx));
+  }
 
   // Auth routes
   addRoute('GET', '/api/v1/auth/human-check', 'auth', (ctx) => authHandlers.humanCheck(ctx));
@@ -115,7 +118,7 @@ export function buildRouter(
   addRoute('POST', '/api/v1/auth/confirm-email/resend', 'auth', (ctx) => authHandlers.resendConfirmationEmail(ctx));
   addRoute('POST', '/api/v1/auth/password-reset/request', 'auth', (ctx) => authHandlers.requestPasswordReset(ctx));
   addRoute('POST', '/api/v1/auth/password-reset/confirm', 'auth', (ctx) => authHandlers.resetPassword(ctx));
-  addRoute('POST', '/api/v1/users/change-password', 'protected', withAuth((ctx) => authHandlers.changePassword(ctx)));
+  addRoute('POST', '/api/v1/users/change-password', 'protected', withUserRateLimit(rateLimiter, { bucket: 'user', routeKey: 'POST /api/v1/users/change-password' }, withAuth((ctx) => authHandlers.changePassword(ctx))));
   addRoute('POST', '/api/v1/auth/refresh', 'auth', withCookieCsrf((ctx) => authHandlers.refresh(ctx)));
   addRoute('POST', '/api/v1/auth/revoke', 'auth', withCookieCsrf((ctx) => authHandlers.revoke(ctx)));
   addRoute('GET', '/api/v1/auth/sessions', 'protected', withAuth((ctx) => authHandlers.listSessions(ctx)));
@@ -149,6 +152,8 @@ export function buildRouter(
 
   // Audit routes
   addRoute('GET', '/api/v1/audit-log', 'admin', withAuth(async (ctx) => auditHandlers.list(ctx), { roles: ['administrator'] }));
+  addRoute('POST', '/api/v1/audit-log/verify', 'admin', withAuth(async (ctx) => auditHandlers.verifyChain(ctx), { roles: ['administrator'] }));
+  addRoute('GET', '/api/v1/audit-log/export', 'admin', withAuth(async (ctx) => auditHandlers.exportLogs(ctx), { roles: ['administrator'] }));
 
   // Footprint calculator routes
   addRoute('POST', '/api/v1/footprint/calculations', 'protected', withAuth((ctx) => footprintHandlers.create(ctx)));
@@ -216,13 +221,17 @@ export function buildRouter(
     'POST',
     '/api/v1/contributions',
     'protected',
-    withAuth((ctx) => compensationHandlers.create(ctx))
+    withUserRateLimit(rateLimiter, { bucket: 'user', routeKey: 'POST /api/v1/contributions' },
+      withAuth((ctx) => compensationHandlers.create(ctx))
+    )
   );
   addRoute(
     'POST',
     '/api/v1/contributions/quote',
     'protected',
-    withAuth((ctx) => compensationHandlers.quote(ctx))
+    withUserRateLimit(rateLimiter, { bucket: 'user', routeKey: 'POST /api/v1/contributions/quote' },
+      withAuth((ctx) => compensationHandlers.quote(ctx))
+    )
   );
   addRoute(
     'GET',
@@ -234,13 +243,17 @@ export function buildRouter(
     'POST',
     '/api/v1/compensations',
     'protected',
-    withAuth((ctx) => compensationHandlers.create(ctx))
+    withUserRateLimit(rateLimiter, { bucket: 'user', routeKey: 'POST /api/v1/compensations' },
+      withAuth((ctx) => compensationHandlers.create(ctx))
+    )
   );
   addRoute(
     'POST',
     '/api/v1/compensations/quote',
     'protected',
-    withAuth((ctx) => compensationHandlers.quote(ctx))
+    withUserRateLimit(rateLimiter, { bucket: 'user', routeKey: 'POST /api/v1/compensations/quote' },
+      withAuth((ctx) => compensationHandlers.quote(ctx))
+    )
   );
   addRoute(
     'GET',
@@ -272,9 +285,11 @@ export function buildRouter(
     'POST',
     '/api/v1/payments/create-payment-intent',
     'protected',
-    withAuth((ctx) => paymentHandlers.createPaymentIntent(ctx), {
-      roles: ['individual', 'legal_entity', 'administrator'],
-    })
+    withUserRateLimit(rateLimiter, { bucket: 'user', routeKey: 'POST /api/v1/payments/create-payment-intent' },
+      withAuth((ctx) => paymentHandlers.createPaymentIntent(ctx), {
+        roles: ['individual', 'legal_entity', 'administrator'],
+      })
+    )
   );
   addRoute('GET', '/api/v1/stats/global', 'public', (ctx) => statsHandlers.global(ctx));
 

@@ -14,14 +14,13 @@ import type { Clock } from '../../domain/services/clock';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { z } from 'zod';
 import { parseJson } from '../../shared/http/request';
-import { jsonResponse, contentDispositionHeader } from '../../shared/http/response';
+import { jsonResponse, errorResponse, contentDispositionHeader } from '../../shared/http/response';
 import { handleError } from './error-mapper';
 import {
   createAreaSchema,
   updateAreaSchema,
   approveAreaSchema,
   rejectAreaSchema,
-  uploadAreaMediaSchema,
   listAreasQuerySchema,
   getMapAreasQuerySchema,
 } from './schemas/area-schemas';
@@ -750,8 +749,20 @@ return jsonResponse(200, { data: result }, logContext);
       try {
         id = await resolveAreaId(id, deps.areaRepository);
         const auth = requireAuth(ctx);
-        const body = await parseJson(ctx.request, ctx, 35 * 1024 * 1024);
-        const validated = parseWithSchema(uploadAreaMediaSchema, body);
+
+        const formData = await ctx.request.formData();
+        const fileField = formData.get('file');
+        if (!fileField || typeof fileField === 'string') {
+          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        }
+        const file = fileField as File;
+
+        const mediaType = (formData.get('media_type') as string) ?? 'photo';
+        const description = (formData.get('description') as string) || undefined;
+
+        if (mediaType !== 'photo' && mediaType !== 'video') {
+          return errorResponse(400, 'request.validation_failed', { fieldErrors: [{ field: 'media_type', message: 'invalid' }] }, logContext);
+        }
 
         const result = await uploadAreaMedia(
           {
@@ -766,11 +777,11 @@ return jsonResponse(200, { data: result }, logContext);
             areaId: id,
             actorUserId: auth.userId,
             actorRoles: auth.roles,
-            mediaType: validated.media_type,
-            description: validated.description,
-            mimeType: validated.mime_type,
-            fileName: validated.file_name,
-            fileBase64: validated.file_base64,
+            mediaType,
+            description,
+            mimeType: file.type,
+            fileName: file.name,
+            fileBuffer: new Uint8Array(await file.arrayBuffer()),
           }
         );
 

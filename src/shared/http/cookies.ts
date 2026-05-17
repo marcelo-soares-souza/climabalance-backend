@@ -36,6 +36,9 @@ export function buildRefreshTokenCookie(token: string, maxAgeSeconds: number): s
   if (env.refreshCookieSecure) {
     parts.push('Secure');
   }
+  if (env.refreshCookieSameSite === 'none') {
+    parts.push('Partitioned');
+  }
 
   return parts.join('; ');
 }
@@ -55,6 +58,9 @@ export function buildRefreshTokenCookieCleared(): string {
   }
   if (env.refreshCookieSecure) {
     parts.push('Secure');
+  }
+  if (env.refreshCookieSameSite === 'none') {
+    parts.push('Partitioned');
   }
 
   return parts.join('; ');

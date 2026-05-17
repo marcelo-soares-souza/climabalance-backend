@@ -405,6 +405,35 @@ const routes: ApiRouteDoc[] = [
 
   {
     method: 'post',
+    path: '/api/v1/audit-log/verify',
+    summary: 'Verify audit chain',
+    description: 'Verifies the integrity of the audit log hash chain (administrator only).',
+    tags: ['Audit'],
+    secured: true,
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+
+  {
+    method: 'get',
+    path: '/api/v1/audit-log/export',
+    summary: 'Export audit log',
+    description: 'Exports audit log entries as CSV or JSON (administrator only). Supports ?format=csv or ?format=json.',
+    tags: ['Audit'],
+    secured: true,
+    queryParameters: [
+      {
+        name: 'format',
+        description: 'Export format: csv or json (default: json)',
+        schema: stringSchema,
+      },
+    ],
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+
+  {
+    method: 'post',
     path: '/api/v1/footprint/calculations',
     summary: 'Create footprint calculation',
     description: 'Creates a draft footprint calculation with inputs.',

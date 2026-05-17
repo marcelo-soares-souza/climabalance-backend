@@ -19,6 +19,18 @@ class SpyAuditLogRepository implements AuditLogRepository {
   async log(): Promise<void> {
     // no-op for list tests
   }
+
+  async verifyChain(): Promise<{ valid: boolean; totalEntries: number; verifiedEntries: number; firstBrokenEntry?: string }> {
+    return { valid: true, totalEntries: 0, verifiedEntries: 0 };
+  }
+
+  async archive(): Promise<{ archived: number; deleted: number }> {
+    return { archived: 0, deleted: 0 };
+  }
+
+  async listWithTotal(): Promise<{ entries: AuditLogEntry[]; total: number }> {
+    return { entries: this.entries, total: this.entries.length };
+  }
 }
 
 describe('listAuditLog', () => {

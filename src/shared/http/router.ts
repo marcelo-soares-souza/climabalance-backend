@@ -223,7 +223,7 @@ function buildCorsHeaders(request: Request): Headers {
 
 function resolveAllowedOrigin(origin: string | null): string | null {
   if (!origin) {
-    return '*';
+    return null;
   }
 
   const allowedOrigins = new Set<string>();
@@ -266,7 +266,7 @@ function applySecurityHeaders(headers: Headers): void {
   if (!headers.has('content-security-policy')) {
     headers.set(
       'content-security-policy',
-      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+      "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
     );
   }
   if (env.appEnv === 'production' || env.appEnv === 'staging') {

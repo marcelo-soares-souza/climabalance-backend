@@ -1,6 +1,7 @@
 import { getLogger } from '../../shared/utils/logger';
-import { numberEnv } from '../../shared/utils/env';
+import { numberEnv, env } from '../../shared/utils/env';
 import type { PostgresJobRepository } from '../persistence/postgres/job-repository';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { JobHandlerDeps } from '../../application/jobs/handlers';
 import {
   handleUserRegistered,
@@ -38,8 +39,26 @@ const HANDLERS: Record<
 export function startJobWorker(
   jobRepo: PostgresJobRepository,
   deps: JobHandlerDeps,
+  auditLog?: AuditLogRepository,
 ): void {
   const log = getLogger();
+
+  if (auditLog) {
+    const ARCHIVE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    const repo = auditLog;
+    async function runAuditRetention(): Promise<void> {
+      try {
+        const result = await repo.archive(env.auditRetentionDays, env.auditArchiveDays);
+        if (result.archived > 0 || result.deleted > 0) {
+          log.info('audit.retention.executed', result);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log.error('audit.retention.failed', { error: msg });
+      }
+    }
+    setInterval(runAuditRetention, ARCHIVE_INTERVAL_MS);
+  }
 
   async function tick(): Promise<void> {
     try {

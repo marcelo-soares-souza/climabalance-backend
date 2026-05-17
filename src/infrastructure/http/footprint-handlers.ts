@@ -7,6 +7,7 @@ import type { CompensationProjectionRepository } from '../../domain/footprint/re
 import type { UnitOfWork } from '../persistence/unit-of-work';
 import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
 import { handleError } from './error-mapper';
@@ -42,6 +43,7 @@ export interface FootprintHandlersDeps {
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
   clock: Clock;
+  auditLog: Pick<AuditLogRepository, 'log'>;
 }
 
 export function createFootprintHandlers(deps: FootprintHandlersDeps) {
@@ -69,6 +71,18 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             ...validated
           }
         );
+
+        await deps.auditLog.log({
+          actorUserId: auth.userId,
+          action: 'footprint.calculation_created',
+          entityType: 'footprint_calculation',
+          entityId: result.calculation_id,
+          ctx,
+          success: true,
+          httpStatus: 201,
+          severity: 'info',
+          category: ['data_modification', 'compliance'],
+        });
 
         return jsonResponse(
           201,
@@ -111,6 +125,18 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           }
         );
 
+        await deps.auditLog.log({
+          actorUserId: auth.userId,
+          action: 'footprint.calculation_updated',
+          entityType: 'footprint_calculation',
+          entityId: id,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['data_modification', 'compliance'],
+        });
+
         return jsonResponse(
           200,
           {
@@ -143,6 +169,18 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           auth.userId,
           isAdmin
         );
+
+        await deps.auditLog.log({
+          actorUserId: auth.userId,
+          action: 'footprint.calculation_finalized',
+          entityType: 'footprint_calculation',
+          entityId: id,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['data_modification', 'compliance'],
+        });
 
         return jsonResponse(
           200,
@@ -230,6 +268,18 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           auth.userId,
           isAdmin
         );
+
+        await deps.auditLog.log({
+          actorUserId: auth.userId,
+          action: 'footprint.calculation_deleted',
+          entityType: 'footprint_calculation',
+          entityId: id,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['data_modification', 'compliance'],
+        });
 
         return jsonResponse(
           200,

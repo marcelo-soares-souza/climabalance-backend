@@ -1,7 +1,18 @@
 import { pgPool } from './infrastructure/persistence/postgres/pg-client';
 import { buildAppRuntime } from './infrastructure/bootstrap/build-app-runtime';
 import { connectValkey } from './infrastructure/cache/valkey-client';
+import { env } from './shared/utils/env';
 import { logger } from './shared/utils/logger';
+
+const REQUEST_TIMEOUT_MS = 30_000;
+const WEBHOOK_TIMEOUT_MS = 60_000;
+
+// Verify TLS/HTTPS configuration in production
+function verifyTlsConfig(): void {
+  if (env.appEnv === 'production' && !env.appUrl.startsWith('https://')) {
+    throw new Error('TLS required in production: APP_URL must start with https://');
+  }
+}
 
 // Verify database connectivity on startup
 async function verifyDatabaseConnection(): Promise<void> {
@@ -33,6 +44,7 @@ logger.debug('startup.runtime.initialized');
 // Main startup sequence
 async function main() {
   try {
+    verifyTlsConfig();
     await verifyDatabaseConnection();
     await connectValkey();
 
@@ -41,7 +53,26 @@ async function main() {
       port: runtime.port,
       fetch: (request: Request, server: Bun.Server<any>) => {
         const clientIp = server.requestIP(request)?.address;
-        return runtime.router.handle(request, { clientIp });
+
+        const isWebhook = request.url.includes('/payments/webhook');
+        const timeoutMs = isWebhook ? WEBHOOK_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+
+        const timeoutPromise = new Promise<Response>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+        );
+
+        const handlerPromise = runtime.router.handle(request, { clientIp });
+
+        return Promise.race([handlerPromise, timeoutPromise]).catch((error) => {
+          const status = error.message === 'Request timed out' ? 503 : 500;
+          return new Response(
+            JSON.stringify({ error: { message_key: status === 503 ? 'request.timeout' : 'request.failed' } }),
+            {
+              status,
+              headers: { 'content-type': 'application/json' },
+            }
+          );
+        });
       }
     });
 

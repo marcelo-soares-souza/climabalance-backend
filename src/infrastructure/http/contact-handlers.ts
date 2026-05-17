@@ -1,5 +1,6 @@
 import type { UserRepository } from '../../domain/user/user-repository';
 import type { EmailSender } from '../email/email-sender';
+import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { HttpContext } from '../../shared/http/router';
 import { parseJson } from '../../shared/http/request';
 import { errorResponse, jsonResponse } from '../../shared/http/response';
@@ -17,6 +18,7 @@ const contactSchema = z.object({
 export type ContactHandlersDeps = {
   users: UserRepository;
   emailSender: EmailSender;
+  auditLog: Pick<AuditLogRepository, 'log'>;
 };
 
 export function createContactHandlers(deps: ContactHandlersDeps) {
@@ -71,6 +73,19 @@ export function createContactHandlers(deps: ContactHandlersDeps) {
         }
 
         log.info('contact.message_sent', { user_id: ctx.auth.userId, admin_count: adminEmails.length });
+
+        await deps.auditLog.log({
+          actorUserId: ctx.auth.userId,
+          action: 'contact.submitted',
+          entityType: 'contact',
+          entityId: ctx.auth.userId,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: 'info',
+          category: ['user_management'],
+        });
+
         return jsonResponse(200, { message_key: 'contact.message_sent' }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);

@@ -23,7 +23,7 @@ export type UploadAreaMediaInput = {
   description?: string;
   mimeType: string;
   fileName: string;
-  fileBase64: string;
+  fileBuffer: Uint8Array;
 };
 
 export type UploadAreaMediaResult = {
@@ -67,22 +67,12 @@ export async function uploadAreaMedia(
 
   validateMimeType(input.mediaType, input.mimeType);
 
-  const normalizedFileBase64 = input.fileBase64.replace(/\s/g, '');
-  if (!isValidBase64(normalizedFileBase64)) {
-    throw new ValidationError([
-      {
-        field: 'file_base64',
-        message: 'invalid_base64',
-      },
-    ]);
-  }
-
-  const bytes = new Uint8Array(Buffer.from(normalizedFileBase64, 'base64'));
+  const bytes = input.fileBuffer;
 
   if (bytes.length === 0) {
     throw new ValidationError([
       {
-        field: 'file_base64',
+        field: 'file',
         message: 'empty_file',
       },
     ]);
@@ -92,7 +82,7 @@ export async function uploadAreaMedia(
   if (bytes.length > maxBytes) {
     throw new ValidationError([
       {
-        field: 'file_base64',
+        field: 'file',
         message: 'file_too_large',
       },
     ]);
@@ -228,14 +218,6 @@ async function prepareUpload(
   }
 
   return { bytes, mimeType: declaredMimeType };
-}
-
-function isValidBase64(value: string): boolean {
-  const normalized = value.replace(/\s/g, '');
-  if (normalized.length === 0 || normalized.length % 4 !== 0) {
-    return false;
-  }
-  return /^[A-Za-z0-9+/]+={0,2}$/.test(normalized);
 }
 
 function detectPhotoMimeType(bytes: Uint8Array): string | null {

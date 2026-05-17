@@ -6,7 +6,7 @@ export const CSRF_HEADER = 'x-csrf-token';
 export async function buildCsrfToken(refreshToken: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(env.jwtSecret),
+    new TextEncoder().encode(env.csrfSecret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']

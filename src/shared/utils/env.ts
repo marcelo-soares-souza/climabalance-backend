@@ -7,6 +7,7 @@ export type Env = {
   buildTimestampMs: number;
   databaseUrl: string;
   jwtSecret: string;
+  csrfSecret: string;
   jwtIssuer: string;
   jwtAudience: string;
   jwtTtlSeconds: number;
@@ -41,6 +42,11 @@ export type Env = {
   smtpUsername?: string;
   smtpPassword?: string;
   trustedProxyIps: string[];
+  auditRetentionDays: number;
+  auditArchiveDays: number;
+  alertEmailTo?: string;
+  alertWebhookUrl?: string;
+  alertSeverityThreshold: string;
 };
 
 const defaultBuildTimestampMs = Date.now();
@@ -96,7 +102,7 @@ function sameSiteEnv(name: string, fallback: 'lax' | 'strict' | 'none'): 'lax' |
 
 export const env: Env = {
   get appEnv() {
-    return process.env.APP_ENV ?? 'local';
+    return requiredEnv('APP_ENV');
   },
   get appPort() {
     return numberEnv('APP_PORT', 3000);
@@ -118,6 +124,9 @@ export const env: Env = {
   },
   get jwtSecret() {
     return requiredEnv('JWT_SECRET');
+  },
+  get csrfSecret() {
+    return requiredEnv('CSRF_SECRET');
   },
   get jwtIssuer() {
     return process.env.JWT_ISSUER ?? 'climabalance';
@@ -221,6 +230,21 @@ export const env: Env = {
   },
   get smtpPassword() {
     return optionalEnv('SMTP_PASSWORD');
+  },
+  get auditRetentionDays() {
+    return numberEnv('AUDIT_RETENTION_DAYS', 365);
+  },
+  get auditArchiveDays() {
+    return numberEnv('AUDIT_ARCHIVE_DAYS', 90);
+  },
+  get alertEmailTo() {
+    return optionalEnv('ALERT_EMAIL_TO');
+  },
+  get alertWebhookUrl() {
+    return optionalEnv('ALERT_WEBHOOK_URL');
+  },
+  get alertSeverityThreshold() {
+    return process.env.ALERT_SEVERITY_THRESHOLD ?? 'critical';
   },
   get trustedProxyIps() {
     return (process.env.TRUSTED_PROXY_IPS ?? '')
