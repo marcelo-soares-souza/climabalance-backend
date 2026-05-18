@@ -76,6 +76,15 @@ const routes: ApiRouteDoc[] = [
 
   {
     method: 'get',
+    path: '/api/v1/auth/session',
+    summary: 'Bootstrap session context',
+    description: 'Returns a CSRF token derived from the active refresh-token cookie when a valid session exists.',
+    tags: ['Auth'],
+    successStatus: '200',
+    successResponse: 'OkData',
+  },
+  {
+    method: 'get',
     path: '/api/v1/auth/human-check',
     summary: 'Human check challenge',
     description: 'Returns a lightweight challenge payload for anti-automation checks.',

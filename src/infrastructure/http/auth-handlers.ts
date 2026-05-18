@@ -98,6 +98,53 @@ export type AuthHandlersDeps = {
 
 export function createAuthHandlers(deps: AuthHandlersDeps) {
   return {
+    sessionBootstrap: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+
+      try {
+        const refreshToken = getRefreshTokenFromCookie(ctx.request);
+        if (!refreshToken) {
+          log.info('auth.session_bootstrap.missing_cookie');
+          return new Response(null, {
+            status: 204,
+            headers: new Headers(authResponseHeaders),
+          });
+        }
+
+        const tokenHash = await deps.hashService.sha256(refreshToken);
+        const storedToken = await deps.refreshTokens.findByTokenHash(tokenHash);
+        const now = deps.clock.now();
+
+        if (
+          !storedToken ||
+          storedToken.deletedAt ||
+          storedToken.revokedAt ||
+          storedToken.expiresAt <= now
+        ) {
+          log.info('auth.session_bootstrap.invalid_cookie');
+          return new Response(null, {
+            status: 204,
+            headers: new Headers(clearRefreshCookieHeaders()),
+          });
+        }
+
+        const csrfToken = await buildCsrfToken(refreshToken);
+        return jsonResponse(
+          200,
+          {
+            data: {
+              csrfToken,
+            },
+          },
+          logContext,
+          authResponseHeaders,
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
     humanCheck: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
