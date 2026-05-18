@@ -5,10 +5,11 @@ import { NotFoundError, ValidationError } from '../../domain/errors';
 export const TREE_PURCHASE_HORIZON_YEARS = 20;
 const DEFAULT_T_CO2E_PER_TREE_PER_YEAR = 0.00075;
 
+// Area tree pricing is currently defined in USD across the product.
 const DEFAULT_PRICE_BY_CURRENCY: Record<string, number> = {
-  BRL: 12.0,
-  USD: 2.5,
-  EUR: 2.3,
+  BRL: 15.0,
+  USD: 15.0,
+  EUR: 15.0,
 };
 
 export type QuoteTreePurchaseCompensationInput = {
