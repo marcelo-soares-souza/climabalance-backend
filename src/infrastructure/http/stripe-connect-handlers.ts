@@ -8,12 +8,14 @@ import type { IdGenerator } from '../../domain/services/id-generator';
 import type { Clock } from '../../domain/services/clock';
 import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
 import type { PostgresStripeConnectRepository } from '../persistence/postgres/stripe-connect-repository';
+import type { UserRepository } from '../../domain/user/user-repository';
 import type Stripe from 'stripe';
 import { getStripeClient } from '../payments/stripe-client';
 import { env } from '../../shared/utils/env';
 
 export interface StripeConnectHandlersDeps {
   stripeConnectRepository: PostgresStripeConnectRepository;
+  users: Pick<UserRepository, 'findById'>;
   idGenerator: IdGenerator;
   clock: Clock;
   auditLog: Pick<AuditLogRepository, 'log'>;
@@ -59,10 +61,15 @@ export function createStripeConnectHandlers(
         if (existing) {
           stripeAccountId = existing.stripeAccountId;
         } else {
-            const account = await stripe.accounts.create({
+          const user = await deps.users.findById(auth.userId);
+          if (!user) {
+            return errorResponse(404, 'user.not_found', undefined, logContext);
+          }
+
+          const account = await stripe.accounts.create({
             type: 'express',
             country: 'BR',
-            email: (auth as any).email,
+            email: user.email,
             capabilities: {
               card_payments: { requested: true },
               transfers: { requested: true },
@@ -89,8 +96,8 @@ export function createStripeConnectHandlers(
 
         const accountLink = await stripe.accountLinks.create({
           account: stripeAccountId,
-          refresh_url: `${env.frontendUrl}/app/producer/stripe-setup?refresh=true`,
-          return_url: `${env.frontendUrl}/app/producer/stripe-setup?success=true`,
+          refresh_url: `${env.frontendUrl}/how-to-use/stripe-setup?refresh=true`,
+          return_url: `${env.frontendUrl}/how-to-use/stripe-setup?success=true`,
           type: 'account_onboarding',
         });
 

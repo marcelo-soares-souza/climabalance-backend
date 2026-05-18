@@ -31,6 +31,13 @@ function createDeps(stripe: Stripe, overrides: Partial<Record<string, any>> = {}
       findByUserId: mock(async () => null),
       ...overrides.repository,
     },
+    users: {
+      findById: mock(async (userId: string) => ({
+        id: userId,
+        email: 'producer@example.com',
+      })),
+      ...overrides.users,
+    },
     idGenerator: { generate: () => 'id-1' },
     clock: { now: () => new Date('2026-05-04T12:00:00Z') },
     auditLog: {
@@ -55,6 +62,7 @@ function createContext(authUserId?: string): HttpContext {
     clientIp: '127.0.0.1',
     body: null,
     auth: authUserId ? { userId: authUserId, roles: ['producer'] } : undefined,
+    locale: 'pt-BR',
   };
 }
 
@@ -204,6 +212,91 @@ describe('StripeConnectHandlers - dashboard', () => {
     expect(response.status).toBe(401);
     expect(body).toEqual({
       error: { message_key: 'auth.required' },
+    });
+  });
+});
+
+describe('StripeConnectHandlers - onboard', () => {
+  test('creates connect account with stored user email and correct return URLs', async () => {
+    const create = mock().mockResolvedValue({
+      id: 'acct_new_123',
+      charges_enabled: false,
+      payouts_enabled: false,
+    });
+    const accountLinkCreate = mock().mockResolvedValue({
+      url: 'https://connect.stripe.com/onboarding/test',
+    });
+    const stripe = createMockStripe({
+      accounts: {
+        create,
+        retrieve: mock(),
+        createLoginLink: mock(),
+      },
+      accountLinks: {
+        create: accountLinkCreate,
+      },
+    });
+    const repositoryCreate = mock(async () => {});
+    const deps = createDeps(stripe, {
+      repository: {
+        findByUserId: mock(async () => null),
+        create: repositoryCreate,
+      },
+      users: {
+        findById: mock(async () => ({
+          id: 'user-1',
+          email: 'producer@climabalance.org',
+        })),
+      },
+    });
+    const handlers = createStripeConnectHandlers(deps);
+    const ctx = createContext('user-1');
+
+    const response = await handlers.onboard(ctx);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'express',
+        country: 'BR',
+        email: 'producer@climabalance.org',
+      }),
+    );
+    expect(accountLinkCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account: 'acct_new_123',
+        refresh_url: 'https://dev.climabalance.org/how-to-use/stripe-setup?refresh=true',
+        return_url: 'https://dev.climabalance.org/how-to-use/stripe-setup?success=true',
+        type: 'account_onboarding',
+      }),
+    );
+    expect(repositoryCreate).toHaveBeenCalled();
+    expect(body.data.onboarding_url).toBe('https://connect.stripe.com/onboarding/test');
+  });
+
+  test('returns 404 when authenticated user record no longer exists', async () => {
+    const stripe = createMockStripe({
+      accounts: {
+        create: mock(),
+        retrieve: mock(),
+        createLoginLink: mock(),
+      },
+    });
+    const deps = createDeps(stripe, {
+      users: {
+        findById: mock(async () => null),
+      },
+    });
+    const handlers = createStripeConnectHandlers(deps);
+    const ctx = createContext('user-1');
+
+    const response = await handlers.onboard(ctx);
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body).toEqual({
+      error: { message_key: 'user.not_found' },
     });
   });
 });

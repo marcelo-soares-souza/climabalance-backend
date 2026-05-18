@@ -83,6 +83,24 @@ function createEmailSender(): EmailSender {
   return new ConsoleEmailSender();
 }
 
+export function validateStripeConfiguration(useStripeGateway: boolean): void {
+  if (!useStripeGateway) return;
+
+  const missing: string[] = [];
+  if (!env.stripeSecretKey.trim()) {
+    missing.push('STRIPE_SECRET_KEY');
+  }
+  if (!env.stripeWebhookSecret.trim()) {
+    missing.push('STRIPE_WEBHOOK_SECRET');
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Stripe configuration required when Stripe gateway is enabled: ${missing.join(', ')}`
+    );
+  }
+}
+
 export function buildAppRuntime() {
   const config = new EnvironmentConfig();
   const tokenGenerator = new CryptoTokenGenerator();
@@ -92,6 +110,7 @@ export function buildAppRuntime() {
   const clock = new SystemClock();
   const useStripeGateway =
     env.appEnv !== 'local' || env.stripeSecretKey.trim().length > 0;
+  validateStripeConfiguration(useStripeGateway);
   const paymentGateway = useStripeGateway
     ? new StripePaymentGatewayAdapter({
         stripe: getStripeClient(env.stripeSecretKey),
