@@ -211,6 +211,26 @@ export function buildPasswordChanged(locale: string, to: string): EmailMessage {
   };
 }
 
+export function buildPrivacySubjectRequestNotification(
+  locale: string,
+  to: string,
+  userName: string,
+  userEmail: string,
+  requestType: string,
+  details: string,
+): EmailMessage {
+  return {
+    to,
+    subject: t("email.privacySubjectRequest.subject", locale),
+    text: t("email.privacySubjectRequest.body", locale, {
+      userName,
+      userEmail,
+      requestType,
+      details,
+    }),
+  };
+}
+
 export function buildPaymentFailed(
   locale: string,
   to: string,

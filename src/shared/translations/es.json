@@ -32,5 +32,7 @@
   "email.passwordChanged.subject": "Su contraseña ha sido cambiada",
   "email.passwordChanged.body": "¡Hola!\n\nLa contraseña de su cuenta se ha cambiado correctamente.\n\nSi no realizó este cambio, comuníquese con el soporte de inmediato.\n\nSaludos cordiales,\nEquipo Climabalance",
   "email.paymentFailed.subject": "Pago no aprobado",
-  "email.paymentFailed.body": "¡Hola!\n\nEl pago de su compensación no fue aprobado.\n\nMonto: {{amount}} {{currency}}\n\nPuede intentarlo nuevamente accediendo a su cuenta y realizando un nuevo pago.\n\nAcceso: {{url}}"
+  "email.paymentFailed.body": "¡Hola!\n\nEl pago de su compensación no fue aprobado.\n\nMonto: {{amount}} {{currency}}\n\nPuede intentarlo nuevamente accediendo a su cuenta y realizando un nuevo pago.\n\nAcceso: {{url}}",
+  "email.privacySubjectRequest.subject": "Solicitud de privacidad recibida",
+  "email.privacySubjectRequest.body": "Se ha recibido una solicitud de privacidad.\n\nUsuario: {{userName}} ({{userEmail}})\nTipo de solicitud: {{requestType}}\nDetalles: {{details}}\n\nAcceda al panel de administración para revisar y procesar esta solicitud."
 }

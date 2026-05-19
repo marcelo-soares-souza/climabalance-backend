@@ -1,6 +1,7 @@
 import type { UserRepository } from "../../domain/user/user-repository";
 import type { ConsentRepository } from "../../domain/user/consent-repository";
 import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { EmailSender } from "../email/email-sender";
 import type { HttpContext } from "../../shared/http/router";
 import { parseJson } from "../../shared/http/request";
 import { errorResponse, jsonResponse } from "../../shared/http/response";
@@ -11,11 +12,13 @@ import { buildLogContext } from "../../shared/http/log-context";
 import { withAuditLogContext } from "../../shared/http/audit-log-with-context";
 import { parseWithSchema } from "./schemas";
 import { uuidv7 } from "../../shared/utils/id";
+import { buildPrivacySubjectRequestNotification } from "../email/templates";
 import { z } from "zod";
 
 export type PrivacyHandlersDeps = {
   users: UserRepository;
   consents: ConsentRepository;
+  emailSender: EmailSender;
   auditLog: Pick<AuditLogRepository, "log">;
   compensationHistoryRepository: {
     getPaidContributionSummaryBySupporter(userId: string): Promise<{
@@ -170,6 +173,29 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
           },
           changedFields: ["requestType", "status", "details"],
         });
+
+        const requestingUser = await deps.users.findById(userId);
+        if (requestingUser) {
+          const profile = await deps.users.getProfile(userId);
+          const displayName = profile?.displayName || requestingUser.email;
+          const adminUserIds =
+            await deps.users.findUserIdsByRole("administrator");
+
+          for (const adminId of adminUserIds) {
+            const admin = await deps.users.findById(adminId);
+            if (admin && admin.status === "active") {
+              const emailMessage = buildPrivacySubjectRequestNotification(
+                admin.locale,
+                admin.email,
+                displayName,
+                requestingUser.email,
+                validated.request_type,
+                validated.details ?? "",
+              );
+              await deps.emailSender.send(emailMessage);
+            }
+          }
+        }
 
         return jsonResponse(
           201,

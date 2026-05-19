@@ -32,5 +32,7 @@
   "email.passwordChanged.subject": "Sua senha foi alterada",
   "email.passwordChanged.body": "Olá!\n\nA senha da sua conta foi alterada com sucesso.\n\nSe você não realizou esta alteração, entre em contato com o suporte imediatamente.\n\nAtenciosamente,\nEquipe Climabalance",
   "email.paymentFailed.subject": "Pagamento não aprovado",
-  "email.paymentFailed.body": "Olá!\n\nO pagamento da sua compensação não foi aprovado.\n\nValor: {{amount}} {{currency}}\n\nVocê pode tentar novamente acessando sua conta e realizando um novo pagamento.\n\nAcesso: {{url}}"
+  "email.paymentFailed.body": "Olá!\n\nO pagamento da sua compensação não foi aprovado.\n\nValor: {{amount}} {{currency}}\n\nVocê pode tentar novamente acessando sua conta e realizando um novo pagamento.\n\nAcesso: {{url}}",
+  "email.privacySubjectRequest.subject": "Solicitação de privacidade recebida",
+  "email.privacySubjectRequest.body": "Uma solicitação de privacidade foi submetida.\n\nUsuário: {{userName}} ({{userEmail}})\nTipo de solicitação: {{requestType}}\nDetalhes: {{details}}\n\nAcesse o painel administrativo para revisar e processar esta solicitação."
 }
