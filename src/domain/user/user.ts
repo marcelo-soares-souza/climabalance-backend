@@ -1,4 +1,4 @@
-export type UserStatus = 'active' | 'pending' | 'suspended';
+export type UserStatus = "active" | "pending" | "suspended";
 
 export type User = {
   id: string;

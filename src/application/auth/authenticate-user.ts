@@ -1,17 +1,17 @@
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { RefreshTokenRepository } from '../../domain/user/refresh-token-repository';
-import type { PasswordHasher } from '../../infrastructure/crypto/password';
-import type { JwtService } from '../../domain/services/jwt-service';
-import type { HashService } from '../../domain/services/hash-service';
-import type { TokenGenerator } from '../../domain/services/token-generator';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { Config } from '../../domain/services/config';
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { RefreshTokenRepository } from "../../domain/user/refresh-token-repository";
+import type { PasswordHasher } from "../../infrastructure/crypto/password";
+import type { JwtService } from "../../domain/services/jwt-service";
+import type { HashService } from "../../domain/services/hash-service";
+import type { TokenGenerator } from "../../domain/services/token-generator";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { Config } from "../../domain/services/config";
 import {
   InvalidCredentialsError,
   EmailNotConfirmedError,
-  UserNotActiveError
-} from '../../domain/errors';
+  UserNotActiveError,
+} from "../../domain/errors";
 
 export type AuthenticateInput = {
   email: string;
@@ -24,7 +24,7 @@ export type AuthenticateResult = {
   userId: string;
   accessToken: string;
   refreshToken: string;
-  tokenType: 'Bearer';
+  tokenType: "Bearer";
   expiresIn: number;
   refreshExpiresIn: number;
 };
@@ -41,14 +41,17 @@ export async function authenticateUser(
     idGenerator: IdGenerator;
     clock: Clock;
     config: Config;
-  }
+  },
 ): Promise<AuthenticateResult> {
   const user = await deps.users.findByEmail(input.email);
   if (!user || user.deletedAt) throw new InvalidCredentialsError();
   if (!user.emailConfirmedAt) throw new EmailNotConfirmedError(input.email);
-  if (user.status !== 'active') throw new UserNotActiveError(user.id);
+  if (user.status !== "active") throw new UserNotActiveError(user.id);
 
-  const valid = await deps.passwordHasher.verify(input.password, user.passwordHash);
+  const valid = await deps.passwordHasher.verify(
+    input.password,
+    user.passwordHash,
+  );
   if (!valid) throw new InvalidCredentialsError();
 
   await deps.users.updateLastLogin(user.id, deps.clock.now());
@@ -67,7 +70,10 @@ export async function authenticateUser(
     jti,
   };
 
-  const accessToken = await deps.jwtService.sign(payload, deps.config.jwtSecret);
+  const accessToken = await deps.jwtService.sign(
+    payload,
+    deps.config.jwtSecret,
+  );
 
   const rawRefreshToken = deps.tokenGenerator.generate();
   const refreshTokenHash = await deps.hashService.sha256(rawRefreshToken);
@@ -81,7 +87,9 @@ export async function authenticateUser(
     expiresAt: refreshExpiresAt,
     createdAt: now,
     updatedAt: now,
-    fingerprintHash: input.fingerprint ? await deps.hashService.sha256(input.fingerprint) : null,
+    fingerprintHash: input.fingerprint
+      ? await deps.hashService.sha256(input.fingerprint)
+      : null,
     userAgent: input.userAgent || null,
   });
 
@@ -89,7 +97,7 @@ export async function authenticateUser(
     userId: user.id,
     accessToken,
     refreshToken: rawRefreshToken,
-    tokenType: 'Bearer',
+    tokenType: "Bearer",
     expiresIn: deps.config.jwtTtlSeconds,
     refreshExpiresIn: refreshTtlSeconds,
   };

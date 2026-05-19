@@ -1,5 +1,8 @@
-import type { RefreshTokenRepository, RefreshToken } from '../../../domain/user/refresh-token-repository';
-import type { DbClient } from './db-client';
+import type {
+  RefreshTokenRepository,
+  RefreshToken,
+} from "../../../domain/user/refresh-token-repository";
+import type { DbClient } from "./db-client";
 
 function mapRow(row: Record<string, unknown>): RefreshToken {
   return {
@@ -36,7 +39,7 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
         input.createdAt,
         input.updatedAt,
         input.deletedAt ?? null,
-      ]
+      ],
     );
     return mapRow(result.rows[0]);
   }
@@ -44,7 +47,7 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
   async findByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
     const result = await this.db.query(
       `SELECT * FROM refresh_tokens WHERE token_hash = $1 AND deleted_at IS NULL`,
-      [tokenHash]
+      [tokenHash],
     );
     if (result.rowCount === 0) return null;
     return mapRow(result.rows[0]);
@@ -56,7 +59,7 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
        WHERE user_id = $1 AND revoked_at IS NULL
          AND expires_at > NOW() AND deleted_at IS NULL
        ORDER BY created_at DESC`,
-      [userId]
+      [userId],
     );
     return result.rows.map(mapRow);
   }
@@ -64,14 +67,14 @@ export class PostgresRefreshTokenRepository implements RefreshTokenRepository {
   async revoke(id: string, revokedAt: Date): Promise<void> {
     await this.db.query(
       `UPDATE refresh_tokens SET revoked_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL`,
-      [revokedAt, id]
+      [revokedAt, id],
     );
   }
 
   async revokeAllByUserId(userId: string, revokedAt: Date): Promise<void> {
     await this.db.query(
       `UPDATE refresh_tokens SET revoked_at = $1, updated_at = $1 WHERE user_id = $2 AND revoked_at IS NULL AND deleted_at IS NULL`,
-      [revokedAt, userId]
+      [revokedAt, userId],
     );
   }
 }

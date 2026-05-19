@@ -1,4 +1,4 @@
-import type { FootprintCategory } from '../value-objects/category';
+import type { FootprintCategory } from "../value-objects/category";
 
 /**
  * Footprint Input entity
@@ -31,7 +31,9 @@ export interface CreateFootprintInputDTO {
 /**
  * Get metadata from input
  */
-export function getInputMetadata(input: FootprintInput): Record<string, any> | null {
+export function getInputMetadata(
+  input: FootprintInput,
+): Record<string, any> | null {
   if (!input.metadata_json) {
     return null;
   }
@@ -48,10 +50,10 @@ export function getInputMetadata(input: FootprintInput): Record<string, any> | n
  */
 export function validateInputValue(value: number): void {
   if (value < 0) {
-    throw new Error('Input value must be non-negative');
+    throw new Error("Input value must be non-negative");
   }
 
   if (!isFinite(value)) {
-    throw new Error('Input value must be finite');
+    throw new Error("Input value must be finite");
   }
 }

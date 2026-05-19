@@ -1,4 +1,4 @@
-import type { Area } from '../../domain/areas/entities/area';
+import type { Area } from "../../domain/areas/entities/area";
 
 function hasRole(roles: readonly string[] | undefined, role: string): boolean {
   return roles?.includes(role) ?? false;
@@ -7,9 +7,9 @@ function hasRole(roles: readonly string[] | undefined, role: string): boolean {
 export function canManageAreaMedia(
   area: Area,
   actorUserId: string,
-  actorRoles: readonly string[] | undefined
+  actorRoles: readonly string[] | undefined,
 ): boolean {
-  if (hasRole(actorRoles, 'administrator')) {
+  if (hasRole(actorRoles, "administrator")) {
     return true;
   }
   return area.ownerUserId === actorUserId;
@@ -18,13 +18,13 @@ export function canManageAreaMedia(
 export function canReadAreaMedia(
   area: Area,
   actorUserId: string | undefined,
-  actorRoles: readonly string[] | undefined
+  actorRoles: readonly string[] | undefined,
 ): boolean {
   if (area.isActive()) {
     return true;
   }
 
-  if (hasRole(actorRoles, 'administrator') || hasRole(actorRoles, 'analyst')) {
+  if (hasRole(actorRoles, "administrator") || hasRole(actorRoles, "analyst")) {
     return true;
   }
 

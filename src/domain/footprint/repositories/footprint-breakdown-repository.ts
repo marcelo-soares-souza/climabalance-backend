@@ -1,4 +1,4 @@
-import type { FootprintBreakdown } from '../entities/footprint-breakdown';
+import type { FootprintBreakdown } from "../entities/footprint-breakdown";
 
 /**
  * Footprint Breakdown Repository interface

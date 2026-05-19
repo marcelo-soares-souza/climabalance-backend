@@ -1,4 +1,4 @@
-import { AreaSatelliteImage } from '../entities/area-satellite-image';
+import { AreaSatelliteImage } from "../entities/area-satellite-image";
 
 export interface AreaSatelliteImageRepository {
   create(image: AreaSatelliteImage): Promise<void>;

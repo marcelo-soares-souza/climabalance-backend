@@ -2,32 +2,38 @@ const MAX_KEYS = 12;
 const MAX_ARRAY_SAMPLE = 3;
 
 function summarizePrimitive(value: string | number | boolean | null): unknown {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return {
-      type: 'string',
-      length: value.length
+      type: "string",
+      length: value.length,
     };
   }
 
   return value;
 }
 
-function summarizeArray(value: unknown[], depth: number): Record<string, unknown> {
+function summarizeArray(
+  value: unknown[],
+  depth: number,
+): Record<string, unknown> {
   return {
-    type: 'array',
+    type: "array",
     length: value.length,
     sample: value
       .slice(0, MAX_ARRAY_SAMPLE)
-      .map((item) => summarizeBodyForLog(item, depth + 1))
+      .map((item) => summarizeBodyForLog(item, depth + 1)),
   };
 }
 
-function summarizeObject(value: Record<string, unknown>, depth: number): Record<string, unknown> {
+function summarizeObject(
+  value: Record<string, unknown>,
+  depth: number,
+): Record<string, unknown> {
   const entries = Object.entries(value);
   const summary: Record<string, unknown> = {
-    type: 'object',
+    type: "object",
     key_count: entries.length,
-    keys: entries.slice(0, MAX_KEYS).map(([key]) => key)
+    keys: entries.slice(0, MAX_KEYS).map(([key]) => key),
   };
 
   const identifiers: Record<string, string | number> = {};
@@ -36,8 +42,12 @@ function summarizeObject(value: Record<string, unknown>, depth: number): Record<
 
   for (const [key, entry] of entries) {
     const normalized = key.toLowerCase();
-    if ((normalized === 'id' || normalized.endsWith('_id') || normalized.endsWith('id'))
-      && (typeof entry === 'string' || typeof entry === 'number')) {
+    if (
+      (normalized === "id" ||
+        normalized.endsWith("_id") ||
+        normalized.endsWith("id")) &&
+      (typeof entry === "string" || typeof entry === "number")
+    ) {
       identifiers[key] = entry;
       continue;
     }
@@ -48,17 +58,17 @@ function summarizeObject(value: Record<string, unknown>, depth: number): Record<
     }
 
     if (
-      normalized === 'status'
-      || normalized === 'message_key'
-      || normalized === 'code'
-      || normalized.endsWith('_count')
-      || normalized.endsWith('_total')
+      normalized === "status" ||
+      normalized === "message_key" ||
+      normalized === "code" ||
+      normalized.endsWith("_count") ||
+      normalized.endsWith("_total")
     ) {
       if (
-        entry === null
-        || typeof entry === 'string'
-        || typeof entry === 'number'
-        || typeof entry === 'boolean'
+        entry === null ||
+        typeof entry === "string" ||
+        typeof entry === "number" ||
+        typeof entry === "boolean"
       ) {
         scalarFields[key] = entry;
       }
@@ -75,10 +85,10 @@ function summarizeObject(value: Record<string, unknown>, depth: number): Record<
     summary.fields = scalarFields;
   }
 
-  if (depth === 0 && 'data' in value && value.data !== undefined) {
+  if (depth === 0 && "data" in value && value.data !== undefined) {
     summary.data = summarizeBodyForLog(value.data, depth + 1);
   }
-  if (depth === 0 && 'error' in value && value.error !== undefined) {
+  if (depth === 0 && "error" in value && value.error !== undefined) {
     summary.error = summarizeBodyForLog(value.error, depth + 1);
   }
 
@@ -87,36 +97,38 @@ function summarizeObject(value: Record<string, unknown>, depth: number): Record<
 
 export function summarizeBodyForLog(value: unknown, depth = 0): unknown {
   if (depth > 2) {
-    return '[TRUNCATED]';
+    return "[TRUNCATED]";
   }
   if (value === null) return null;
   if (value === undefined) {
-    return { type: 'undefined' };
+    return { type: "undefined" };
   }
   if (
-    typeof value === 'string'
-    || typeof value === 'number'
-    || typeof value === 'boolean'
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
   ) {
     return summarizePrimitive(value);
   }
   if (Array.isArray(value)) {
     return summarizeArray(value, depth);
   }
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     return summarizeObject(value as Record<string, unknown>, depth);
   }
 
   return {
-    type: typeof value
+    type: typeof value,
   };
 }
 
-export function summarizeQueryForLog(query: URLSearchParams): Record<string, unknown> {
+export function summarizeQueryForLog(
+  query: URLSearchParams,
+): Record<string, unknown> {
   const keys = Array.from(new Set(query.keys()));
   return {
     key_count: keys.length,
-    keys: keys.slice(0, MAX_KEYS)
+    keys: keys.slice(0, MAX_KEYS),
   };
 }
 

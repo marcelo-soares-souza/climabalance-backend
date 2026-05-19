@@ -2,24 +2,24 @@
  * Audit Status Value Object
  * Represents the audit-specific status of an area
  */
-export type AuditStatusValue = 'pending' | 'approved' | 'rejected';
+export type AuditStatusValue = "pending" | "approved" | "rejected";
 
 export class AuditStatus {
   private constructor(readonly value: AuditStatusValue) {}
 
-  static PENDING = new AuditStatus('pending');
-  static APPROVED = new AuditStatus('approved');
-  static REJECTED = new AuditStatus('rejected');
+  static PENDING = new AuditStatus("pending");
+  static APPROVED = new AuditStatus("approved");
+  static REJECTED = new AuditStatus("rejected");
 
   static fromString(value: string): AuditStatus {
     const normalized = value.toLowerCase() as AuditStatusValue;
 
     switch (normalized) {
-      case 'pending':
+      case "pending":
         return AuditStatus.PENDING;
-      case 'approved':
+      case "approved":
         return AuditStatus.APPROVED;
-      case 'rejected':
+      case "rejected":
         return AuditStatus.REJECTED;
       default:
         throw new Error(`Invalid audit status: ${value}`);
@@ -27,15 +27,15 @@ export class AuditStatus {
   }
 
   isPending(): boolean {
-    return this.value === 'pending';
+    return this.value === "pending";
   }
 
   isApproved(): boolean {
-    return this.value === 'approved';
+    return this.value === "approved";
   }
 
   isRejected(): boolean {
-    return this.value === 'rejected';
+    return this.value === "rejected";
   }
 
   equals(other: AuditStatus): boolean {

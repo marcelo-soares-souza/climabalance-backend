@@ -1,4 +1,4 @@
-import { env } from '../../shared/utils/env';
+import { env } from "../../shared/utils/env";
 
 export interface PasswordHasher {
   hash(password: string): Promise<string>;
@@ -12,11 +12,11 @@ function withPepper(password: string): string {
 export const bunPasswordHasher: PasswordHasher = {
   async hash(password: string): Promise<string> {
     return Bun.password.hash(withPepper(password), {
-      algorithm: 'bcrypt',
-      cost: 12
+      algorithm: "bcrypt",
+      cost: 12,
     });
   },
   async verify(password: string, passwordHash: string): Promise<boolean> {
     return Bun.password.verify(withPepper(password), passwordHash);
-  }
+  },
 };

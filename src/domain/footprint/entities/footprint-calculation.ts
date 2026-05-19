@@ -1,6 +1,6 @@
-import type { ProfileType } from '../value-objects/profile-type';
-import type { CalculationStatus } from '../value-objects/calculation-status';
-import type { DataQuality } from '../value-objects/data-quality';
+import type { ProfileType } from "../value-objects/profile-type";
+import type { CalculationStatus } from "../value-objects/calculation-status";
+import type { DataQuality } from "../value-objects/data-quality";
 
 /**
  * Footprint Calculation entity
@@ -31,12 +31,12 @@ export interface FootprintCalculation {
  */
 export function canEditCalculation(
   calculation: FootprintCalculation,
-  isAdmin = false
+  isAdmin = false,
 ): boolean {
   if (isAdmin) {
     return !calculation.deleted_at;
   }
-  return calculation.status === 'draft' && !calculation.deleted_at;
+  return calculation.status === "draft" && !calculation.deleted_at;
 }
 
 /**
@@ -45,12 +45,12 @@ export function canEditCalculation(
  */
 export function canFinalizeCalculation(
   calculation: FootprintCalculation,
-  isAdmin = false
+  isAdmin = false,
 ): boolean {
   if (isAdmin) {
-    return calculation.status === 'draft' && !calculation.deleted_at;
+    return calculation.status === "draft" && !calculation.deleted_at;
   }
-  return calculation.status === 'draft' && !calculation.deleted_at;
+  return calculation.status === "draft" && !calculation.deleted_at;
 }
 
 /**
@@ -59,13 +59,13 @@ export function canFinalizeCalculation(
  */
 export function canDeleteCalculation(
   calculation: FootprintCalculation,
-  isAdmin = false
+  isAdmin = false,
 ): boolean {
   if (isAdmin) {
     return !calculation.deleted_at;
   }
   // Only drafts can be deleted by regular users
-  return calculation.status === 'draft' && !calculation.deleted_at;
+  return calculation.status === "draft" && !calculation.deleted_at;
 }
 
 /**

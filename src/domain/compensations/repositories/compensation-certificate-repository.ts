@@ -27,7 +27,7 @@ export type CompensationCertificateRecord = {
   authenticityHash?: string;
   validationUrl?: string;
   qrCodeData?: string;
-  status: 'issued' | 'revoked';
+  status: "issued" | "revoked";
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
@@ -45,7 +45,7 @@ export type CompensationCertificateLookup = {
   authenticityHash?: string | null;
   validationUrl?: string | null;
   qrCodeData?: string | null;
-  status: 'issued' | 'revoked';
+  status: "issued" | "revoked";
   supporterUserId: string;
   fileName: string;
   mimeType: string;
@@ -60,7 +60,7 @@ export type CompensationCertificateListItem = {
   compensationId: string;
   certificateNumber: string;
   issuedAt: Date | null;
-  status: 'issued' | 'revoked';
+  status: "issued" | "revoked";
   authenticityHash?: string | null;
   validationUrl?: string | null;
   qrCodeData?: string | null;
@@ -75,27 +75,27 @@ export interface CompensationCertificateRepository {
   createFile(record: CertificateFileRecord, client?: any): Promise<void>;
   createCertificate(
     record: CompensationCertificateRecord,
-    client?: any
+    client?: any,
   ): Promise<void>;
   findByCompensationId(
     compensationId: string,
-    client?: any
+    client?: any,
   ): Promise<CompensationCertificateLookup | null>;
   findByCertificateNumber(
     certificateNumber: string,
-    client?: any
+    client?: any,
   ): Promise<CompensationCertificateLookup | null>;
   findById(
     certificateId: string,
-    client?: any
+    client?: any,
   ): Promise<CompensationCertificateLookup | null>;
   listBySupporterUserId(
     params: {
       supporterUserId: string;
-      status?: 'issued' | 'revoked';
+      status?: "issued" | "revoked";
       limit: number;
       offset: number;
     },
-    client?: any
+    client?: any,
   ): Promise<CompensationCertificateListItem[]>;
 }

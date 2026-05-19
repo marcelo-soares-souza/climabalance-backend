@@ -1,10 +1,10 @@
-import { Area } from '../../domain/areas/entities/area';
-import { Location } from '../../domain/areas/value-objects/location';
-import { AreaStatus } from '../../domain/areas/value-objects/area-status';
-import { Biome } from '../../domain/areas/value-objects/biome';
-import { CarbonCapacity } from '../../domain/areas/value-objects/carbon-capacity';
-import { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import { slugify, slugWithSuffix } from '../../shared/utils/slugify';
+import { Area } from "../../domain/areas/entities/area";
+import { Location } from "../../domain/areas/value-objects/location";
+import { AreaStatus } from "../../domain/areas/value-objects/area-status";
+import { Biome } from "../../domain/areas/value-objects/biome";
+import { CarbonCapacity } from "../../domain/areas/value-objects/carbon-capacity";
+import { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import { slugify, slugWithSuffix } from "../../shared/utils/slugify";
 
 export interface CreateAreaRequest {
   ownerUserId: string;
@@ -51,7 +51,7 @@ export interface CreateAreaDeps {
 
 export async function createArea(
   deps: CreateAreaDeps,
-  request: CreateAreaRequest
+  request: CreateAreaRequest,
 ): Promise<CreateAreaResponse> {
   // Validate and create location
   const location = new Location(request.latitude, request.longitude);
@@ -102,8 +102,8 @@ export async function createArea(
   // Audit log
   await deps.auditLog.log({
     actorUserId: request.ownerUserId,
-    action: 'area.created',
-    entityType: 'area',
+    action: "area.created",
+    entityType: "area",
     entityId: area.id,
   });
 

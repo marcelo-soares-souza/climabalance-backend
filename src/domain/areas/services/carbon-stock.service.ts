@@ -1,4 +1,4 @@
-import { AreaRepository } from '../repositories/area-repository';
+import { AreaRepository } from "../repositories/area-repository";
 
 export interface CarbonStockServiceDeps {
   areaRepository: AreaRepository;
@@ -17,16 +17,16 @@ export class CarbonStockService {
   async reserveStock(
     areaId: string,
     tCO2e: number,
-    client?: any
+    client?: any,
   ): Promise<void> {
     if (tCO2e <= 0) {
-      throw new Error('Reserve amount must be positive');
+      throw new Error("Reserve amount must be positive");
     }
 
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     // Use domain entity business rule
@@ -41,16 +41,16 @@ export class CarbonStockService {
   async releaseStock(
     areaId: string,
     tCO2e: number,
-    client?: any
+    client?: any,
   ): Promise<void> {
     if (tCO2e <= 0) {
-      throw new Error('Release amount must be positive');
+      throw new Error("Release amount must be positive");
     }
 
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     // Use domain entity business rule
@@ -66,7 +66,7 @@ export class CarbonStockService {
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     if (!area.carbonCapacity) {
@@ -82,7 +82,7 @@ export class CarbonStockService {
   async hasSufficientCapacity(
     areaId: string,
     requiredTCO2e: number,
-    client?: any
+    client?: any,
   ): Promise<boolean> {
     const area = await this.deps.areaRepository.findById(areaId, client);
 

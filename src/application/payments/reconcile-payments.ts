@@ -1,9 +1,9 @@
-import type { PaymentGatewayAdapter } from './payment-gateway';
+import type { PaymentGatewayAdapter } from "./payment-gateway";
 import {
   mapGatewayOutcomeToPaymentStatus,
   resolveCompensationStatusFromPayment,
-} from './payment-status';
-import type { PaymentStore } from './payment-store';
+} from "./payment-status";
+import type { PaymentStore } from "./payment-store";
 
 /**
  * Input payload for scheduled/manual reconciliation runs.
@@ -43,7 +43,7 @@ export async function reconcilePendingPayments(
       }): Promise<void>;
     };
   },
-  input: ReconcilePendingPaymentsInput
+  input: ReconcilePendingPaymentsInput,
 ): Promise<ReconcilePendingPaymentsResult> {
   const pendingPayments = await deps.store.listPendingPayments(input.limit);
   const now = deps.clock.now();
@@ -65,7 +65,7 @@ export async function reconcilePendingPayments(
 
     // Only reconcile non-Stripe providers (e.g. card simulator).
     // Stripe payments are confirmed exclusively via webhook.
-    if (payment.provider === 'stripe') {
+    if (payment.provider === "stripe") {
       remainedPending += 1;
       continue;
     }
@@ -73,16 +73,18 @@ export async function reconcilePendingPayments(
     const gatewayStatus = await deps.paymentGateway.getChargeStatus({
       providerReference: payment.providerReference,
     });
-    const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(gatewayStatus.outcome);
+    const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(
+      gatewayStatus.outcome,
+    );
 
-    if (latestPaymentStatus === 'pending') {
+    if (latestPaymentStatus === "pending") {
       remainedPending += 1;
       continue;
     }
 
     await deps.store.runInTransaction(async (tx) => {
       const locked = await tx.lockPaymentById(payment.id);
-      if (!locked || locked.paymentStatus !== 'pending') {
+      if (!locked || locked.paymentStatus !== "pending") {
         return;
       }
 
@@ -90,7 +92,7 @@ export async function reconcilePendingPayments(
         paymentId: locked.id,
         status: latestPaymentStatus,
         updatedAt: now,
-        paidAt: latestPaymentStatus === 'paid' ? now : undefined,
+        paidAt: latestPaymentStatus === "paid" ? now : undefined,
       });
 
       const nextCompensationStatus = resolveCompensationStatusFromPayment({
@@ -99,9 +101,9 @@ export async function reconcilePendingPayments(
       });
 
       if (
-        (nextCompensationStatus === 'pending' ||
-          nextCompensationStatus === 'paid' ||
-          nextCompensationStatus === 'canceled') &&
+        (nextCompensationStatus === "pending" ||
+          nextCompensationStatus === "paid" ||
+          nextCompensationStatus === "canceled") &&
         locked.compensationStatus !== nextCompensationStatus
       ) {
         await tx.updateCompensationStatus({
@@ -113,7 +115,7 @@ export async function reconcilePendingPayments(
     });
 
     updated += 1;
-    if (latestPaymentStatus === 'paid') {
+    if (latestPaymentStatus === "paid") {
       markedPaid += 1;
       paidCompensationIds.push(payment.compensationId);
     } else {
@@ -123,9 +125,9 @@ export async function reconcilePendingPayments(
 
   await deps.auditLog.log({
     actorUserId: input.actorUserId,
-    action: 'payment.reconciliation_ran',
-    entityType: 'payment',
-    entityId: 'batch',
+    action: "payment.reconciliation_ran",
+    entityType: "payment",
+    entityId: "batch",
     metadata: {
       inspected,
       updated,

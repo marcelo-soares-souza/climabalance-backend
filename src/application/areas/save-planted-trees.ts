@@ -1,4 +1,4 @@
-import { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
+import { TreePlantingRepository } from "../../domain/areas/repositories/tree-planting-repository";
 
 export type TreePointInput = {
   latitude: number;

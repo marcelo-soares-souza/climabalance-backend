@@ -26,14 +26,14 @@ export interface CompensationProjection {
 export function calculateTreesNeeded(
   totalTCO2e: number,
   tCO2ePerTreePerYear: number,
-  horizonYears: number
+  horizonYears: number,
 ): number {
   if (tCO2ePerTreePerYear <= 0) {
-    throw new Error('CO2e per tree per year must be positive');
+    throw new Error("CO2e per tree per year must be positive");
   }
 
   if (horizonYears <= 0) {
-    throw new Error('Horizon years must be positive');
+    throw new Error("Horizon years must be positive");
   }
 
   const totalSequestrationPerTree = tCO2ePerTreePerYear * horizonYears;

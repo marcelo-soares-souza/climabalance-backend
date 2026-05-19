@@ -13,5 +13,8 @@ export type EmailConfirmation = {
 export interface EmailConfirmationRepository {
   create(input: EmailConfirmation): Promise<EmailConfirmation>;
   findByTokenHash(tokenHash: string): Promise<EmailConfirmation | null>;
-  markConfirmed(id: string, confirmedAt: Date): Promise<EmailConfirmation | null>;
+  markConfirmed(
+    id: string,
+    confirmedAt: Date,
+  ): Promise<EmailConfirmation | null>;
 }

@@ -1,4 +1,9 @@
-export type AuditLogSeverity = 'debug' | 'info' | 'warning' | 'error' | 'critical';
+export type AuditLogSeverity =
+  | "debug"
+  | "info"
+  | "warning"
+  | "error"
+  | "critical";
 
 export type AuditLogEntry = {
   id: string;
@@ -98,6 +103,14 @@ export interface AuditLogRepository {
     durationMs?: number;
     resourceChanges?: number;
   }): Promise<void>;
-  verifyChain(): Promise<{ valid: boolean; totalEntries: number; verifiedEntries: number; firstBrokenEntry?: string }>;
-  archive(retentionDays: number, archiveDays: number): Promise<{ archived: number; deleted: number }>;
+  verifyChain(): Promise<{
+    valid: boolean;
+    totalEntries: number;
+    verifiedEntries: number;
+    firstBrokenEntry?: string;
+  }>;
+  archive(
+    retentionDays: number,
+    archiveDays: number,
+  ): Promise<{ archived: number; deleted: number }>;
 }

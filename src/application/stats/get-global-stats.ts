@@ -1,4 +1,4 @@
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
 
 export type GlobalStats = {
   totalAreas: number;

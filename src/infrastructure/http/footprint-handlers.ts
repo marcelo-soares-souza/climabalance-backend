@@ -1,16 +1,16 @@
-import type { HttpContext } from '../../shared/http/router';
-import type { EmissionFactorRepository } from '../../domain/footprint/repositories/emission-factor-repository';
-import type { FootprintCalculationRepository } from '../../domain/footprint/repositories/footprint-calculation-repository';
-import type { FootprintInputRepository } from '../../domain/footprint/repositories/footprint-input-repository';
-import type { FootprintBreakdownRepository } from '../../domain/footprint/repositories/footprint-breakdown-repository';
-import type { CompensationProjectionRepository } from '../../domain/footprint/repositories/compensation-projection-repository';
-import type { UnitOfWork } from '../persistence/unit-of-work';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import { parseJson } from '../../shared/http/request';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
-import { handleError } from './error-mapper';
+import type { HttpContext } from "../../shared/http/router";
+import type { EmissionFactorRepository } from "../../domain/footprint/repositories/emission-factor-repository";
+import type { FootprintCalculationRepository } from "../../domain/footprint/repositories/footprint-calculation-repository";
+import type { FootprintInputRepository } from "../../domain/footprint/repositories/footprint-input-repository";
+import type { FootprintBreakdownRepository } from "../../domain/footprint/repositories/footprint-breakdown-repository";
+import type { CompensationProjectionRepository } from "../../domain/footprint/repositories/compensation-projection-repository";
+import type { UnitOfWork } from "../persistence/unit-of-work";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import { parseJson } from "../../shared/http/request";
+import { errorResponse, jsonResponse } from "../../shared/http/response";
+import { handleError } from "./error-mapper";
 import {
   createCalculationSchema,
   updateCalculationSchema,
@@ -18,20 +18,23 @@ import {
   calculateGuestSchema,
   listCalculationsQuerySchema,
   emissionFactorsQuerySchema,
-} from './schemas/footprint-schemas';
-import { parseQueryWithSchema, parseWithSchema } from './schemas/validation-helper';
-import { createFootprintCalculation } from '../../application/footprint/create-footprint-calculation';
-import { updateFootprintCalculation } from '../../application/footprint/update-footprint-calculation';
-import { finalizeFootprintCalculation } from '../../application/footprint/finalize-footprint-calculation';
-import { getFootprintCalculation } from '../../application/footprint/get-footprint-calculation';
-import { listFootprintCalculations } from '../../application/footprint/list-footprint-calculations';
-import { deleteFootprintCalculation } from '../../application/footprint/delete-footprint-calculation';
-import { getEmissionFactors } from '../../application/footprint/get-emission-factors';
-import { createCompensationProjection } from '../../application/footprint/create-compensation-projection';
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import { calculateGuestFootprint } from '../../application/footprint/calculate-guest-footprint';
-import { buildLogContext } from '../../shared/http/log-context';
-import { requireAuth } from '../../shared/http/auth-context';
+} from "./schemas/footprint-schemas";
+import {
+  parseQueryWithSchema,
+  parseWithSchema,
+} from "./schemas/validation-helper";
+import { createFootprintCalculation } from "../../application/footprint/create-footprint-calculation";
+import { updateFootprintCalculation } from "../../application/footprint/update-footprint-calculation";
+import { finalizeFootprintCalculation } from "../../application/footprint/finalize-footprint-calculation";
+import { getFootprintCalculation } from "../../application/footprint/get-footprint-calculation";
+import { listFootprintCalculations } from "../../application/footprint/list-footprint-calculations";
+import { deleteFootprintCalculation } from "../../application/footprint/delete-footprint-calculation";
+import { getEmissionFactors } from "../../application/footprint/get-emission-factors";
+import { createCompensationProjection } from "../../application/footprint/create-compensation-projection";
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import { calculateGuestFootprint } from "../../application/footprint/calculate-guest-footprint";
+import { buildLogContext } from "../../shared/http/log-context";
+import { requireAuth } from "../../shared/http/auth-context";
 
 export interface FootprintHandlersDeps {
   calculationRepository: FootprintCalculationRepository;
@@ -43,7 +46,7 @@ export interface FootprintHandlersDeps {
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
   clock: Clock;
-  auditLog: Pick<AuditLogRepository, 'log'>;
+  auditLog: Pick<AuditLogRepository, "log">;
 }
 
 export function createFootprintHandlers(deps: FootprintHandlersDeps) {
@@ -64,33 +67,33 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             emissionFactorRepository: deps.emissionFactorRepository,
             unitOfWork: deps.unitOfWork,
             idGenerator: deps.idGenerator,
-            clock: deps.clock
+            clock: deps.clock,
           },
           {
             user_id: auth.userId,
-            ...validated
-          }
+            ...validated,
+          },
         );
 
         await deps.auditLog.log({
           actorUserId: auth.userId,
-          action: 'footprint.calculation_created',
-          entityType: 'footprint_calculation',
+          action: "footprint.calculation_created",
+          entityType: "footprint_calculation",
           entityId: result.calculation_id,
           ctx,
           success: true,
           httpStatus: 201,
-          severity: 'info',
-          category: ['data_modification', 'compliance'],
+          severity: "info",
+          category: ["data_modification", "compliance"],
         });
 
         return jsonResponse(
           201,
           {
             data: result,
-            messages: ['footprint.calculation.created']
+            messages: ["footprint.calculation.created"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -105,7 +108,7 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
       const logContext = buildLogContext(ctx);
       try {
         const auth = requireAuth(ctx);
-        const isAdmin = auth.roles.includes('administrator');
+        const isAdmin = auth.roles.includes("administrator");
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(updateCalculationSchema, body);
 
@@ -115,34 +118,34 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             emissionFactorRepository: deps.emissionFactorRepository,
             unitOfWork: deps.unitOfWork,
             idGenerator: deps.idGenerator,
-            clock: deps.clock
+            clock: deps.clock,
           },
           {
             calculation_id: id,
             user_id: auth.userId,
             isAdmin,
-            ...validated
-          }
+            ...validated,
+          },
         );
 
         await deps.auditLog.log({
           actorUserId: auth.userId,
-          action: 'footprint.calculation_updated',
-          entityType: 'footprint_calculation',
+          action: "footprint.calculation_updated",
+          entityType: "footprint_calculation",
           entityId: id,
           ctx,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['data_modification', 'compliance'],
+          severity: "info",
+          category: ["data_modification", "compliance"],
         });
 
         return jsonResponse(
           200,
           {
-            messages: ['footprint.calculation.updated']
+            messages: ["footprint.calculation.updated"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -157,37 +160,37 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
       const logContext = buildLogContext(ctx);
       try {
         const auth = requireAuth(ctx);
-        const isAdmin = auth.roles.includes('administrator');
+        const isAdmin = auth.roles.includes("administrator");
         await finalizeFootprintCalculation(
           {
             calculationRepository: deps.calculationRepository,
             unitOfWork: deps.unitOfWork,
             idGenerator: deps.idGenerator,
-            clock: deps.clock
+            clock: deps.clock,
           },
           id,
           auth.userId,
-          isAdmin
+          isAdmin,
         );
 
         await deps.auditLog.log({
           actorUserId: auth.userId,
-          action: 'footprint.calculation_finalized',
-          entityType: 'footprint_calculation',
+          action: "footprint.calculation_finalized",
+          entityType: "footprint_calculation",
           entityId: id,
           ctx,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['data_modification', 'compliance'],
+          severity: "info",
+          category: ["data_modification", "compliance"],
         });
 
         return jsonResponse(
           200,
           {
-            messages: ['footprint.calculation.finalized']
+            messages: ["footprint.calculation.finalized"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -202,16 +205,16 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
       const logContext = buildLogContext(ctx);
       try {
         const auth = requireAuth(ctx);
-        const isAdmin = auth.roles.includes('administrator');
+        const isAdmin = auth.roles.includes("administrator");
         const result = await getFootprintCalculation(
           {
             calculationRepository: deps.calculationRepository,
             inputRepository: deps.inputRepository,
-            breakdownRepository: deps.breakdownRepository
+            breakdownRepository: deps.breakdownRepository,
           },
           id,
           auth.userId,
-          { is_admin: isAdmin }
+          { is_admin: isAdmin },
         );
 
         return jsonResponse(200, { data: result }, logContext);
@@ -228,11 +231,14 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
       const logContext = buildLogContext(ctx);
       try {
         const auth = requireAuth(ctx);
-        const isAdmin = auth.roles.includes('administrator');
-        const query = parseQueryWithSchema(listCalculationsQuerySchema, ctx.query);
+        const isAdmin = auth.roles.includes("administrator");
+        const query = parseQueryWithSchema(
+          listCalculationsQuerySchema,
+          ctx.query,
+        );
         const result = await listFootprintCalculations(
           {
-            calculationRepository: deps.calculationRepository
+            calculationRepository: deps.calculationRepository,
           },
           {
             user_id: auth.userId,
@@ -241,8 +247,8 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             user_email: isAdmin ? query.user_email : undefined,
             limit: query.limit,
             offset: query.offset,
-            is_admin: isAdmin
-          }
+            is_admin: isAdmin,
+          },
         );
 
         return jsonResponse(200, { data: result.calculations }, logContext);
@@ -259,34 +265,34 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
       const logContext = buildLogContext(ctx);
       try {
         const auth = requireAuth(ctx);
-        const isAdmin = auth.roles.includes('administrator');
+        const isAdmin = auth.roles.includes("administrator");
         await deleteFootprintCalculation(
           {
-            calculationRepository: deps.calculationRepository
+            calculationRepository: deps.calculationRepository,
           },
           id,
           auth.userId,
-          isAdmin
+          isAdmin,
         );
 
         await deps.auditLog.log({
           actorUserId: auth.userId,
-          action: 'footprint.calculation_deleted',
-          entityType: 'footprint_calculation',
+          action: "footprint.calculation_deleted",
+          entityType: "footprint_calculation",
           entityId: id,
           ctx,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['data_modification', 'compliance'],
+          severity: "info",
+          category: ["data_modification", "compliance"],
         });
 
         return jsonResponse(
           200,
           {
-            messages: ['footprint.calculation.deleted']
+            messages: ["footprint.calculation.deleted"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -300,12 +306,15 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
     async getEmissionFactors(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
-        const query = parseQueryWithSchema(emissionFactorsQuerySchema, ctx.query);
+        const query = parseQueryWithSchema(
+          emissionFactorsQuerySchema,
+          ctx.query,
+        );
         const result = await getEmissionFactors(
           {
-            emissionFactorRepository: deps.emissionFactorRepository
+            emissionFactorRepository: deps.emissionFactorRepository,
           },
-          query
+          query,
         );
 
         return jsonResponse(200, { data: result.factors }, logContext);
@@ -325,12 +334,13 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createProjectionSchema, body);
 
-        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const areaUuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const resolvedAreaId = areaUuidRegex.test(validated.area_id)
           ? validated.area_id
           : (await deps.areaRepository.findBySlug(validated.area_id))?.id;
         if (!resolvedAreaId) {
-          return errorResponse(404, 'area.not_found', undefined, logContext);
+          return errorResponse(404, "area.not_found", undefined, logContext);
         }
 
         const result = await createCompensationProjection(
@@ -339,23 +349,23 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
             projectionRepository: deps.projectionRepository,
             areaRepository: deps.areaRepository,
             idGenerator: deps.idGenerator,
-            clock: deps.clock
+            clock: deps.clock,
           },
           {
             calculation_id: calculationId,
             user_id: auth.userId,
             ...validated,
             area_id: resolvedAreaId,
-          }
+          },
         );
 
         return jsonResponse(
           201,
           {
             data: result,
-            messages: ['footprint.projection.created']
+            messages: ["footprint.projection.created"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -375,22 +385,22 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
 
         const result = await calculateGuestFootprint(
           {
-            emissionFactorRepository: deps.emissionFactorRepository
+            emissionFactorRepository: deps.emissionFactorRepository,
           },
-          validated
+          validated,
         );
 
         return jsonResponse(
           200,
           {
             data: result,
-            messages: ['footprint.guest_calculation.completed']
+            messages: ["footprint.guest_calculation.completed"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
-    }
+    },
   };
 }

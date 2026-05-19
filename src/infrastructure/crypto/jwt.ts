@@ -1,5 +1,5 @@
-import { base64UrlDecode, base64UrlEncode } from '../../shared/utils/base64url';
-import { valkey } from '../cache/valkey-client';
+import { base64UrlDecode, base64UrlEncode } from "../../shared/utils/base64url";
+import { valkey } from "../cache/valkey-client";
 
 export type JwtPayload = {
   sub: string;
@@ -15,13 +15,13 @@ const encoder = new TextEncoder();
 
 async function hmacSha256(secret: string, data: string): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign']
+    ["sign"],
   );
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data));
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
   return new Uint8Array(signature);
 }
 
@@ -29,13 +29,19 @@ function parseKeys(raw: string): Record<string, string> {
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    if (typeof parsed === 'object' && parsed !== null) return parsed;
-  } catch { /* ignore */ }
+    if (typeof parsed === "object" && parsed !== null) return parsed;
+  } catch {
+    /* ignore */
+  }
   return {};
 }
 
-export async function signJwt(payload: JwtPayload, secret: string, kid?: string): Promise<string> {
-  const header: Record<string, string> = { alg: 'HS256', typ: 'JWT' };
+export async function signJwt(
+  payload: JwtPayload,
+  secret: string,
+  kid?: string,
+): Promise<string> {
+  const header: Record<string, string> = { alg: "HS256", typ: "JWT" };
   if (kid) header.kid = kid;
   const headerSegment = base64UrlEncode(JSON.stringify(header));
   const payloadSegment = base64UrlEncode(JSON.stringify(payload));
@@ -54,17 +60,22 @@ async function isJtiBlocklisted(jti: string): Promise<boolean> {
   }
 }
 
-export async function blocklistJti(jti: string, ttlSeconds: number): Promise<void> {
+export async function blocklistJti(
+  jti: string,
+  ttlSeconds: number,
+): Promise<void> {
   try {
-    await valkey.set(`jti:${jti}`, '1', 'EX', ttlSeconds);
-  } catch { /* valkey unavailable */ }
+    await valkey.set(`jti:${jti}`, "1", "EX", ttlSeconds);
+  } catch {
+    /* valkey unavailable */
+  }
 }
 
 function decodeHeader(token: string): Record<string, string> | null {
-  const parts = token.split('.');
+  const parts = token.split(".");
   if (parts.length !== 3) return null;
   try {
-    const raw = Buffer.from(base64UrlDecode(parts[0])).toString('utf-8');
+    const raw = Buffer.from(base64UrlDecode(parts[0])).toString("utf-8");
     return JSON.parse(raw);
   } catch {
     return null;
@@ -74,9 +85,9 @@ function decodeHeader(token: string): Record<string, string> | null {
 export async function verifyJwt(
   token: string,
   secret: string,
-  keys?: string
+  keys?: string,
 ): Promise<JwtPayload | null> {
-  const parts = token.split('.');
+  const parts = token.split(".");
   if (parts.length !== 3) return null;
 
   const [headerSegment, payloadSegment, signatureSegment] = parts;
@@ -96,7 +107,9 @@ export async function verifyJwt(
   const expectedSignatureSegment = base64UrlEncode(expectedSignature);
   if (expectedSignatureSegment !== signatureSegment) return null;
 
-  const payloadRaw = Buffer.from(base64UrlDecode(payloadSegment)).toString('utf-8');
+  const payloadRaw = Buffer.from(base64UrlDecode(payloadSegment)).toString(
+    "utf-8",
+  );
   const payload = JSON.parse(payloadRaw) as JwtPayload;
   const now = Math.floor(Date.now() / 1000);
   if (payload.exp < now) return null;

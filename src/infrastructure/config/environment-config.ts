@@ -1,5 +1,5 @@
-import type { Config } from '../../domain/services/config';
-import { env } from '../../shared/utils/env';
+import type { Config } from "../../domain/services/config";
+import { env } from "../../shared/utils/env";
 
 /**
  * Implementation of Config using process.env.

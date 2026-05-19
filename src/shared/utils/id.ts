@@ -1,5 +1,5 @@
 function toHex(value: number, length: number): string {
-  return value.toString(16).padStart(length, '0');
+  return value.toString(16).padStart(length, "0");
 }
 
 function bytesToBigInt(bytes: Uint8Array): bigint {
@@ -28,7 +28,7 @@ export function uuidv7(): string {
   const randBHigh = Number((randB >> 48n) & 0x3fffn);
   const randBLow = randB & 0xffffffffffffn;
   const randBHighHex = toHex(0x8000 | randBHigh, 4);
-  const randBLowHex = randBLow.toString(16).padStart(12, '0');
+  const randBLowHex = randBLow.toString(16).padStart(12, "0");
 
   return `${timeHighHex}-${timeLowHex}-${randAHex}-${randBHighHex}-${randBLowHex}`;
 }

@@ -1,25 +1,25 @@
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import sharp from 'sharp';
-import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
-import { env } from '../../shared/utils/env';
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
+import type { AreaMediaStorage } from "../../domain/areas/services/area-media-storage";
+import { env } from "../../shared/utils/env";
 
 const extensionByMime: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'video/mp4': 'mp4',
-  'video/quicktime': 'mov',
-  'video/webm': 'webm',
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",
+  "video/webm": "webm",
 };
 
 function resolveExtension(mimeType: string): string {
-  return extensionByMime[mimeType] ?? 'bin';
+  return extensionByMime[mimeType] ?? "bin";
 }
 
 function sanitizePathSegment(value: string): string {
-  const sanitized = value.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
-  return sanitized || 'unknown-user';
+  const sanitized = value.trim().replace(/[^a-zA-Z0-9._-]/g, "_");
+  return sanitized || "unknown-user";
 }
 
 function thumbnailPathFor(storagePath: string): string {
@@ -64,11 +64,13 @@ export class LocalAreaMediaStorage implements AreaMediaStorage {
     }
   }
 
-  async generateThumbnail(storagePath: string): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
+  async generateThumbnail(
+    storagePath: string,
+  ): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
     const thumbPath = thumbnailPathFor(storagePath);
     const originalBytes = await readFile(storagePath);
     const thumbBuffer = await sharp(originalBytes)
-      .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
+      .resize(200, 200, { fit: "inside", withoutEnlargement: true })
       .webp({ quality: 70 })
       .toBuffer();
     await mkdir(path.dirname(thumbPath), { recursive: true });

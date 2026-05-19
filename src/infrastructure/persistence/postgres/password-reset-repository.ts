@@ -1,5 +1,8 @@
-import type { PasswordResetRepository, PasswordResetToken } from '../../../domain/user/password-reset-repository';
-import type { DbClient } from './db-client';
+import type {
+  PasswordResetRepository,
+  PasswordResetToken,
+} from "../../../domain/user/password-reset-repository";
+import type { DbClient } from "./db-client";
 
 function mapResetToken(row: Record<string, unknown>): PasswordResetToken {
   return {
@@ -11,7 +14,7 @@ function mapResetToken(row: Record<string, unknown>): PasswordResetToken {
     usedAt: row.used_at ? new Date(row.used_at as string) : null,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
-    deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
+    deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
   };
 }
 
@@ -32,8 +35,8 @@ export class PostgresPasswordResetRepository implements PasswordResetRepository 
         input.usedAt ?? null,
         input.createdAt,
         input.updatedAt,
-        input.deletedAt ?? null
-      ]
+        input.deletedAt ?? null,
+      ],
     );
     return mapResetToken(result.rows[0]);
   }
@@ -41,7 +44,7 @@ export class PostgresPasswordResetRepository implements PasswordResetRepository 
   async findByTokenHash(tokenHash: string): Promise<PasswordResetToken | null> {
     const result = await this.db.query(
       `SELECT * FROM password_reset_tokens WHERE token_hash = $1 AND deleted_at IS NULL`,
-      [tokenHash]
+      [tokenHash],
     );
     if (result.rowCount === 0) return null;
     return mapResetToken(result.rows[0]);
@@ -50,7 +53,7 @@ export class PostgresPasswordResetRepository implements PasswordResetRepository 
   async markUsed(id: string, usedAt: Date): Promise<PasswordResetToken | null> {
     const result = await this.db.query(
       `UPDATE password_reset_tokens SET used_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL RETURNING *`,
-      [usedAt, id]
+      [usedAt, id],
     );
     if (result.rowCount === 0) return null;
     return mapResetToken(result.rows[0]);

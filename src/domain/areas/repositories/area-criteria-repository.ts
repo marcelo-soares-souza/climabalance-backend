@@ -1,4 +1,4 @@
-import { AreaCriterion } from '../entities/area-criterion';
+import { AreaCriterion } from "../entities/area-criterion";
 
 /**
  * Area Criteria Repository Interface

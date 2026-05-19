@@ -1,40 +1,38 @@
-import type { HttpContext } from '../../shared/http/router';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
-import { buildLogContext } from '../../shared/http/log-context';
-import { handleError } from './error-mapper';
-import { requireAuth } from '../../shared/http/auth-context';
-import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import type { PostgresStripeConnectRepository } from '../persistence/postgres/stripe-connect-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type Stripe from 'stripe';
-import { getStripeClient } from '../payments/stripe-client';
-import { env } from '../../shared/utils/env';
+import type { HttpContext } from "../../shared/http/router";
+import { errorResponse, jsonResponse } from "../../shared/http/response";
+import { buildLogContext } from "../../shared/http/log-context";
+import { handleError } from "./error-mapper";
+import { requireAuth } from "../../shared/http/auth-context";
+import { withAuditLogContext } from "../../shared/http/audit-log-with-context";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { PostgresStripeConnectRepository } from "../persistence/postgres/stripe-connect-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type Stripe from "stripe";
+import { getStripeClient } from "../payments/stripe-client";
+import { env } from "../../shared/utils/env";
 
 export interface StripeConnectHandlersDeps {
   stripeConnectRepository: PostgresStripeConnectRepository;
-  users: Pick<UserRepository, 'findById'>;
+  users: Pick<UserRepository, "findById">;
   idGenerator: IdGenerator;
   clock: Clock;
-  auditLog: Pick<AuditLogRepository, 'log'>;
+  auditLog: Pick<AuditLogRepository, "log">;
   stripe?: Stripe;
 }
 
-export function createStripeConnectHandlers(
-  deps: StripeConnectHandlersDeps
-) {
+export function createStripeConnectHandlers(deps: StripeConnectHandlersDeps) {
   const stripe = deps.stripe ?? getStripeClient(env.stripeSecretKey);
 
   const isConnectNotEnabledError = (error: unknown): boolean => {
     const message =
-      typeof error === 'object' &&
+      typeof error === "object" &&
       error !== null &&
-      'message' in error &&
-      typeof (error as { message?: unknown }).message === 'string'
+      "message" in error &&
+      typeof (error as { message?: unknown }).message === "string"
         ? (error as { message: string }).message
-        : '';
+        : "";
     return (
       message.includes("signed up for Connect") ||
       message.includes("create new accounts")
@@ -53,8 +51,9 @@ export function createStripeConnectHandlers(
         const auth = requireAuth(ctx);
         const now = deps.clock.now();
 
-        const existing =
-          await deps.stripeConnectRepository.findByUserId(auth.userId);
+        const existing = await deps.stripeConnectRepository.findByUserId(
+          auth.userId,
+        );
 
         let stripeAccountId: string;
 
@@ -63,12 +62,12 @@ export function createStripeConnectHandlers(
         } else {
           const user = await deps.users.findById(auth.userId);
           if (!user) {
-            return errorResponse(404, 'user.not_found', undefined, logContext);
+            return errorResponse(404, "user.not_found", undefined, logContext);
           }
 
           const account = await stripe.accounts.create({
-            type: 'express',
-            country: 'BR',
+            type: "express",
+            country: "BR",
             email: user.email,
             capabilities: {
               card_payments: { requested: true },
@@ -86,7 +85,7 @@ export function createStripeConnectHandlers(
             stripeAccountId: account.id,
             chargesEnabled: account.charges_enabled ?? false,
             payoutsEnabled: account.payouts_enabled ?? false,
-            country: 'BR',
+            country: "BR",
             createdAt: now,
             updatedAt: now,
           });
@@ -98,18 +97,18 @@ export function createStripeConnectHandlers(
           account: stripeAccountId,
           refresh_url: `${env.frontendUrl}/how-to-use/stripe-setup?refresh=true`,
           return_url: `${env.frontendUrl}/how-to-use/stripe-setup?success=true`,
-          type: 'account_onboarding',
+          type: "account_onboarding",
         });
 
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'producer.stripe_onboarding_started',
-          entityType: 'stripe_connect_account',
+          action: "producer.stripe_onboarding_started",
+          entityType: "stripe_connect_account",
           entityId: stripeAccountId,
           metadata: {
             stripe_account_id: stripeAccountId,
-            country: 'BR',
-            account_type: 'express',
+            country: "BR",
+            account_type: "express",
           },
         });
 
@@ -120,17 +119,17 @@ export function createStripeConnectHandlers(
               onboarding_url: accountLink.url,
               stripe_account_id: stripeAccountId,
             },
-            message_key: 'producer.stripe.onboarding_started',
+            message_key: "producer.stripe.onboarding_started",
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         if (isConnectNotEnabledError(error)) {
           return errorResponse(
             400,
-            'producer.stripe.connect_not_enabled',
+            "producer.stripe.connect_not_enabled",
             undefined,
-            logContext
+            logContext,
           );
         }
         return handleError(error, undefined, logContext);
@@ -147,8 +146,9 @@ export function createStripeConnectHandlers(
       try {
         const auth = requireAuth(ctx);
 
-        const record =
-          await deps.stripeConnectRepository.findByUserId(auth.userId);
+        const record = await deps.stripeConnectRepository.findByUserId(
+          auth.userId,
+        );
 
         if (!record) {
           return jsonResponse(
@@ -160,12 +160,12 @@ export function createStripeConnectHandlers(
                 payouts_enabled: false,
               },
             },
-            logContext
+            logContext,
           );
         }
 
         const stripeAccount = await stripe.accounts.retrieve(
-          record.stripeAccountId
+          record.stripeAccountId,
         );
 
         const chargesEnabled =
@@ -187,25 +187,25 @@ export function createStripeConnectHandlers(
           };
           const changedFields: string[] = [];
           if (chargesEnabled !== record.chargesEnabled)
-            changedFields.push('charges_enabled');
+            changedFields.push("charges_enabled");
           if (payoutsEnabled !== record.payoutsEnabled)
-            changedFields.push('payouts_enabled');
+            changedFields.push("payouts_enabled");
 
           await deps.stripeConnectRepository.updateStatus(
             record.id,
             chargesEnabled,
             payoutsEnabled,
-            deps.clock.now()
+            deps.clock.now(),
           );
 
           await requestAuditLog.log({
             actorUserId: auth.userId,
-            action: 'producer.stripe_onboarding_updated',
-            entityType: 'stripe_connect_account',
+            action: "producer.stripe_onboarding_updated",
+            entityType: "stripe_connect_account",
             entityId: record.id,
             metadata: {
               stripe_account_id: record.stripeAccountId,
-              source: 'manual_poll',
+              source: "manual_poll",
             },
             previousState,
             newState,
@@ -221,13 +221,13 @@ export function createStripeConnectHandlers(
 
         let onboardingStatus: string;
         if (chargesEnabled && payoutsEnabled) {
-          onboardingStatus = 'complete';
+          onboardingStatus = "complete";
         } else if (currentlyDue.length > 0) {
-          onboardingStatus = 'incomplete';
+          onboardingStatus = "incomplete";
         } else if (pendingVerification.length > 0) {
-          onboardingStatus = 'pending_verification';
+          onboardingStatus = "pending_verification";
         } else {
-          onboardingStatus = 'incomplete';
+          onboardingStatus = "incomplete";
         }
 
         return jsonResponse(
@@ -247,7 +247,7 @@ export function createStripeConnectHandlers(
               disabled_reason: disabledReason,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -264,35 +264,36 @@ export function createStripeConnectHandlers(
       try {
         const auth = requireAuth(ctx);
 
-        const record =
-          await deps.stripeConnectRepository.findByUserId(auth.userId);
+        const record = await deps.stripeConnectRepository.findByUserId(
+          auth.userId,
+        );
 
         if (!record) {
           return errorResponse(
             404,
-            'producer.stripe.not_connected',
+            "producer.stripe.not_connected",
             undefined,
-            logContext
+            logContext,
           );
         }
 
         if (!record.chargesEnabled || !record.payoutsEnabled) {
           return errorResponse(
             400,
-            'producer.stripe.onboarding_incomplete',
+            "producer.stripe.onboarding_incomplete",
             undefined,
-            logContext
+            logContext,
           );
         }
 
         const loginLink = await stripe.accounts.createLoginLink(
-          record.stripeAccountId
+          record.stripeAccountId,
         );
 
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'producer.stripe_dashboard_accessed',
-          entityType: 'stripe_connect_account',
+          action: "producer.stripe_dashboard_accessed",
+          entityType: "stripe_connect_account",
           entityId: record.id,
           metadata: {
             stripe_account_id: record.stripeAccountId,
@@ -306,7 +307,7 @@ export function createStripeConnectHandlers(
               dashboard_url: loginLink.url,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);

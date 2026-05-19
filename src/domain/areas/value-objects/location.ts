@@ -8,11 +8,15 @@ export class Location {
 
   constructor(latitude: number, longitude: number) {
     if (!Location.isValidLatitude(latitude)) {
-      throw new Error(`Invalid latitude: ${latitude}. Must be between -90 and 90.`);
+      throw new Error(
+        `Invalid latitude: ${latitude}. Must be between -90 and 90.`,
+      );
     }
 
     if (!Location.isValidLongitude(longitude)) {
-      throw new Error(`Invalid longitude: ${longitude}. Must be between -180 and 180.`);
+      throw new Error(
+        `Invalid longitude: ${longitude}. Must be between -180 and 180.`,
+      );
     }
 
     this.latitude = latitude;
@@ -20,19 +24,24 @@ export class Location {
   }
 
   static isValidLatitude(lat: number): boolean {
-    return typeof lat === 'number' && !isNaN(lat) && lat >= -90 && lat <= 90;
+    return typeof lat === "number" && !isNaN(lat) && lat >= -90 && lat <= 90;
   }
 
   static isValidLongitude(lng: number): boolean {
-    return typeof lng === 'number' && !isNaN(lng) && lng >= -180 && lng <= 180;
+    return typeof lng === "number" && !isNaN(lng) && lng >= -180 && lng <= 180;
   }
 
   isValid(): boolean {
-    return Location.isValidLatitude(this.latitude) && Location.isValidLongitude(this.longitude);
+    return (
+      Location.isValidLatitude(this.latitude) &&
+      Location.isValidLongitude(this.longitude)
+    );
   }
 
   equals(other: Location): boolean {
-    return this.latitude === other.latitude && this.longitude === other.longitude;
+    return (
+      this.latitude === other.latitude && this.longitude === other.longitude
+    );
   }
 
   toString(): string {
@@ -68,7 +77,9 @@ export class Location {
   }
 
   static fromWkt(wkt: string): Location {
-    const match = wkt.replace('SRID=4326;', '').match(/POINT\(([^ ]+) ([^)]+)\)/);
+    const match = wkt
+      .replace("SRID=4326;", "")
+      .match(/POINT\(([^ ]+) ([^)]+)\)/);
     if (!match) {
       throw new Error(`Invalid WKT point: ${wkt}`);
     }

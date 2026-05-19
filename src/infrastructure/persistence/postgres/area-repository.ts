@@ -1,11 +1,15 @@
-import { Pool, PoolClient } from 'pg';
-import { Area } from '../../../domain/areas/entities/area';
-import { AreaRepository, AreaFilters, BoundingBox } from '../../../domain/areas/repositories/area-repository';
-import { Location } from '../../../domain/areas/value-objects/location';
-import { AreaStatus } from '../../../domain/areas/value-objects/area-status';
-import { AuditStatus } from '../../../domain/areas/value-objects/audit-status';
-import { Biome } from '../../../domain/areas/value-objects/biome';
-import { CarbonCapacity } from '../../../domain/areas/value-objects/carbon-capacity';
+import { Pool, PoolClient } from "pg";
+import { Area } from "../../../domain/areas/entities/area";
+import {
+  AreaRepository,
+  AreaFilters,
+  BoundingBox,
+} from "../../../domain/areas/repositories/area-repository";
+import { Location } from "../../../domain/areas/value-objects/location";
+import { AreaStatus } from "../../../domain/areas/value-objects/area-status";
+import { AuditStatus } from "../../../domain/areas/value-objects/audit-status";
+import { Biome } from "../../../domain/areas/value-objects/biome";
+import { CarbonCapacity } from "../../../domain/areas/value-objects/carbon-capacity";
 
 export class PostgresAreaRepository implements AreaRepository {
   constructor(private pool: Pool) {}
@@ -50,7 +54,7 @@ export class PostgresAreaRepository implements AreaRepository {
         area.createdAt,
         area.updatedAt,
         area.deletedAt || null,
-      ]
+      ],
     );
   }
 
@@ -58,8 +62,8 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE id = $1 AND deleted_at IS NULL',
-      [id]
+      "SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE id = $1 AND deleted_at IS NULL",
+      [id],
     );
 
     if (result.rows.length === 0) return null;
@@ -71,8 +75,8 @@ export class PostgresAreaRepository implements AreaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE slug = $1 AND deleted_at IS NULL',
-      [slug]
+      "SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE slug = $1 AND deleted_at IS NULL",
+      [slug],
     );
 
     if (result.rows.length === 0) return null;
@@ -80,12 +84,15 @@ export class PostgresAreaRepository implements AreaRepository {
     return this.mapRowToArea(result.rows[0]);
   }
 
-  async findByOwnerId(ownerUserId: string, client?: PoolClient): Promise<Area[]> {
+  async findByOwnerId(
+    ownerUserId: string,
+    client?: PoolClient,
+  ): Promise<Area[]> {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, id DESC',
-      [ownerUserId]
+      "SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY updated_at DESC, id DESC",
+      [ownerUserId],
     );
 
     return result.rows.map((row) => this.mapRowToArea(row));
@@ -94,7 +101,8 @@ export class PostgresAreaRepository implements AreaRepository {
   async findAll(filters?: AreaFilters, client?: PoolClient): Promise<Area[]> {
     const db = client || this.pool;
 
-    let query = 'SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE deleted_at IS NULL';
+    let query =
+      "SELECT *, ST_X(location::geometry) AS longitude, ST_Y(location::geometry) AS latitude FROM areas WHERE deleted_at IS NULL";
     const params: any[] = [];
     let paramIndex = 1;
 
@@ -124,7 +132,7 @@ export class PostgresAreaRepository implements AreaRepository {
       params.push(filters.cursor);
     }
 
-    query += ' ORDER BY updated_at DESC, id DESC';
+    query += " ORDER BY updated_at DESC, id DESC";
 
     if (filters?.limit) {
       query += ` LIMIT $${paramIndex++}`;
@@ -141,7 +149,10 @@ export class PostgresAreaRepository implements AreaRepository {
     return result.rows.map((row) => this.mapRowToArea(row));
   }
 
-  async findActiveWithCapacity(filters?: { biome?: Biome }, client?: PoolClient): Promise<Area[]> {
+  async findActiveWithCapacity(
+    filters?: { biome?: Biome },
+    client?: PoolClient,
+  ): Promise<Area[]> {
     const db = client || this.pool;
 
     let query = `
@@ -162,14 +173,17 @@ export class PostgresAreaRepository implements AreaRepository {
       params.push(filters.biome.toString());
     }
 
-    query += ' ORDER BY updated_at DESC, id DESC';
+    query += " ORDER BY updated_at DESC, id DESC";
 
     const result = await db.query(query, params);
 
     return result.rows.map((row) => this.mapRowToArea(row));
   }
 
-  async findWithinBounds(bounds: BoundingBox, client?: PoolClient): Promise<Area[]> {
+  async findWithinBounds(
+    bounds: BoundingBox,
+    client?: PoolClient,
+  ): Promise<Area[]> {
     const db = client || this.pool;
 
     const result = await db.query(
@@ -182,7 +196,7 @@ export class PostgresAreaRepository implements AreaRepository {
            ST_MakeEnvelope($1, $2, $3, $4, 4326)
          )
 ORDER BY updated_at DESC, id DESC`,
-       [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat]
+      [bounds.minLng, bounds.minLat, bounds.maxLng, bounds.maxLat],
     );
 
     return result.rows.map((row) => this.mapRowToArea(row));
@@ -192,7 +206,7 @@ ORDER BY updated_at DESC, id DESC`,
     latitude: number,
     longitude: number,
     limit: number = 10,
-    client?: PoolClient
+    client?: PoolClient,
   ): Promise<Area[]> {
     const db = client || this.pool;
 
@@ -211,7 +225,7 @@ ORDER BY updated_at DESC, id DESC`,
          )
        ORDER BY location <-> ST_SetSRID(ST_MakePoint($2, $1), 4326)
        LIMIT $3`,
-      [latitude, longitude, limit]
+      [latitude, longitude, limit],
     );
 
     return result.rows.map((row) => this.mapRowToArea(row));
@@ -272,7 +286,7 @@ ORDER BY updated_at DESC, id DESC`,
         area.externalLink || null,
         area.updatedAt,
         area.deletedAt || null,
-      ]
+      ],
     );
   }
 
@@ -280,8 +294,8 @@ ORDER BY updated_at DESC, id DESC`,
     const db = client || this.pool;
 
     await db.query(
-      'UPDATE areas SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [id]
+      "UPDATE areas SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [id],
     );
   }
 
@@ -289,8 +303,8 @@ ORDER BY updated_at DESC, id DESC`,
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT 1 FROM areas WHERE id = $1 AND deleted_at IS NULL',
-      [id]
+      "SELECT 1 FROM areas WHERE id = $1 AND deleted_at IS NULL",
+      [id],
     );
 
     return result.rows.length > 0;
@@ -299,7 +313,7 @@ ORDER BY updated_at DESC, id DESC`,
   async count(filters?: AreaFilters, client?: PoolClient): Promise<number> {
     const db = client || this.pool;
 
-    let query = 'SELECT COUNT(*) FROM areas WHERE deleted_at IS NULL';
+    let query = "SELECT COUNT(*) FROM areas WHERE deleted_at IS NULL";
     const params: any[] = [];
     let paramIndex = 1;
 
@@ -318,7 +332,11 @@ ORDER BY updated_at DESC, id DESC`,
     return parseInt(result.rows[0].count, 10);
   }
 
-  async getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }> {
+  async getGlobalStats(): Promise<{
+    totalAreas: number;
+    totalTreesPlanted: number;
+    totalCO2Captured: number;
+  }> {
     const result = await this.pool.query(`
       SELECT
         (SELECT COUNT(*) FROM areas WHERE deleted_at IS NULL AND status = 'active') AS total_areas,
@@ -337,14 +355,14 @@ ORDER BY updated_at DESC, id DESC`,
   private mapRowToArea(row: any): Area {
     const location = new Location(
       parseFloat(row.latitude),
-      parseFloat(row.longitude)
+      parseFloat(row.longitude),
     );
 
     const carbonCapacity =
       row.total_capacity_t_co2e !== null
         ? new CarbonCapacity(
             parseFloat(row.total_capacity_t_co2e),
-            parseFloat(row.committed_t_co2e || 0)
+            parseFloat(row.committed_t_co2e || 0),
           )
         : undefined;
 
@@ -360,14 +378,23 @@ ORDER BY updated_at DESC, id DESC`,
       state: row.state,
       city: row.city,
       status: AreaStatus.fromString(row.status),
-      auditStatus: row.audit_status ? AuditStatus.fromString(row.audit_status) : undefined,
+      auditStatus: row.audit_status
+        ? AuditStatus.fromString(row.audit_status)
+        : undefined,
       auditNotes: row.audit_notes,
       auditedByUserId: row.audited_by_user_id,
       auditedAt: row.audited_at ? new Date(row.audited_at) : undefined,
       carbonCapacity,
-      maxPurchasableTrees: row.max_purchasable_trees != null ? parseInt(row.max_purchasable_trees, 10) : null,
-      pricePerTree: row.price_per_tree ? parseFloat(row.price_per_tree) : undefined,
-      defaultHorizonYears: row.default_horizon_years ? parseInt(row.default_horizon_years, 10) : undefined,
+      maxPurchasableTrees:
+        row.max_purchasable_trees != null
+          ? parseInt(row.max_purchasable_trees, 10)
+          : null,
+      pricePerTree: row.price_per_tree
+        ? parseFloat(row.price_per_tree)
+        : undefined,
+      defaultHorizonYears: row.default_horizon_years
+        ? parseInt(row.default_horizon_years, 10)
+        : undefined,
       treeSpecies: row.tree_species || undefined,
       externalLink: row.external_link || undefined,
       createdAt: new Date(row.created_at),

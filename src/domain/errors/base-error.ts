@@ -9,7 +9,7 @@ export abstract class DomainError extends Error {
     code: string,
     httpStatus: number,
     i18nKey: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ) {
     super(message);
     this.name = this.constructor.name;

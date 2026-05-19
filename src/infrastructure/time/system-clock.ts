@@ -1,4 +1,4 @@
-import type { Clock } from '../../domain/services/clock';
+import type { Clock } from "../../domain/services/clock";
 
 /**
  * Implementation of Clock using system time.

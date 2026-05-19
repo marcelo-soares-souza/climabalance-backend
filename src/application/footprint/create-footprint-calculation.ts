@@ -1,16 +1,16 @@
-import type { EmissionFactorRepository } from '../../domain/footprint/repositories/emission-factor-repository';
-import type { UnitOfWork } from '../../infrastructure/persistence/unit-of-work';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { CreateFootprintInputDTO } from '../../domain/footprint/entities/footprint-input';
-import type { ProfileType } from '../../domain/footprint/value-objects/profile-type';
-import type { DataQuality } from '../../domain/footprint/value-objects/data-quality';
-import { FootprintCalculatorService } from '../../domain/footprint/services/footprint-calculator.service';
-import { Period } from '../../domain/footprint/value-objects/period';
-import { validateProfileType } from '../../domain/footprint/value-objects/profile-type';
-import { validateDataQuality } from '../../domain/footprint/value-objects/data-quality';
-import { validateInputValue } from '../../domain/footprint/entities/footprint-input';
-import { ValidationError, NotFoundError } from '../../domain/errors';
+import type { EmissionFactorRepository } from "../../domain/footprint/repositories/emission-factor-repository";
+import type { UnitOfWork } from "../../infrastructure/persistence/unit-of-work";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { CreateFootprintInputDTO } from "../../domain/footprint/entities/footprint-input";
+import type { ProfileType } from "../../domain/footprint/value-objects/profile-type";
+import type { DataQuality } from "../../domain/footprint/value-objects/data-quality";
+import { FootprintCalculatorService } from "../../domain/footprint/services/footprint-calculator.service";
+import { Period } from "../../domain/footprint/value-objects/period";
+import { validateProfileType } from "../../domain/footprint/value-objects/profile-type";
+import { validateDataQuality } from "../../domain/footprint/value-objects/data-quality";
+import { validateInputValue } from "../../domain/footprint/entities/footprint-input";
+import { ValidationError, NotFoundError } from "../../domain/errors";
 
 export interface CreateFootprintCalculationRequest {
   user_id: string;
@@ -46,7 +46,7 @@ export interface CreateFootprintCalculationDeps {
 
 export async function createFootprintCalculation(
   deps: CreateFootprintCalculationDeps,
-  request: CreateFootprintCalculationRequest
+  request: CreateFootprintCalculationRequest,
 ): Promise<CreateFootprintCalculationResponse> {
   // 1. Validate request
   let profileType: ProfileType;
@@ -54,18 +54,28 @@ export async function createFootprintCalculation(
     profileType = validateProfileType(request.profile_type) as ProfileType;
   } catch (error) {
     throw new ValidationError([
-      { field: 'profile_type', message: error instanceof Error ? error.message : 'Invalid profile type' }
+      {
+        field: "profile_type",
+        message:
+          error instanceof Error ? error.message : "Invalid profile type",
+      },
     ]);
   }
 
   let dataQuality: DataQuality;
   try {
-    dataQuality = (request.data_quality
-      ? validateDataQuality(request.data_quality)
-      : 'estimated') as DataQuality;
+    dataQuality = (
+      request.data_quality
+        ? validateDataQuality(request.data_quality)
+        : "estimated"
+    ) as DataQuality;
   } catch (error) {
     throw new ValidationError([
-      { field: 'data_quality', message: error instanceof Error ? error.message : 'Invalid data quality' }
+      {
+        field: "data_quality",
+        message:
+          error instanceof Error ? error.message : "Invalid data quality",
+      },
     ]);
   }
 
@@ -74,14 +84,17 @@ export async function createFootprintCalculation(
     period = Period.fromStrings(request.period_start, request.period_end);
   } catch (error) {
     throw new ValidationError([
-      { field: 'period', message: error instanceof Error ? error.message : 'Invalid period' }
+      {
+        field: "period",
+        message: error instanceof Error ? error.message : "Invalid period",
+      },
     ]);
   }
-  const region = request.region || 'BR';
+  const region = request.region || "BR";
 
   if (request.inputs.length === 0) {
     throw new ValidationError([
-      { field: 'inputs', message: 'At least one input is required' }
+      { field: "inputs", message: "At least one input is required" },
     ]);
   }
 
@@ -93,8 +106,9 @@ export async function createFootprintCalculation(
       throw new ValidationError([
         {
           field: `inputs.${index}.value`,
-          message: error instanceof Error ? error.message : 'Invalid input value'
-        }
+          message:
+            error instanceof Error ? error.message : "Invalid input value",
+        },
       ]);
     }
   }
@@ -103,28 +117,31 @@ export async function createFootprintCalculation(
   const factorsVersion =
     request.factors_version ||
     (await deps.emissionFactorRepository.getLatestVersion(region)) ||
-    '2026-01';
+    "2026-01";
 
   const factors = await deps.emissionFactorRepository.findByVersionAndRegion(
     factorsVersion,
-    region
+    region,
   );
 
   if (factors.length === 0) {
-    throw new NotFoundError('footprint.emission_factors.not_found', {
+    throw new NotFoundError("footprint.emission_factors.not_found", {
       region,
-      version: factorsVersion
+      version: factorsVersion,
     });
   }
 
   // 3. Calculate using domain service
   const calculatorService = new FootprintCalculatorService();
-  let calculationResult: ReturnType<FootprintCalculatorService['calculate']>;
+  let calculationResult: ReturnType<FootprintCalculatorService["calculate"]>;
   try {
     calculationResult = calculatorService.calculate(request.inputs, factors);
   } catch (error) {
     throw new ValidationError([
-      { field: 'inputs', message: error instanceof Error ? error.message : 'Invalid inputs' }
+      {
+        field: "inputs",
+        message: error instanceof Error ? error.message : "Invalid inputs",
+      },
     ]);
   }
 
@@ -140,15 +157,15 @@ export async function createFootprintCalculation(
     period_end: period.end,
     total_kg_co2e: calculationResult.total_kg_co2e,
     total_t_co2e: calculationResult.total_t_co2e,
-    unit: 'kg',
-    calculation_method: 'activity_based',
+    unit: "kg",
+    calculation_method: "activity_based",
     data_quality: dataQuality,
     factors_version: factorsVersion,
-    status: 'draft' as const,
+    status: "draft" as const,
     finalized_at: null,
     created_at: now,
     updated_at: now,
-    deleted_at: null
+    deleted_at: null,
   };
 
   // 5. Persist in transaction
@@ -169,10 +186,12 @@ export async function createFootprintCalculation(
       quantity: item.input.value,
       unit: item.input.unit,
       kg_co2e: item.kg_co2e,
-      metadata_json: item.input.metadata ? JSON.stringify(item.input.metadata) : null,
+      metadata_json: item.input.metadata
+        ? JSON.stringify(item.input.metadata)
+        : null,
       created_at: now,
       updated_at: now,
-      deleted_at: null
+      deleted_at: null,
     }));
 
     await inputRepository.saveMany(inputEntities);
@@ -186,7 +205,7 @@ export async function createFootprintCalculation(
       t_co2e: item.t_co2e,
       created_at: now,
       updated_at: now,
-      deleted_at: null
+      deleted_at: null,
     }));
 
     await breakdownRepository.saveMany(breakdownEntities);
@@ -200,6 +219,6 @@ export async function createFootprintCalculation(
     breakdown: calculationResult.breakdown,
     status: calculation.status,
     data_quality: calculation.data_quality,
-    factors_version: calculation.factors_version
+    factors_version: calculation.factors_version,
   };
 }

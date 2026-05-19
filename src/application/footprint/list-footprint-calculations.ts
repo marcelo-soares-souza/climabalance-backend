@@ -1,6 +1,6 @@
-import type { FootprintCalculationRepository } from '../../domain/footprint/repositories/footprint-calculation-repository';
-import type { CalculationStatus } from '../../domain/footprint/value-objects/calculation-status';
-import type { ProfileType } from '../../domain/footprint/value-objects/profile-type';
+import type { FootprintCalculationRepository } from "../../domain/footprint/repositories/footprint-calculation-repository";
+import type { CalculationStatus } from "../../domain/footprint/value-objects/calculation-status";
+import type { ProfileType } from "../../domain/footprint/value-objects/profile-type";
 
 export interface ListFootprintCalculationsRequest {
   user_id: string;
@@ -52,7 +52,7 @@ export interface ListFootprintCalculationsDeps {
 
 export async function listFootprintCalculations(
   deps: ListFootprintCalculationsDeps,
-  request: ListFootprintCalculationsRequest
+  request: ListFootprintCalculationsRequest,
 ): Promise<ListFootprintCalculationsResponse> {
   const filters: {
     status?: CalculationStatus;
@@ -86,8 +86,8 @@ export async function listFootprintCalculations(
       id: c.id,
       user_id: c.user_id,
       profile_type: c.profile_type,
-      period_start: c.period_start.toISOString().split('T')[0]!,
-      period_end: c.period_end.toISOString().split('T')[0]!,
+      period_start: c.period_start.toISOString().split("T")[0]!,
+      period_end: c.period_end.toISOString().split("T")[0]!,
       total_t_co2e: c.total_t_co2e,
       total_kg_co2e: c.total_kg_co2e,
       status: c.status,
@@ -99,7 +99,7 @@ export async function listFootprintCalculations(
       user_email: c.user_email ?? null,
       user_name: c.user_name ?? null,
       inputs: [],
-      breakdown: []
-    }))
+      breakdown: [],
+    })),
   };
 }

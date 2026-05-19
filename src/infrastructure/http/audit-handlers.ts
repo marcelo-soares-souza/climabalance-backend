@@ -1,11 +1,11 @@
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import type { HttpContext } from '../../shared/http/router';
-import { jsonResponse } from '../../shared/http/response';
-import { handleError } from './error-mapper';
-import { getLogger } from '../../shared/utils/logger';
-import { buildLogContext } from '../../shared/http/log-context';
-import { parseQueryWithSchema } from './schemas/validation-helper';
-import { z } from 'zod';
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { HttpContext } from "../../shared/http/router";
+import { jsonResponse } from "../../shared/http/response";
+import { handleError } from "./error-mapper";
+import { getLogger } from "../../shared/utils/logger";
+import { buildLogContext } from "../../shared/http/log-context";
+import { parseQueryWithSchema } from "./schemas/validation-helper";
+import { z } from "zod";
 
 const listAuditLogQuerySchema = z.object({
   actor_user_id: z.string().trim().min(1).optional(),
@@ -14,11 +14,13 @@ const listAuditLogQuerySchema = z.object({
   client_ip: z.string().trim().min(1).optional(),
   entity_type: z.string().trim().min(1).optional(),
   entity_id: z.string().trim().min(1).optional(),
-  severity: z.enum(['debug', 'info', 'warning', 'error', 'critical']).optional(),
+  severity: z
+    .enum(["debug", "info", "warning", "error", "critical"])
+    .optional(),
   is_sensitive: z.coerce.boolean().optional(),
   created_at_from: z.string().trim().min(1).optional(),
   created_at_to: z.string().trim().min(1).optional(),
-  format: z.enum(['csv', 'json']).optional(),
+  format: z.enum(["csv", "json"]).optional(),
   limit: z.coerce.number().int().min(1).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -52,7 +54,7 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
 
         const { entries, total } = await deps.auditLog.listWithTotal(filters);
 
-        log.info('audit.list', { count: entries.length, total });
+        log.info("audit.list", { count: entries.length, total });
         return jsonResponse(
           200,
           {
@@ -73,7 +75,7 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
               http_status: entry.httpStatus ?? null,
               country_code: entry.countryCode ?? null,
               city: entry.city ?? null,
-              severity: entry.severity ?? 'info',
+              severity: entry.severity ?? "info",
               category: entry.category ?? null,
               is_sensitive: entry.isSensitive ?? false,
               previous_state: entry.previousState ?? null,
@@ -88,7 +90,7 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
               offset: filters.offset ?? 0,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -100,7 +102,7 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const query = parseQueryWithSchema(listAuditLogQuerySchema, ctx.query);
-        const format = query.format ?? 'json';
+        const format = query.format ?? "json";
         const filters = {
           actorUserId: query.actor_user_id,
           actorEmail: query.actor_email,
@@ -116,29 +118,47 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
 
         const { entries } = await deps.auditLog.listWithTotal(filters);
 
-        log.info('audit.export', { format, count: entries.length });
+        log.info("audit.export", { format, count: entries.length });
 
-        if (format === 'csv') {
-          const header = 'id,actor_user_id,actor_email,client_ip,action,entity_type,entity_id,severity,success,http_status,created_at';
+        if (format === "csv") {
+          const header =
+            "id,actor_user_id,actor_email,client_ip,action,entity_type,entity_id,severity,success,http_status,created_at";
           const escape = (v: unknown): string => {
-            const s = String(v ?? '');
-            return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+            const s = String(v ?? "");
+            return s.includes(",") || s.includes('"') || s.includes("\n")
+              ? `"${s.replace(/"/g, '""')}"`
+              : s;
           };
           const rows = entries.map((e) =>
-            [e.id, e.actorUserId, e.actorEmail, e.clientIp, e.action, e.entityType, e.entityId, e.severity, e.success, e.httpStatus, e.createdAt.toISOString()].map(escape).join(',')
+            [
+              e.id,
+              e.actorUserId,
+              e.actorEmail,
+              e.clientIp,
+              e.action,
+              e.entityType,
+              e.entityId,
+              e.severity,
+              e.success,
+              e.httpStatus,
+              e.createdAt.toISOString(),
+            ]
+              .map(escape)
+              .join(","),
           );
-          const body = [header, ...rows].join('\n');
+          const body = [header, ...rows].join("\n");
           return new Response(body, {
             status: 200,
             headers: {
-              'content-type': 'text/csv; charset=utf-8',
-              'content-disposition': 'attachment; filename="audit-log-export.csv"',
+              "content-type": "text/csv; charset=utf-8",
+              "content-disposition":
+                'attachment; filename="audit-log-export.csv"',
             },
           });
         }
 
         return jsonResponse(200, { data: entries }, logContext, {
-          'content-disposition': 'attachment; filename="audit-log-export.json"',
+          "content-disposition": 'attachment; filename="audit-log-export.json"',
         });
       } catch (error) {
         return handleError(error, log, logContext);
@@ -150,11 +170,11 @@ export function createAuditHandlers(deps: AuditHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const result = await deps.auditLog.verifyChain();
-        log.info('audit.verify_chain', result);
+        log.info("audit.verify_chain", result);
         return jsonResponse(200, { data: result }, logContext);
       } catch (error) {
         return handleError(error, log, logContext);
       }
-    }
+    },
   };
 }

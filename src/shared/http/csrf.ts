@@ -1,25 +1,27 @@
-import { env } from '../utils/env';
-import { getRefreshTokenFromCookie } from './cookies';
+import { env } from "../utils/env";
+import { getRefreshTokenFromCookie } from "./cookies";
 
-export const CSRF_HEADER = 'x-csrf-token';
+export const CSRF_HEADER = "x-csrf-token";
 
 export async function buildCsrfToken(refreshToken: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     new TextEncoder().encode(env.csrfSecret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign']
+    ["sign"],
   );
   const signature = await crypto.subtle.sign(
-    'HMAC',
+    "HMAC",
     key,
-    new TextEncoder().encode(`csrf:${refreshToken}`)
+    new TextEncoder().encode(`csrf:${refreshToken}`),
   );
   return base64UrlEncode(new Uint8Array(signature));
 }
 
-export async function verifyRequestCsrfToken(request: Request): Promise<boolean> {
+export async function verifyRequestCsrfToken(
+  request: Request,
+): Promise<boolean> {
   const refreshToken = getRefreshTokenFromCookie(request);
   const csrfToken = request.headers.get(CSRF_HEADER);
   if (!refreshToken || !csrfToken) return false;
@@ -29,10 +31,10 @@ export async function verifyRequestCsrfToken(request: Request): Promise<boolean>
 
 function base64UrlEncode(bytes: Uint8Array): string {
   return Buffer.from(bytes)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
 }
 
 function constantTimeEqual(left: string, right: string): boolean {

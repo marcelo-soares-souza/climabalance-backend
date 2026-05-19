@@ -1,20 +1,20 @@
-import Stripe from 'stripe';
+import Stripe from "stripe";
 import type {
   CreatePaymentChargeInput,
   PaymentGatewayAdapter,
   PaymentGatewayChargeResult,
   PaymentGatewayOutcome,
   PaymentGatewayStatusResult,
-} from '../../application/payments/payment-gateway';
+} from "../../application/payments/payment-gateway";
 
-const provider = 'stripe';
+const provider = "stripe";
 
-const providerReferencePrefix = 'pi_';
+const providerReferencePrefix = "pi_";
 
 export type StripePaymentIntentCreateInput = {
   amount: number;
   currency: string;
-  paymentMethod: 'card' | 'pix';
+  paymentMethod: "card" | "pix";
   connectedAccountId: string;
   applicationFeeAmount: number;
   idempotencyKey: string;
@@ -36,16 +36,16 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
       stripe: Stripe;
       clock: { now(): Date };
       webhookSecret: string;
-    }
+    },
   ) {}
 
   async createCharge(
-    input: CreatePaymentChargeInput
+    input: CreatePaymentChargeInput,
   ): Promise<PaymentGatewayChargeResult> {
     const now = this.deps.clock.now();
 
     const paymentMethod = await this.deps.stripe.paymentMethods.create({
-      type: 'card',
+      type: "card",
       card: {
         number: input.cardNumber,
         exp_month: input.expirationMonth,
@@ -86,7 +86,7 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
       return {
         provider,
         providerReference: input.providerReference,
-        outcome: 'timeout',
+        outcome: "timeout",
         processedAt: now,
       };
     }
@@ -113,10 +113,10 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     try {
       return this.deps.stripe.webhooks
         .constructEventAsync(
-        input.payload,
-        input.signature,
-        this.deps.webhookSecret
-      )
+          input.payload,
+          input.signature,
+          this.deps.webhookSecret,
+        )
         .then(() => true)
         .catch(() => false);
     } catch {
@@ -129,10 +129,10 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
    * Not part of PaymentGatewayAdapter — called directly by the new use case.
    */
   async createPaymentIntent(
-    input: StripePaymentIntentCreateInput
+    input: StripePaymentIntentCreateInput,
   ): Promise<StripePaymentIntentCreateResult> {
     const paymentMethodTypes: string[] =
-      input.paymentMethod === 'card' ? ['card'] : ['pix'];
+      input.paymentMethod === "card" ? ["card"] : ["pix"];
 
     const paymentIntent = await this.deps.stripe.paymentIntents.create(
       {
@@ -141,7 +141,7 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
         payment_method_types: paymentMethodTypes,
         application_fee_amount: toStripeAmount(
           input.applicationFeeAmount,
-          input.currency
+          input.currency,
         ),
         transfer_data: {
           destination: input.connectedAccountId,
@@ -153,7 +153,7 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
       },
       {
         idempotencyKey: input.idempotencyKey,
-      }
+      },
     );
 
     const result: StripePaymentIntentCreateResult = {
@@ -162,8 +162,8 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     };
 
     if (
-      input.paymentMethod === 'pix' &&
-      paymentIntent.next_action?.type === 'pix_display_qr_code'
+      input.paymentMethod === "pix" &&
+      paymentIntent.next_action?.type === "pix_display_qr_code"
     ) {
       const pixData = paymentIntent.next_action.pix_display_qr_code;
       result.qrCode = (pixData as any)?.image_url_png ?? undefined;
@@ -177,7 +177,10 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
    * Parses a Stripe webhook event and extracts the PaymentIntent-based outcome.
    * Returns null if the event type is not a payment intent event.
    */
-  async parseWebhookEvent(rawPayload: string, signature: string): Promise<{
+  async parseWebhookEvent(
+    rawPayload: string,
+    signature: string,
+  ): Promise<{
     eventId: string;
     type: string;
     paymentIntentId: string | null;
@@ -186,13 +189,13 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     const event = await this.deps.stripe.webhooks.constructEventAsync(
       rawPayload,
       signature,
-      this.deps.webhookSecret
+      this.deps.webhookSecret,
     );
 
     if (
-      event.type === 'payment_intent.succeeded' ||
-      event.type === 'payment_intent.payment_failed' ||
-      event.type === 'payment_intent.canceled'
+      event.type === "payment_intent.succeeded" ||
+      event.type === "payment_intent.payment_failed" ||
+      event.type === "payment_intent.canceled"
     ) {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       return {
@@ -203,12 +206,13 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
       };
     }
 
-    if (event.type === 'charge.refunded') {
+    if (event.type === "charge.refunded") {
       const charge = event.data.object as Stripe.Charge;
       const paymentIntentId =
-        typeof charge.payment_intent === 'string'
+        typeof charge.payment_intent === "string"
           ? charge.payment_intent
-          : (charge.payment_intent as Stripe.PaymentIntent | null)?.id ?? null;
+          : ((charge.payment_intent as Stripe.PaymentIntent | null)?.id ??
+            null);
       return {
         eventId: event.id,
         type: event.type,
@@ -227,28 +231,26 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
 }
 
 function mapStripeStatusToOutcome(
-  status: Stripe.PaymentIntent.Status
+  status: Stripe.PaymentIntent.Status,
 ): PaymentGatewayOutcome {
   switch (status) {
-    case 'succeeded':
-      return 'authorized';
-    case 'requires_payment_method':
-    case 'requires_confirmation':
-      return 'declined';
-    case 'processing':
-    case 'requires_action':
-    case 'requires_capture':
-      return 'in_review';
-    case 'canceled':
-      return 'canceled';
+    case "succeeded":
+      return "authorized";
+    case "requires_payment_method":
+    case "requires_confirmation":
+      return "declined";
+    case "processing":
+    case "requires_action":
+    case "requires_capture":
+      return "in_review";
+    case "canceled":
+      return "canceled";
     default:
-      return 'timeout';
+      return "timeout";
   }
 }
 
-function extractPaymentIntentId(
-  providerReference: string
-): string | null {
+function extractPaymentIntentId(providerReference: string): string | null {
   if (providerReference.startsWith(providerReferencePrefix)) {
     return providerReference.slice(providerReferencePrefix.length);
   }
@@ -261,9 +263,22 @@ function extractPaymentIntentId(
  */
 function toStripeAmount(amount: number, currency: string): number {
   const zeroDecimalCurrencies = new Set([
-    'bif', 'clp', 'djf', 'gnf', 'jpy', 'kmf',
-    'krw', 'mga', 'pyg', 'rwf', 'ugx', 'vnd',
-    'vuv', 'xaf', 'xof', 'xpf',
+    "bif",
+    "clp",
+    "djf",
+    "gnf",
+    "jpy",
+    "kmf",
+    "krw",
+    "mga",
+    "pyg",
+    "rwf",
+    "ugx",
+    "vnd",
+    "vuv",
+    "xaf",
+    "xof",
+    "xpf",
   ]);
 
   if (zeroDecimalCurrencies.has(currency.toLowerCase())) {

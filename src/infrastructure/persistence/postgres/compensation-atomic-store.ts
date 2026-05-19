@@ -1,14 +1,12 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool, PoolClient } from "pg";
 import type {
   CompensationAtomicStore,
   CompensationAtomicTransaction,
   CompensationAreaSnapshot,
-  CompensationCreateRecord
-} from '../../../application/compensations/create-compensation-atomic';
+  CompensationCreateRecord,
+} from "../../../application/compensations/create-compensation-atomic";
 
-class PostgresCompensationAtomicTransaction
-  implements CompensationAtomicTransaction
-{
+class PostgresCompensationAtomicTransaction implements CompensationAtomicTransaction {
   constructor(private readonly client: PoolClient) {}
 
   async lockArea(areaId: string): Promise<CompensationAreaSnapshot | null> {
@@ -21,7 +19,7 @@ class PostgresCompensationAtomicTransaction
       WHERE id = $1
         AND deleted_at IS NULL
       FOR UPDATE`,
-      [areaId]
+      [areaId],
     );
 
     if (result.rows.length === 0) {
@@ -32,7 +30,10 @@ class PostgresCompensationAtomicTransaction
     return {
       id: String(row.id),
       status: String(row.status),
-      maxPurchasableTrees: row.max_purchasable_trees != null ? Number(row.max_purchasable_trees) : null,
+      maxPurchasableTrees:
+        row.max_purchasable_trees != null
+          ? Number(row.max_purchasable_trees)
+          : null,
     };
   }
 
@@ -43,7 +44,7 @@ class PostgresCompensationAtomicTransaction
        WHERE area_id = $1
          AND status = 'paid'
          AND deleted_at IS NULL`,
-      [areaId]
+      [areaId],
     );
     return Number(result.rows[0]?.total ?? 0);
   }
@@ -91,7 +92,7 @@ class PostgresCompensationAtomicTransaction
         record.createdAt,
         record.updatedAt,
         null,
-      ]
+      ],
     );
   }
 }
@@ -100,17 +101,17 @@ export class PostgresCompensationAtomicStore implements CompensationAtomicStore 
   constructor(private readonly pool: Pool) {}
 
   async runInTransaction<T>(
-    work: (tx: CompensationAtomicTransaction) => Promise<T>
+    work: (tx: CompensationAtomicTransaction) => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
       const tx = new PostgresCompensationAtomicTransaction(client);
       const result = await work(tx);
-      await client.query('COMMIT');
+      await client.query("COMMIT");
       return result;
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();

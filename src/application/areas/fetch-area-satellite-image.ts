@@ -1,14 +1,14 @@
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import type { AreaSatelliteImageRepository } from '../../domain/areas/repositories/area-satellite-image-repository';
-import type { SatelliteImageStorage } from '../../domain/areas/services/satellite-image-storage';
-import { ForbiddenError, NotFoundError } from '../../domain/errors';
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import type { AreaSatelliteImageRepository } from "../../domain/areas/repositories/area-satellite-image-repository";
+import type { SatelliteImageStorage } from "../../domain/areas/services/satellite-image-storage";
+import { ForbiddenError, NotFoundError } from "../../domain/errors";
 import {
   searchStacScenes,
   searchLandsatFallback,
   pickBestScene,
   downloadRgbComposite,
   generateThumbnail,
-} from '../../infrastructure/services/earth-search-client';
+} from "../../infrastructure/services/earth-search-client";
 
 export interface FetchSatelliteImageInput {
   areaId: string;
@@ -47,14 +47,14 @@ export async function fetchAreaSatelliteImage(
 ): Promise<FetchSatelliteImageResult> {
   const area = await deps.areaRepository.findById(input.areaId);
   if (!area) {
-    throw new NotFoundError('area.not_found');
+    throw new NotFoundError("area.not_found");
   }
 
   const isProducerOrAdmin =
-    input.actorRoles.includes('administrator') ||
+    input.actorRoles.includes("administrator") ||
     area.ownerUserId === input.actorUserId;
   if (!isProducerOrAdmin) {
-    throw new ForbiddenError('area.not_owner');
+    throw new ForbiddenError("area.not_owner");
   }
 
   const now = deps.clock.now();
@@ -73,7 +73,10 @@ export async function fetchAreaSatelliteImage(
   searchEnd.setDate(searchEnd.getDate() + 3);
 
   const deltaLat = input.bboxSizeKm / 2 / 111.0;
-  const deltaLng = input.bboxSizeKm / 2 / (111.0 * Math.cos(area.location.latitude * Math.PI / 180));
+  const deltaLng =
+    input.bboxSizeKm /
+    2 /
+    (111.0 * Math.cos((area.location.latitude * Math.PI) / 180));
   const bbox = {
     west: area.location.longitude - deltaLng,
     south: area.location.latitude - deltaLat,
@@ -90,16 +93,16 @@ export async function fetchAreaSatelliteImage(
   };
 
   let scenes = await searchStacScenes(searchParams);
-  let collection = 'sentinel-2-l2a';
+  let collection = "sentinel-2-l2a";
 
   if (scenes.length === 0) {
     scenes = await searchLandsatFallback(searchParams);
-    collection = 'landsat-c2l2';
+    collection = "landsat-c2l2";
   }
 
   const scene = pickBestScene(scenes);
   if (!scene) {
-    throw new NotFoundError('satellite.no_scene_found');
+    throw new NotFoundError("satellite.no_scene_found");
   }
 
   const processed = await downloadRgbComposite(scene, bbox);
@@ -123,9 +126,13 @@ export async function fetchAreaSatelliteImage(
     input.areaId,
   );
   if (previous) {
-    await deps.satelliteImageStorage.delete(previous.storagePath).catch(() => {});
+    await deps.satelliteImageStorage
+      .delete(previous.storagePath)
+      .catch(() => {});
     if (previous.thumbnailPath) {
-      await deps.satelliteImageStorage.delete(previous.thumbnailPath).catch(() => {});
+      await deps.satelliteImageStorage
+        .delete(previous.thumbnailPath)
+        .catch(() => {});
     }
     await deps.satelliteImageRepository.softDelete(previous.id, createdAt);
   }
@@ -133,7 +140,7 @@ export async function fetchAreaSatelliteImage(
   const captureDate = new Date(scene.datetime ?? searchEnd);
 
   const AreaSatelliteImage = (
-    await import('../../domain/areas/entities/area-satellite-image')
+    await import("../../domain/areas/entities/area-satellite-image")
   ).AreaSatelliteImage;
 
   const entity = new AreaSatelliteImage({

@@ -1,33 +1,33 @@
-import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
-import type { PasswordResetRepository } from '../../domain/user/password-reset-repository';
-import type { RefreshTokenRepository } from '../../domain/user/refresh-token-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { ConsentRepository } from '../../domain/user/consent-repository';
-import type { PasswordHasher } from '../crypto/password';
-import type { EmailSender } from '../email/email-sender';
-import type { UnitOfWork } from '../persistence/unit-of-work';
-import type { TokenGenerator } from '../../domain/services/token-generator';
-import type { JwtService } from '../../domain/services/jwt-service';
-import type { HashService } from '../../domain/services/hash-service';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { Config } from '../../domain/services/config';
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import type { JobQueue } from '../../domain/jobs/job-queue';
-import type { HttpContext } from '../../shared/http/router';
-import { parseJson } from '../../shared/http/request';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
-import { handleError } from './error-mapper';
-import { authenticateUser } from '../../application/auth/authenticate-user';
-import { refreshAccessToken } from '../../application/auth/refresh-access-token';
-import { revokeRefreshToken } from '../../application/auth/revoke-refresh-token';
-import { confirmEmail } from '../../application/auth/confirm-email';
-import { registerUser } from '../../application/auth/register-user';
-import { resendConfirmationEmail } from '../../application/auth/resend-confirmation-email';
-import { requestPasswordReset } from '../../application/auth/request-password-reset';
-import { resetPassword } from '../../application/auth/reset-password';
-import { changePassword } from '../../application/auth/change-password';
-import { getLogger } from '../../shared/utils/logger';
+import type { EmailConfirmationRepository } from "../../domain/user/email-confirmation-repository";
+import type { PasswordResetRepository } from "../../domain/user/password-reset-repository";
+import type { RefreshTokenRepository } from "../../domain/user/refresh-token-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { ConsentRepository } from "../../domain/user/consent-repository";
+import type { PasswordHasher } from "../crypto/password";
+import type { EmailSender } from "../email/email-sender";
+import type { UnitOfWork } from "../persistence/unit-of-work";
+import type { TokenGenerator } from "../../domain/services/token-generator";
+import type { JwtService } from "../../domain/services/jwt-service";
+import type { HashService } from "../../domain/services/hash-service";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { Config } from "../../domain/services/config";
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { JobQueue } from "../../domain/jobs/job-queue";
+import type { HttpContext } from "../../shared/http/router";
+import { parseJson } from "../../shared/http/request";
+import { errorResponse, jsonResponse } from "../../shared/http/response";
+import { handleError } from "./error-mapper";
+import { authenticateUser } from "../../application/auth/authenticate-user";
+import { refreshAccessToken } from "../../application/auth/refresh-access-token";
+import { revokeRefreshToken } from "../../application/auth/revoke-refresh-token";
+import { confirmEmail } from "../../application/auth/confirm-email";
+import { registerUser } from "../../application/auth/register-user";
+import { resendConfirmationEmail } from "../../application/auth/resend-confirmation-email";
+import { requestPasswordReset } from "../../application/auth/request-password-reset";
+import { resetPassword } from "../../application/auth/reset-password";
+import { changePassword } from "../../application/auth/change-password";
+import { getLogger } from "../../shared/utils/logger";
 import {
   registerSchema,
   loginSchema,
@@ -35,45 +35,55 @@ import {
   resendConfirmationSchema,
   requestPasswordResetSchema,
   resetPasswordSchema,
-  parseWithSchema
-} from './schemas';
-import { refreshTokenSchema, revokeTokenSchema, changePasswordSchema } from './schemas/auth-schemas';
-import { buildLogContext } from '../../shared/http/log-context';
-import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
-import { createHumanCheckChallenge, verifyHumanCheckChallenge } from './human-check';
-import { normalizeLocale } from '../../shared/utils/locale';
-import { maskEmail } from '../../shared/utils/mask-sensitive';
-import { checkLoginLockout, recordLoginAttempt } from './rate-limit';
+  parseWithSchema,
+} from "./schemas";
+import {
+  refreshTokenSchema,
+  revokeTokenSchema,
+  changePasswordSchema,
+} from "./schemas/auth-schemas";
+import { buildLogContext } from "../../shared/http/log-context";
+import { withAuditLogContext } from "../../shared/http/audit-log-with-context";
+import {
+  createHumanCheckChallenge,
+  verifyHumanCheckChallenge,
+} from "./human-check";
+import { normalizeLocale } from "../../shared/utils/locale";
+import { maskEmail } from "../../shared/utils/mask-sensitive";
+import { checkLoginLockout, recordLoginAttempt } from "./rate-limit";
 import {
   EmailNotConfirmedError,
   UserNotActiveError,
-  DomainError
-} from '../../domain/errors';
+  DomainError,
+} from "../../domain/errors";
 import {
   buildRefreshTokenCookie,
   buildRefreshTokenCookieCleared,
   getRefreshTokenFromCookie,
-} from '../../shared/http/cookies';
-import { buildCsrfToken } from '../../shared/http/csrf';
-import { blocklistJti } from '../crypto/jwt';
-import { base64UrlDecode } from '../../shared/utils/base64url';
+} from "../../shared/http/cookies";
+import { buildCsrfToken } from "../../shared/http/csrf";
+import { blocklistJti } from "../crypto/jwt";
+import { base64UrlDecode } from "../../shared/utils/base64url";
 
 const authResponseHeaders = {
-  'cache-control': 'no-store',
-  pragma: 'no-cache',
+  "cache-control": "no-store",
+  pragma: "no-cache",
 };
 
-function withRefreshCookie(refreshToken: string, maxAgeSeconds: number): Record<string, string> {
+function withRefreshCookie(
+  refreshToken: string,
+  maxAgeSeconds: number,
+): Record<string, string> {
   return {
     ...authResponseHeaders,
-    'set-cookie': buildRefreshTokenCookie(refreshToken, maxAgeSeconds),
+    "set-cookie": buildRefreshTokenCookie(refreshToken, maxAgeSeconds),
   };
 }
 
 function clearRefreshCookieHeaders(): Record<string, string> {
   return {
     ...authResponseHeaders,
-    'set-cookie': buildRefreshTokenCookieCleared(),
+    "set-cookie": buildRefreshTokenCookieCleared(),
   };
 }
 
@@ -83,7 +93,7 @@ export type AuthHandlersDeps = {
   confirmations: EmailConfirmationRepository;
   passwordResets: PasswordResetRepository;
   refreshTokens: RefreshTokenRepository;
-  auditLog: Pick<AuditLogRepository, 'log'>;
+  auditLog: Pick<AuditLogRepository, "log">;
   passwordHasher: PasswordHasher;
   emailSender: EmailSender;
   unitOfWork: UnitOfWork;
@@ -105,7 +115,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       try {
         const refreshToken = getRefreshTokenFromCookie(ctx.request);
         if (!refreshToken) {
-          log.info('auth.session_bootstrap.missing_cookie');
+          log.info("auth.session_bootstrap.missing_cookie");
           return new Response(null, {
             status: 204,
             headers: new Headers(authResponseHeaders),
@@ -122,7 +132,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           storedToken.revokedAt ||
           storedToken.expiresAt <= now
         ) {
-          log.info('auth.session_bootstrap.invalid_cookie');
+          log.info("auth.session_bootstrap.invalid_cookie");
           return new Response(null, {
             status: 204,
             headers: new Headers(clearRefreshCookieHeaders()),
@@ -149,7 +159,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const locale = normalizeLocale(ctx.query.get('locale') ?? ctx.locale);
+        const locale = normalizeLocale(ctx.query.get("locale") ?? ctx.locale);
         const challenge = await createHumanCheckChallenge(
           { locale },
           {
@@ -157,9 +167,9 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             jwtSecret: deps.config.jwtSecret,
             tokenGenerator: deps.tokenGenerator,
             now: deps.clock.now(),
-          }
+          },
         );
-        log.info('auth.human_check.created', { locale: challenge.locale });
+        log.info("auth.human_check.created", { locale: challenge.locale });
         return jsonResponse(
           200,
           {
@@ -169,7 +179,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
               locale: challenge.locale,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -181,8 +191,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(registerSchema, body);
@@ -194,10 +209,15 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           {
             jwtService: deps.jwtService,
             jwtSecret: deps.config.jwtSecret,
-          }
+          },
         );
         if (!isHuman) {
-          return errorResponse(400, 'auth.register.humanCheckInvalid', undefined, logContext);
+          return errorResponse(
+            400,
+            "auth.register.humanCheckInvalid",
+            undefined,
+            logContext,
+          );
         }
 
         const ipAddress = ctx.clientIp;
@@ -224,36 +244,41 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             hashService: deps.hashService,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            config: deps.config
-          }
+            config: deps.config,
+          },
         );
 
-        log.info('auth.register.created', { user_id: result.id, email: result.email });
+        log.info("auth.register.created", {
+          user_id: result.id,
+          email: result.email,
+        });
 
         await deps.auditLog.log({
           actorUserId: result.id,
-          action: 'user.registered',
-          entityType: 'user',
+          action: "user.registered",
+          entityType: "user",
           entityId: result.id,
           ctx,
           success: true,
           httpStatus: 201,
-          severity: 'info',
-          category: ['security', 'user_management'],
+          severity: "info",
+          category: ["security", "user_management"],
         });
 
-        await deps.jobQueue.enqueue('user.registered', {
-          email: result.email,
-          roleKey: validated.role_key ?? 'individual',
-        }).catch(() => {});
+        await deps.jobQueue
+          .enqueue("user.registered", {
+            email: result.email,
+            roleKey: validated.role_key ?? "individual",
+          })
+          .catch(() => {});
 
         return jsonResponse(
           201,
           {
             data: result,
-            message_key: 'auth.registration_pending_confirmation'
+            message_key: "auth.registration_pending_confirmation",
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -265,21 +290,32 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(loginSchema, body);
-        const fingerprint = ctx.request.headers.get('x-device-fingerprint') || undefined;
-        const userAgent = ctx.request.headers.get('user-agent') || undefined;
+        const fingerprint =
+          ctx.request.headers.get("x-device-fingerprint") || undefined;
+        const userAgent = ctx.request.headers.get("user-agent") || undefined;
 
         const lockout = await checkLoginLockout(validated.email);
         if (lockout.blocked) {
-          log.warn('auth.login.locked', { email: validated.email });
-          return errorResponse(429, 'auth.login.locked', { retry_after_seconds: lockout.retryAfterSeconds }, logContext);
+          log.warn("auth.login.locked", { email: validated.email });
+          return errorResponse(
+            429,
+            "auth.login.locked",
+            { retry_after_seconds: lockout.retryAfterSeconds },
+            logContext,
+          );
         }
 
-        log.debug('auth.login.attempt', { email: validated.email });
+        log.debug("auth.login.attempt", { email: validated.email });
         let userId: string;
         let token: any;
         try {
@@ -299,8 +335,8 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
               tokenGenerator: deps.tokenGenerator,
               idGenerator: deps.idGenerator,
               clock: deps.clock,
-              config: deps.config
-            }
+              config: deps.config,
+            },
           );
           userId = result.userId;
           token = result;
@@ -308,26 +344,26 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         } catch (error) {
           await recordLoginAttempt(validated.email, false);
 
-          let actorId = 'unknown';
+          let actorId = "unknown";
           let entityId = validated.email;
           if (error instanceof UserNotActiveError) {
-            actorId = error.metadata?.userId as string ?? 'unknown';
+            actorId = (error.metadata?.userId as string) ?? "unknown";
             entityId = actorId;
           } else if (error instanceof EmailNotConfirmedError) {
-            entityId = error.metadata?.email as string ?? validated.email;
+            entityId = (error.metadata?.email as string) ?? validated.email;
           }
 
           await deps.auditLog.log({
             actorUserId: actorId,
-            action: 'user.login_failed',
-            entityType: 'user',
+            action: "user.login_failed",
+            entityType: "user",
             entityId: entityId,
             ctx,
             success: false,
             httpStatus: error instanceof DomainError ? error.httpStatus : 401,
-            severity: 'warning',
-            category: ['security'],
-            errorCode: error instanceof DomainError ? error.code : 'UNKNOWN',
+            severity: "warning",
+            category: ["security"],
+            errorCode: error instanceof DomainError ? error.code : "UNKNOWN",
           });
 
           throw error;
@@ -335,17 +371,17 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
 
         await deps.auditLog.log({
           actorUserId: userId,
-          action: 'user.login',
-          entityType: 'user',
+          action: "user.login",
+          entityType: "user",
           entityId: userId,
           ctx,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['security'],
+          severity: "info",
+          category: ["security"],
         });
 
-        log.info('auth.login.success', { email: validated.email });
+        log.info("auth.login.success", { email: validated.email });
         const csrfToken = await buildCsrfToken(token.refreshToken);
         return jsonResponse(
           200,
@@ -359,7 +395,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             },
           },
           logContext,
-          withRefreshCookie(token.refreshToken, token.refreshExpiresIn)
+          withRefreshCookie(token.refreshToken, token.refreshExpiresIn),
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -371,8 +407,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(confirmEmailSchema, body);
@@ -381,10 +422,14 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           confirmations: deps.confirmations,
           users: deps.users,
           hashService: deps.hashService,
-          clock: deps.clock
+          clock: deps.clock,
         });
-        log.info('auth.confirm.success', { user_id: result.userId });
-        return jsonResponse(200, { message_key: 'auth.email_confirmed' }, logContext);
+        log.info("auth.confirm.success", { user_id: result.userId });
+        return jsonResponse(
+          200,
+          { message_key: "auth.email_confirmed" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -395,8 +440,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(resendConfirmationSchema, body);
@@ -411,12 +461,18 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             hashService: deps.hashService,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            config: deps.config
-          }
+            config: deps.config,
+          },
         );
 
-        log.info('auth.resend_confirmation.accepted', { email: validated.email });
-        return jsonResponse(200, { message_key: 'auth.confirmation_email_resent' }, logContext);
+        log.info("auth.resend_confirmation.accepted", {
+          email: validated.email,
+        });
+        return jsonResponse(
+          200,
+          { message_key: "auth.confirmation_email_resent" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -428,8 +484,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(requestPasswordResetSchema, body);
@@ -444,23 +505,29 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             hashService: deps.hashService,
             idGenerator: deps.idGenerator,
             clock: deps.clock,
-            config: deps.config
-          }
+            config: deps.config,
+          },
         );
 
-        log.info('auth.password_reset_request.accepted', { email: validated.email });
+        log.info("auth.password_reset_request.accepted", {
+          email: validated.email,
+        });
         await requestAuditLog.log({
-          actorUserId: 'anonymous',
-          action: 'auth.password_reset.requested',
-          entityType: 'password_reset_request',
-          entityId: maskEmail(validated.email) ?? 'unknown-email',
+          actorUserId: "anonymous",
+          action: "auth.password_reset.requested",
+          entityType: "password_reset_request",
+          entityId: maskEmail(validated.email) ?? "unknown-email",
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['security'],
+          severity: "info",
+          category: ["security"],
           isSensitive: true,
         });
-        return jsonResponse(200, { message_key: 'auth.password_reset_requested' }, logContext);
+        return jsonResponse(
+          200,
+          { message_key: "auth.password_reset_requested" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -472,8 +539,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(resetPasswordSchema, body);
@@ -485,24 +557,28 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             users: deps.users,
             passwordHasher: deps.passwordHasher,
             hashService: deps.hashService,
-            clock: deps.clock
-          }
+            clock: deps.clock,
+          },
         );
 
-        log.info('auth.password_reset.success');
+        log.info("auth.password_reset.success");
         await requestAuditLog.log({
           actorUserId: result.userId,
-          action: 'auth.password_reset.completed',
-          entityType: 'user',
+          action: "auth.password_reset.completed",
+          entityType: "user",
           entityId: result.userId,
           success: true,
           httpStatus: 200,
-          severity: 'warning',
-          category: ['security', 'user_management'],
+          severity: "warning",
+          category: ["security", "user_management"],
           isSensitive: true,
-          changedFields: ['passwordHash'],
+          changedFields: ["passwordHash"],
         });
-        return jsonResponse(200, { message_key: 'auth.password_reset_success' }, logContext);
+        return jsonResponse(
+          200,
+          { message_key: "auth.password_reset_success" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -514,12 +590,17 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         if (!ctx.auth?.userId) {
-          return errorResponse(401, 'auth.unauthorized', undefined, logContext);
+          return errorResponse(401, "auth.unauthorized", undefined, logContext);
         }
 
         const validated = parseWithSchema(changePasswordSchema, body);
@@ -535,32 +616,38 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             refreshTokens: deps.refreshTokens,
             passwordHasher: deps.passwordHasher,
             clock: deps.clock,
-          }
+          },
         );
 
-        log.info('auth.password_changed');
+        log.info("auth.password_changed");
         await requestAuditLog.log({
           actorUserId: ctx.auth.userId,
-          action: 'auth.password_changed',
-          entityType: 'user',
+          action: "auth.password_changed",
+          entityType: "user",
           entityId: ctx.auth.userId,
           success: true,
           httpStatus: 200,
-          severity: 'warning',
-          category: ['security', 'user_management'],
+          severity: "warning",
+          category: ["security", "user_management"],
           isSensitive: true,
-          changedFields: ['passwordHash'],
+          changedFields: ["passwordHash"],
         });
 
         const userForNotification = await deps.users.findById(ctx.auth.userId);
         if (userForNotification) {
-          await deps.jobQueue.enqueue('notification.password_changed', {
-            email: userForNotification.email,
-            locale: userForNotification.locale,
-          }).catch(() => {});
+          await deps.jobQueue
+            .enqueue("notification.password_changed", {
+              email: userForNotification.email,
+              locale: userForNotification.locale,
+            })
+            .catch(() => {});
         }
 
-        return jsonResponse(200, { message_key: 'auth.password_changed' }, logContext);
+        return jsonResponse(
+          200,
+          { message_key: "auth.password_changed" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -571,8 +658,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const log = getLogger(logContext);
       try {
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(refreshTokenSchema, body ?? {});
@@ -580,11 +672,18 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           validated.refresh_token ?? getRefreshTokenFromCookie(ctx.request);
 
         if (!refreshToken) {
-          return errorResponse(401, 'auth.invalid_token', undefined, logContext, clearRefreshCookieHeaders());
+          return errorResponse(
+            401,
+            "auth.invalid_token",
+            undefined,
+            logContext,
+            clearRefreshCookieHeaders(),
+          );
         }
 
-        const fingerprint = ctx.request.headers.get('x-device-fingerprint') || undefined;
-        const userAgent = ctx.request.headers.get('user-agent') || undefined;
+        const fingerprint =
+          ctx.request.headers.get("x-device-fingerprint") || undefined;
+        const userAgent = ctx.request.headers.get("user-agent") || undefined;
 
         const result = await refreshAccessToken(
           { refreshToken, fingerprint, userAgent },
@@ -598,10 +697,10 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             clock: deps.clock,
             config: deps.config,
             auditLog: deps.auditLog,
-          }
+          },
         );
 
-        log.info('auth.refresh.success');
+        log.info("auth.refresh.success");
         const csrfToken = await buildCsrfToken(result.refreshToken);
         return jsonResponse(
           200,
@@ -615,7 +714,7 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             },
           },
           logContext,
-          withRefreshCookie(result.refreshToken, result.refreshExpiresIn)
+          withRefreshCookie(result.refreshToken, result.refreshExpiresIn),
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -626,27 +725,39 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);
       try {
-        const authHeader = ctx.request.headers.get('authorization');
-        if (authHeader?.startsWith('Bearer ')) {
+        const authHeader = ctx.request.headers.get("authorization");
+        if (authHeader?.startsWith("Bearer ")) {
           const accessToken = authHeader.slice(7);
-          const parts = accessToken.split('.');
+          const parts = accessToken.split(".");
           if (parts.length === 3) {
             try {
-              const payloadRaw = Buffer.from(base64UrlDecode(parts[1])).toString('utf-8');
-              const payload = JSON.parse(payloadRaw) as { jti?: string; exp?: number };
+              const payloadRaw = Buffer.from(
+                base64UrlDecode(parts[1]),
+              ).toString("utf-8");
+              const payload = JSON.parse(payloadRaw) as {
+                jti?: string;
+                exp?: number;
+              };
               if (payload.jti && payload.exp) {
                 const ttlSeconds = payload.exp - Math.floor(Date.now() / 1000);
                 if (ttlSeconds > 0) {
                   await blocklistJti(payload.jti, ttlSeconds);
                 }
               }
-            } catch { /* ignore malformed token payload */ }
+            } catch {
+              /* ignore malformed token payload */
+            }
           }
         }
 
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(revokeTokenSchema, body ?? {});
@@ -654,8 +765,13 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           validated.refresh_token ?? getRefreshTokenFromCookie(ctx.request);
 
         if (!refreshToken) {
-          log.info('auth.revoke.success', { source: 'missing_token_cookie' });
-          return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext, clearRefreshCookieHeaders());
+          log.info("auth.revoke.success", { source: "missing_token_cookie" });
+          return jsonResponse(
+            200,
+            { message_key: "auth.token_revoked" },
+            logContext,
+            clearRefreshCookieHeaders(),
+          );
         }
 
         const revokeResult = await revokeRefreshToken(
@@ -663,25 +779,30 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
           {
             refreshTokens: deps.refreshTokens,
             hashService: deps.hashService,
-            clock: deps.clock
-          }
+            clock: deps.clock,
+          },
         );
 
-        log.info('auth.revoke.success');
+        log.info("auth.revoke.success");
         if (revokeResult) {
           await deps.auditLog.log({
             actorUserId: revokeResult.userId,
-            action: 'user.logout',
-            entityType: 'session',
+            action: "user.logout",
+            entityType: "session",
             entityId: revokeResult.tokenId,
             ctx,
             success: true,
             httpStatus: 200,
-            severity: 'info',
-            category: ['security'],
+            severity: "info",
+            category: ["security"],
           });
         }
-        return jsonResponse(200, { message_key: 'auth.token_revoked' }, logContext, clearRefreshCookieHeaders());
+        return jsonResponse(
+          200,
+          { message_key: "auth.token_revoked" },
+          logContext,
+          clearRefreshCookieHeaders(),
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -715,22 +836,31 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
         const tokens = await deps.refreshTokens.findActiveByUserId(userId);
         const token = tokens.find((t) => t.id === sessionId);
         if (!token) {
-          return errorResponse(404, 'auth.session_not_found', undefined, logContext);
+          return errorResponse(
+            404,
+            "auth.session_not_found",
+            undefined,
+            logContext,
+          );
         }
         await deps.refreshTokens.revoke(sessionId, deps.clock.now());
-        log.info('auth.session_revoked', { session_id: sessionId });
+        log.info("auth.session_revoked", { session_id: sessionId });
         await deps.auditLog.log({
           actorUserId: ctx.auth!.userId,
-          action: 'user.logout',
-          entityType: 'session',
+          action: "user.logout",
+          entityType: "session",
           entityId: sessionId,
           ctx,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['security'],
+          severity: "info",
+          category: ["security"],
         });
-        return jsonResponse(200, { message_key: 'auth.session_revoked' }, logContext);
+        return jsonResponse(
+          200,
+          { message_key: "auth.session_revoked" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }
@@ -742,19 +872,23 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
       try {
         const userId = ctx.auth!.userId;
         await deps.refreshTokens.revokeAllByUserId(userId, deps.clock.now());
-        log.info('auth.all_sessions_revoked', { user_id: userId });
+        log.info("auth.all_sessions_revoked", { user_id: userId });
         await deps.auditLog.log({
           actorUserId: userId,
-          action: 'user.logout',
-          entityType: 'user',
+          action: "user.logout",
+          entityType: "user",
           entityId: userId,
           ctx,
           success: true,
           httpStatus: 200,
-          severity: 'warning',
-          category: ['security'],
+          severity: "warning",
+          category: ["security"],
         });
-        return jsonResponse(200, { message_key: 'auth.all_sessions_revoked' }, logContext);
+        return jsonResponse(
+          200,
+          { message_key: "auth.all_sessions_revoked" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, log, logContext);
       }

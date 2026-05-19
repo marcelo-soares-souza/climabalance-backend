@@ -1,17 +1,20 @@
-import type { PoolClient } from 'pg';
-import type { FootprintCalculation } from '../../../domain/footprint/entities/footprint-calculation';
+import type { PoolClient } from "pg";
+import type { FootprintCalculation } from "../../../domain/footprint/entities/footprint-calculation";
 import type {
   FootprintCalculationRepository,
-  FootprintCalculationWithUser
-} from '../../../domain/footprint/repositories/footprint-calculation-repository';
-import type { ProfileType } from '../../../domain/footprint/value-objects/profile-type';
-import type { CalculationStatus } from '../../../domain/footprint/value-objects/calculation-status';
-import type { DbClient } from './db-client';
+  FootprintCalculationWithUser,
+} from "../../../domain/footprint/repositories/footprint-calculation-repository";
+import type { ProfileType } from "../../../domain/footprint/value-objects/profile-type";
+import type { CalculationStatus } from "../../../domain/footprint/value-objects/calculation-status";
+import type { DbClient } from "./db-client";
 
 export class PostgresFootprintCalculationRepository implements FootprintCalculationRepository {
   constructor(private readonly db: DbClient) {}
 
-  async save(calculation: FootprintCalculation, client?: PoolClient): Promise<void> {
+  async save(
+    calculation: FootprintCalculation,
+    client?: PoolClient,
+  ): Promise<void> {
     const executor = client || this.db;
 
     await executor.query(
@@ -37,12 +40,15 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
         calculation.finalized_at,
         calculation.created_at,
         calculation.updated_at,
-        calculation.deleted_at
-      ]
+        calculation.deleted_at,
+      ],
     );
   }
 
-  async update(calculation: FootprintCalculation, client?: PoolClient): Promise<void> {
+  async update(
+    calculation: FootprintCalculation,
+    client?: PoolClient,
+  ): Promise<void> {
     const executor = client || this.db;
 
     await executor.query(
@@ -65,15 +71,15 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
         calculation.data_quality,
         calculation.status,
         calculation.finalized_at,
-        calculation.updated_at
-      ]
+        calculation.updated_at,
+      ],
     );
   }
 
   async findById(id: string): Promise<FootprintCalculation | null> {
     const result = await this.db.query(
       `SELECT * FROM footprint_calculations WHERE id = $1 AND deleted_at IS NULL`,
-      [id]
+      [id],
     );
 
     if (result.rowCount === 0) {
@@ -90,9 +96,9 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       profile_type?: ProfileType;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<FootprintCalculationWithUser[]> {
-    const conditions: string[] = ['fc.user_id = $1', 'fc.deleted_at IS NULL'];
+    const conditions: string[] = ["fc.user_id = $1", "fc.deleted_at IS NULL"];
     const params: any[] = [userId];
     let paramIndex = 2;
 
@@ -116,7 +122,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       FROM footprint_calculations fc
       JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
       LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY fc.updated_at DESC, fc.created_at DESC
       LIMIT $${paramIndex}
       OFFSET $${paramIndex + 1}
@@ -135,7 +141,10 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
     limit?: number;
     offset?: number;
   }): Promise<FootprintCalculationWithUser[]> {
-    const conditions: string[] = ['fc.deleted_at IS NULL', 'u.deleted_at IS NULL'];
+    const conditions: string[] = [
+      "fc.deleted_at IS NULL",
+      "u.deleted_at IS NULL",
+    ];
     const params: any[] = [];
     let paramIndex = 1;
 
@@ -165,7 +174,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       FROM footprint_calculations fc
       JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
       LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
-      WHERE ${conditions.join(' AND ')}
+      WHERE ${conditions.join(" AND ")}
       ORDER BY fc.updated_at DESC, fc.created_at DESC
       LIMIT $${paramIndex}
       OFFSET $${paramIndex + 1}
@@ -177,14 +186,16 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
     return result.rows.map(this.mapRow);
   }
 
-  async findByIdWithUser(id: string): Promise<FootprintCalculationWithUser | null> {
+  async findByIdWithUser(
+    id: string,
+  ): Promise<FootprintCalculationWithUser | null> {
     const result = await this.db.query(
       `SELECT fc.*, u.email AS user_email, up.display_name AS user_name
        FROM footprint_calculations fc
        JOIN users u ON u.id = fc.user_id AND u.deleted_at IS NULL
        LEFT JOIN user_profiles up ON up.user_id = u.id AND up.deleted_at IS NULL
        WHERE fc.id = $1 AND fc.deleted_at IS NULL`,
-      [id]
+      [id],
     );
 
     if (result.rowCount === 0) {
@@ -201,7 +212,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       `UPDATE footprint_calculations
        SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
        WHERE id = $1`,
-      [id]
+      [id],
     );
   }
 
@@ -212,7 +223,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
        WHERE user_id = $1
          AND status = 'finalized'
          AND deleted_at IS NULL`,
-      [userId]
+      [userId],
     );
 
     return Number(result.rows[0]?.total ?? 0);
@@ -237,7 +248,7 @@ export class PostgresFootprintCalculationRepository implements FootprintCalculat
       updated_at: new Date(row.updated_at),
       deleted_at: row.deleted_at ? new Date(row.deleted_at) : null,
       user_email: row.user_email ?? null,
-      user_name: row.user_name ?? null
+      user_name: row.user_name ?? null,
     };
   }
 }

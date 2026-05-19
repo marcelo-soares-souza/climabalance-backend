@@ -1,12 +1,12 @@
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { PasswordHasher } from '../../infrastructure/crypto/password';
-import { UserNotFoundError } from '../../domain/errors';
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { PasswordHasher } from "../../infrastructure/crypto/password";
+import { UserNotFoundError } from "../../domain/errors";
 
 export type UpdateUserInput = {
   id: string;
   email?: string;
   password?: string;
-  status?: 'active' | 'pending' | 'suspended';
+  status?: "active" | "pending" | "suspended";
   locale?: string;
 };
 
@@ -15,13 +15,13 @@ export async function updateUser(
   deps: {
     users: UserRepository;
     passwordHasher: PasswordHasher;
-  }
+  },
 ) {
   const update: {
     id: string;
     email?: string;
     passwordHash?: string;
-    status?: 'active' | 'pending' | 'suspended';
+    status?: "active" | "pending" | "suspended";
     locale?: string;
   } = { id: input.id };
 

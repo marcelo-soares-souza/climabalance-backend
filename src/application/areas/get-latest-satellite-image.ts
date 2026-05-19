@@ -1,5 +1,5 @@
-import type { AreaSatelliteImageRepository } from '../../domain/areas/repositories/area-satellite-image-repository';
-import { NotFoundError } from '../../domain/errors';
+import type { AreaSatelliteImageRepository } from "../../domain/areas/repositories/area-satellite-image-repository";
+import { NotFoundError } from "../../domain/errors";
 
 export interface LatestSatelliteImageResult {
   id: string;
@@ -23,7 +23,7 @@ export async function getLatestSatelliteImage(
 ): Promise<LatestSatelliteImageResult> {
   const image = await deps.satelliteImageRepository.findLatestByAreaId(areaId);
   if (!image) {
-    throw new NotFoundError('satellite.no_image');
+    throw new NotFoundError("satellite.no_image");
   }
 
   return {

@@ -1,7 +1,7 @@
-import type { PoolClient } from 'pg';
-import type { FootprintInput } from '../../../domain/footprint/entities/footprint-input';
-import type { FootprintInputRepository } from '../../../domain/footprint/repositories/footprint-input-repository';
-import type { DbClient } from './db-client';
+import type { PoolClient } from "pg";
+import type { FootprintInput } from "../../../domain/footprint/entities/footprint-input";
+import type { FootprintInputRepository } from "../../../domain/footprint/repositories/footprint-input-repository";
+import type { DbClient } from "./db-client";
 
 export class PostgresFootprintInputRepository implements FootprintInputRepository {
   constructor(private readonly db: DbClient) {}
@@ -25,8 +25,8 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
         input.metadata_json,
         input.created_at,
         input.updated_at,
-        input.deleted_at
-      ]
+        input.deleted_at,
+      ],
     );
   }
 
@@ -41,7 +41,7 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
 
     for (const input of inputs) {
       values.push(
-        `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10})`
+        `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10})`,
       );
       params.push(
         input.id,
@@ -54,7 +54,7 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
         input.metadata_json,
         input.created_at,
         input.updated_at,
-        input.deleted_at
+        input.deleted_at,
       );
       paramIndex += 11;
     }
@@ -63,28 +63,31 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
       `INSERT INTO footprint_input (
         id, calculation_id, activity_type, category, quantity, unit,
         kg_co2e, metadata_json, created_at, updated_at, deleted_at
-      ) VALUES ${values.join(', ')}`,
-      params
+      ) VALUES ${values.join(", ")}`,
+      params,
     );
   }
 
   async findByCalculationId(calculationId: string): Promise<FootprintInput[]> {
     const result = await this.db.query(
       `SELECT * FROM footprint_input WHERE calculation_id = $1 AND deleted_at IS NULL ORDER BY created_at`,
-      [calculationId]
+      [calculationId],
     );
 
     return result.rows.map(this.mapRow);
   }
 
-  async deleteByCalculationId(calculationId: string, client?: PoolClient): Promise<void> {
+  async deleteByCalculationId(
+    calculationId: string,
+    client?: PoolClient,
+  ): Promise<void> {
     const executor = client || this.db;
 
     await executor.query(
       `UPDATE footprint_input
        SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
        WHERE calculation_id = $1`,
-      [calculationId]
+      [calculationId],
     );
   }
 
@@ -100,7 +103,7 @@ export class PostgresFootprintInputRepository implements FootprintInputRepositor
       metadata_json: row.metadata_json,
       created_at: row.created_at,
       updated_at: row.updated_at,
-      deleted_at: row.deleted_at
+      deleted_at: row.deleted_at,
     };
   }
 }

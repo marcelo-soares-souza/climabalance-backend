@@ -1,12 +1,12 @@
 /**
  * Compensation lifecycle state tracked by payment orchestration.
  */
-export type CompensationStatus = 'pending' | 'paid' | 'canceled' | 'refunded';
+export type CompensationStatus = "pending" | "paid" | "canceled" | "refunded";
 
 /**
  * Payment lifecycle state persisted for each payment record.
  */
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
 /**
  * Minimal compensation data required to validate payment ownership and amount.
@@ -65,7 +65,7 @@ export type PendingPaymentRecord = {
   providerReference: string;
   amount: number;
   currency: string;
-  paymentStatus: 'pending';
+  paymentStatus: "pending";
   compensationStatus: CompensationStatus;
 };
 
@@ -77,7 +77,7 @@ export type CompensationCertificateSnapshot = {
   supporterUserId: string;
   areaId: string;
   calculationId?: string | null;
-  compensationMode?: 'tco2e' | 'tree_purchase' | null;
+  compensationMode?: "tco2e" | "tree_purchase" | null;
   horizonYears?: number | null;
   treesRequested?: number | null;
   pricePerTree?: number | null;
@@ -93,10 +93,12 @@ export type CompensationCertificateSnapshot = {
  * Unit-of-work contract for payment operations that require row-level locks.
  */
 export interface PaymentTransaction {
-  lockCompensation(compensationId: string): Promise<PaymentCompensationSnapshot | null>;
+  lockCompensation(
+    compensationId: string,
+  ): Promise<PaymentCompensationSnapshot | null>;
 
   lockLatestPendingPaymentByCompensationId(
-    compensationId: string
+    compensationId: string,
   ): Promise<LockedPaymentRecord | null>;
 
   insertPayment(record: PaymentCreateRecord): Promise<void>;
@@ -109,7 +111,7 @@ export interface PaymentTransaction {
   }): Promise<LockedPaymentRecord | null>;
 
   lockPaymentByStripePaymentIntentId(
-    stripePaymentIntentId: string
+    stripePaymentIntentId: string,
   ): Promise<LockedPaymentRecord | null>;
 
   updatePaymentStatus(input: {
@@ -121,7 +123,7 @@ export interface PaymentTransaction {
 
   updateCompensationStatus(input: {
     compensationId: string;
-    status: 'pending' | 'paid' | 'canceled' | 'refunded';
+    status: "pending" | "paid" | "canceled" | "refunded";
     updatedAt: Date;
   }): Promise<void>;
 }
@@ -135,7 +137,7 @@ export interface PaymentStore {
   listPendingPayments(limit: number): Promise<PendingPaymentRecord[]>;
 
   getCompensationForCertificate(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateSnapshot | null>;
 
   markWebhookEventProcessed?(input: {

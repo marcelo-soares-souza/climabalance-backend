@@ -1,8 +1,8 @@
-import { Location } from '../value-objects/location';
-import { AreaStatus } from '../value-objects/area-status';
-import { AuditStatus } from '../value-objects/audit-status';
-import { Biome } from '../value-objects/biome';
-import { CarbonCapacity } from '../value-objects/carbon-capacity';
+import { Location } from "../value-objects/location";
+import { AreaStatus } from "../value-objects/area-status";
+import { AuditStatus } from "../value-objects/audit-status";
+import { Biome } from "../value-objects/biome";
+import { CarbonCapacity } from "../value-objects/carbon-capacity";
 
 export interface AreaProps {
   id: string;
@@ -142,7 +142,7 @@ export class Area {
 
   submitForAudit(): void {
     if (!this.canBeSubmittedForAudit()) {
-      throw new Error('Area cannot be submitted for audit');
+      throw new Error("Area cannot be submitted for audit");
     }
 
     if (!this.status.canTransitionTo(AreaStatus.PENDING_AUDIT)) {
@@ -156,7 +156,7 @@ export class Area {
 
   approve(analystId: string, notes?: string): void {
     if (!this.status.isPendingAudit()) {
-      throw new Error('Area must be in pending_audit status to be approved');
+      throw new Error("Area must be in pending_audit status to be approved");
     }
 
     if (!this.status.canTransitionTo(AreaStatus.APPROVED)) {
@@ -173,7 +173,7 @@ export class Area {
 
   reject(analystId: string, reason: string): void {
     if (!this.status.isPendingAudit()) {
-      throw new Error('Area must be in pending_audit status to be rejected');
+      throw new Error("Area must be in pending_audit status to be rejected");
     }
 
     if (!this.status.canTransitionTo(AreaStatus.REJECTED)) {
@@ -190,7 +190,7 @@ export class Area {
 
   activate(): void {
     if (!this.status.isApproved()) {
-      throw new Error('Area must be approved before activation');
+      throw new Error("Area must be approved before activation");
     }
 
     if (!this.status.canTransitionTo(AreaStatus.ACTIVE)) {
@@ -203,7 +203,7 @@ export class Area {
 
   suspend(): void {
     if (!this.status.isActive()) {
-      throw new Error('Only active areas can be suspended');
+      throw new Error("Only active areas can be suspended");
     }
 
     if (!this.status.canTransitionTo(AreaStatus.SUSPENDED)) {
@@ -218,11 +218,11 @@ export class Area {
 
   reserveCapacity(amountTCO2e: number): void {
     if (!this.carbonCapacity) {
-      throw new Error('Area does not have carbon capacity defined');
+      throw new Error("Area does not have carbon capacity defined");
     }
 
     if (!this.isActive()) {
-      throw new Error('Area must be active to reserve capacity');
+      throw new Error("Area must be active to reserve capacity");
     }
 
     this.carbonCapacity = this.carbonCapacity.reserve(amountTCO2e);
@@ -231,7 +231,7 @@ export class Area {
 
   releaseCapacity(amountTCO2e: number): void {
     if (!this.carbonCapacity) {
-      throw new Error('Area does not have carbon capacity defined');
+      throw new Error("Area does not have carbon capacity defined");
     }
 
     this.carbonCapacity = this.carbonCapacity.release(amountTCO2e);
@@ -258,15 +258,15 @@ export class Area {
       treeSpecies?: string;
       externalLink?: string;
     },
-    options?: { forceEdit?: boolean }
+    options?: { forceEdit?: boolean },
   ): void {
     if (!options?.forceEdit && !this.status.canBeEdited()) {
-      throw new Error('Area cannot be edited in current status');
+      throw new Error("Area cannot be edited in current status");
     }
 
     if (updates.name !== undefined) {
       if (updates.name.length < 3) {
-        throw new Error('Name must be at least 3 characters');
+        throw new Error("Name must be at least 3 characters");
       }
       this.name = updates.name;
     }
@@ -301,7 +301,10 @@ export class Area {
 
     if (updates.totalCapacityTCO2e !== undefined) {
       const committed = this.carbonCapacity?.committedTCO2e || 0;
-      this.carbonCapacity = new CarbonCapacity(updates.totalCapacityTCO2e, committed);
+      this.carbonCapacity = new CarbonCapacity(
+        updates.totalCapacityTCO2e,
+        committed,
+      );
     }
 
     if (updates.maxPurchasableTrees !== undefined) {
@@ -314,14 +317,14 @@ export class Area {
 
     if (updates.pricePerTree !== undefined) {
       if (updates.pricePerTree <= 0) {
-        throw new Error('Price per tree must be positive');
+        throw new Error("Price per tree must be positive");
       }
       this.pricePerTree = updates.pricePerTree;
     }
 
     if (updates.defaultHorizonYears !== undefined) {
       if (updates.defaultHorizonYears <= 0) {
-        throw new Error('Default horizon years must be positive');
+        throw new Error("Default horizon years must be positive");
       }
       this.defaultHorizonYears = updates.defaultHorizonYears;
     }

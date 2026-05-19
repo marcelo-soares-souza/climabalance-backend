@@ -1,32 +1,30 @@
-import type { HttpContext } from '../../shared/http/router';
-import type { CompensationAtomicStore } from '../../application/compensations/create-compensation-atomic';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import { parseJson } from '../../shared/http/request';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
-import { parseWithSchema } from './schemas/validation-helper';
+import type { HttpContext } from "../../shared/http/router";
+import type { CompensationAtomicStore } from "../../application/compensations/create-compensation-atomic";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import { parseJson } from "../../shared/http/request";
+import { errorResponse, jsonResponse } from "../../shared/http/response";
+import { parseWithSchema } from "./schemas/validation-helper";
 import {
   createCompensationSchema,
   listAreaContributionsQuerySchema,
   listCompensationsQuerySchema,
   quoteTreePurchaseSchema,
-} from './schemas/compensation-schemas';
-import { createCompensationAtomic } from '../../application/compensations/create-compensation-atomic';
-import { handleError } from './error-mapper';
-import { buildLogContext } from '../../shared/http/log-context';
-import type { CompensationHistoryRepository } from '../../domain/compensations/repositories/compensation-history-repository';
-import { listCompensations } from '../../application/compensations/list-compensations';
-import { listAreaContributions } from '../../application/compensations/list-area-contributions';
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { StripeConnectLookup } from '../../application/payments/create-stripe-payment-intent';
-import {
-  quoteTreePurchaseCompensation,
-} from '../../application/compensations/quote-tree-purchase-compensation';
-import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
-import { requireAuth } from '../../shared/http/auth-context';
-import { parseQueryWithSchema } from './schemas/validation-helper';
+} from "./schemas/compensation-schemas";
+import { createCompensationAtomic } from "../../application/compensations/create-compensation-atomic";
+import { handleError } from "./error-mapper";
+import { buildLogContext } from "../../shared/http/log-context";
+import type { CompensationHistoryRepository } from "../../domain/compensations/repositories/compensation-history-repository";
+import { listCompensations } from "../../application/compensations/list-compensations";
+import { listAreaContributions } from "../../application/compensations/list-area-contributions";
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { StripeConnectLookup } from "../../application/payments/create-stripe-payment-intent";
+import { quoteTreePurchaseCompensation } from "../../application/compensations/quote-tree-purchase-compensation";
+import { withAuditLogContext } from "../../shared/http/audit-log-with-context";
+import { requireAuth } from "../../shared/http/auth-context";
+import { parseQueryWithSchema } from "./schemas/validation-helper";
 
 export interface CompensationHandlersDeps {
   areaRepository: AreaRepository;
@@ -36,7 +34,7 @@ export interface CompensationHandlersDeps {
   compensationHistoryRepository: CompensationHistoryRepository;
   idGenerator: IdGenerator;
   clock: Clock;
-  auditLog: Pick<AuditLogRepository, 'log'>;
+  auditLog: Pick<AuditLogRepository, "log">;
   defaultMaxPurchasableTrees: number;
 }
 
@@ -54,12 +52,13 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createCompensationSchema, body);
 
-        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const areaUuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const areaId = areaUuidRegex.test(validated.area_id)
           ? validated.area_id
           : (await deps.areaRepository.findBySlug(validated.area_id))?.id;
         if (!areaId) {
-          return errorResponse(404, 'area.not_found', undefined, logContext);
+          return errorResponse(404, "area.not_found", undefined, logContext);
         }
 
         const quote = await quoteTreePurchaseCompensation(
@@ -72,7 +71,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             areaId,
             treesRequested: validated.trees_requested!,
             currency: validated.currency,
-          }
+          },
         );
 
         const result = await createCompensationAtomic(
@@ -87,7 +86,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             supporterUserId: auth.userId,
             areaId,
             calculationId: validated.calculation_id,
-            compensationMode: 'tree_purchase',
+            compensationMode: "tree_purchase",
             horizonYears: quote.horizonYears,
             treesRequested: quote.treesRequested,
             pricePerTree: quote.pricePerTree,
@@ -96,7 +95,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             treesCount: quote.treesRequested,
             totalAmount: quote.totalAmount,
             currency: validated.currency,
-          }
+          },
         );
 
         return jsonResponse(
@@ -119,9 +118,9 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               created_at: result.createdAt,
               certificate: null,
             },
-            message_key: 'compensation.created_pending',
+            message_key: "compensation.created_pending",
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -136,7 +135,10 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
       const logContext = buildLogContext(ctx);
       try {
         const auth = requireAuth(ctx);
-        const validated = parseQueryWithSchema(listCompensationsQuerySchema, ctx.query);
+        const validated = parseQueryWithSchema(
+          listCompensationsQuerySchema,
+          ctx.query,
+        );
         const result = await listCompensations(
           {
             historyRepository: deps.compensationHistoryRepository,
@@ -148,7 +150,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             status: validated.status,
             limit: validated.limit,
             offset: validated.offset,
-          }
+          },
         );
 
         return jsonResponse(
@@ -174,7 +176,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               created_at: item.createdAt,
             })),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -188,7 +190,8 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByUser(ctx: HttpContext, userId: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const userUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const userUuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!userUuidRegex.test(userId)) {
           const user = await deps.users.findBySlug(userId);
           if (user) {
@@ -196,12 +199,19 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           } else {
             const userById = await deps.users.findById(userId);
             if (!userById) {
-              return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+              return jsonResponse(
+                404,
+                { message_key: "user.not_found" },
+                logContext,
+              );
             }
             userId = userById.id;
           }
         }
-        const validated = parseQueryWithSchema(listCompensationsQuerySchema, ctx.query);
+        const validated = parseQueryWithSchema(
+          listCompensationsQuerySchema,
+          ctx.query,
+        );
         const result = await listCompensations(
           {
             historyRepository: deps.compensationHistoryRepository,
@@ -213,7 +223,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             status: validated.status,
             limit: validated.limit,
             offset: validated.offset,
-          }
+          },
         );
 
         return jsonResponse(
@@ -239,7 +249,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               created_at: item.createdAt,
             })),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -253,7 +263,8 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async listByArea(ctx: HttpContext, areaId: string) {
       const logContext = buildLogContext(ctx);
       try {
-        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const areaUuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (!areaUuidRegex.test(areaId)) {
           const area = await deps.areaRepository.findBySlug(areaId);
           if (area) {
@@ -261,12 +272,19 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           } else {
             const areaById = await deps.areaRepository.findById(areaId);
             if (!areaById) {
-              return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+              return jsonResponse(
+                404,
+                { message_key: "area.not_found" },
+                logContext,
+              );
             }
             areaId = areaById.id;
           }
         }
-        const validated = parseQueryWithSchema(listAreaContributionsQuerySchema, ctx.query);
+        const validated = parseQueryWithSchema(
+          listAreaContributionsQuerySchema,
+          ctx.query,
+        );
         const result = await listAreaContributions(
           {
             historyRepository: deps.compensationHistoryRepository,
@@ -275,7 +293,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             areaId,
             limit: validated.limit,
             offset: validated.offset,
-          }
+          },
         );
 
         return jsonResponse(
@@ -291,7 +309,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               compensated_at: item.compensatedAt,
             })),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -308,12 +326,13 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(quoteTreePurchaseSchema, body);
 
-        const areaUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const areaUuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const areaId = areaUuidRegex.test(validated.area_id)
           ? validated.area_id
           : (await deps.areaRepository.findBySlug(validated.area_id))?.id;
         if (!areaId) {
-          return errorResponse(404, 'area.not_found', undefined, logContext);
+          return errorResponse(404, "area.not_found", undefined, logContext);
         }
 
         const quote = await quoteTreePurchaseCompensation(
@@ -326,14 +345,15 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             areaId,
             treesRequested: validated.trees_requested,
             currency: validated.currency,
-          }
+          },
         );
 
         const area = await deps.areaRepository.findById(areaId);
         const ownerUserId = area?.ownerUserId ?? null;
-        const stripeAccount = ownerUserId && deps.stripeConnectLookup
-          ? await deps.stripeConnectLookup.getByUserId(ownerUserId)
-          : null;
+        const stripeAccount =
+          ownerUserId && deps.stripeConnectLookup
+            ? await deps.stripeConnectLookup.getByUserId(ownerUserId)
+            : null;
         const producerStripeConnected = Boolean(stripeAccount);
         const producerChargesEnabled = Boolean(stripeAccount?.chargesEnabled);
         const producerPayoutsEnabled = Boolean(stripeAccount?.payoutsEnabled);
@@ -364,9 +384,9 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
               producer_payouts_enabled: producerPayoutsEnabled,
               producer_ready_to_receive_support: producerReadyToReceiveSupport,
             },
-            message_key: 'compensation.quote_tree_purchase_created',
+            message_key: "compensation.quote_tree_purchase_created",
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);

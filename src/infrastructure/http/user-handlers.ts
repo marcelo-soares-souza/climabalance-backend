@@ -1,32 +1,38 @@
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import type { PasswordHasher } from '../crypto/password';
-import type { HttpContext } from '../../shared/http/router';
-import { parseJson } from '../../shared/http/request';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
-import { handleError } from './error-mapper';
-import { deleteUser } from '../../application/users/delete-user';
-import { getUser } from '../../application/users/get-user';
-import { listUsers } from '../../application/users/list-users';
-import { updateUser } from '../../application/users/update-user';
-import { getClimateBalance } from '../../application/users/get-climate-balance';
-import { uuidv7 } from '../../shared/utils/id';
-import { getLogger } from '../../shared/utils/logger';
-import { listUsersQuerySchema, updateUserSchema, upsertProfileSchema, uploadProfileAvatarSchema, parseWithSchema } from './schemas';
-import { buildLogContext } from '../../shared/http/log-context';
-import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
-import { parseQueryWithSchema } from './schemas/validation-helper';
-import type { LocalProfileAvatarStorage } from '../storage/local-profile-avatar-storage';
-import { z } from 'zod';
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { PasswordHasher } from "../crypto/password";
+import type { HttpContext } from "../../shared/http/router";
+import { parseJson } from "../../shared/http/request";
+import { errorResponse, jsonResponse } from "../../shared/http/response";
+import { handleError } from "./error-mapper";
+import { deleteUser } from "../../application/users/delete-user";
+import { getUser } from "../../application/users/get-user";
+import { listUsers } from "../../application/users/list-users";
+import { updateUser } from "../../application/users/update-user";
+import { getClimateBalance } from "../../application/users/get-climate-balance";
+import { uuidv7 } from "../../shared/utils/id";
+import { getLogger } from "../../shared/utils/logger";
+import {
+  listUsersQuerySchema,
+  updateUserSchema,
+  upsertProfileSchema,
+  uploadProfileAvatarSchema,
+  parseWithSchema,
+} from "./schemas";
+import { buildLogContext } from "../../shared/http/log-context";
+import { withAuditLogContext } from "../../shared/http/audit-log-with-context";
+import { parseQueryWithSchema } from "./schemas/validation-helper";
+import type { LocalProfileAvatarStorage } from "../storage/local-profile-avatar-storage";
+import { z } from "zod";
 import {
   maskBirthDate,
   maskDocumentNumber,
   maskEmail,
-} from '../../shared/utils/mask-sensitive';
+} from "../../shared/utils/mask-sensitive";
 
 export type UserHandlersDeps = {
   users: UserRepository;
-  auditLog: Pick<AuditLogRepository, 'log'>;
+  auditLog: Pick<AuditLogRepository, "log">;
   passwordHasher: PasswordHasher;
   profileAvatarStorage: LocalProfileAvatarStorage;
   calculationRepository: {
@@ -41,9 +47,13 @@ export type UserHandlersDeps = {
   };
 };
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function resolveUserId(idOrSlug: string, users: UserRepository): Promise<string | null> {
+async function resolveUserId(
+  idOrSlug: string,
+  users: UserRepository,
+): Promise<string | null> {
   if (UUID_REGEX.test(idOrSlug)) return idOrSlug;
   const user = await users.findBySlug(idOrSlug);
   if (user) return user.id;
@@ -53,11 +63,11 @@ async function resolveUserId(idOrSlug: string, users: UserRepository): Promise<s
 
 export function createUserHandlers(deps: UserHandlersDeps) {
   const canViewSensitiveUserData = (
-    auth: HttpContext['auth'],
+    auth: HttpContext["auth"],
     targetUserId: string,
   ): boolean => {
     if (!auth) return false;
-    return auth.userId === targetUserId || auth.roles.includes('administrator');
+    return auth.userId === targetUserId || auth.roles.includes("administrator");
   };
 
   const mapUserSummary = async (
@@ -74,7 +84,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
     email_confirmed_at: user.emailConfirmedAt,
     last_login_at: user.lastLoginAt,
     created_at: user.createdAt,
-    roles: roleMap?.[user.id] ?? await deps.users.getRoles(user.id),
+    roles: roleMap?.[user.id] ?? (await deps.users.getRoles(user.id)),
   });
 
   return {
@@ -90,20 +100,22 @@ export function createUserHandlers(deps: UserHandlersDeps) {
             sortBy: query.sort_by,
             sortOrder: query.sort_order,
             limit: query.limit,
-            offset: query.offset
+            offset: query.offset,
           },
-          { users: deps.users }
+          { users: deps.users },
         );
         const roleMap = deps.users.getRolesByUserIds
           ? await deps.users.getRolesByUserIds(users.map((user) => user.id))
           : undefined;
-        log.info('user.list', { count: users.length });
+        log.info("user.list", { count: users.length });
         return jsonResponse(
           200,
           {
-            data: await Promise.all(users.map((user) => mapUserSummary(user, true, roleMap)))
+            data: await Promise.all(
+              users.map((user) => mapUserSummary(user, true, roleMap)),
+            ),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -116,16 +128,22 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const query = parseQueryWithSchema(
           z.object({
-            limit: z.string().transform((v) => parseInt(v, 10)).optional(),
-            offset: z.string().transform((v) => parseInt(v, 10)).optional(),
+            limit: z
+              .string()
+              .transform((v) => parseInt(v, 10))
+              .optional(),
+            offset: z
+              .string()
+              .transform((v) => parseInt(v, 10))
+              .optional(),
           }),
-          ctx.query
+          ctx.query,
         );
         const limit = query.limit ?? 20;
         const offset = query.offset ?? 0;
 
         const items = await deps.users.listPublicDirectory(limit, offset);
-        log.info('user.directory.list', { count: items.length });
+        log.info("user.directory.list", { count: items.length });
 
         return jsonResponse(
           200,
@@ -144,7 +162,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               created_at: item.createdAt,
             })),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -157,18 +175,22 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const resolvedId = await resolveUserId(userIdOrSlug, deps.users);
         if (!resolvedId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
 
         const user = await getUser(resolvedId, { users: deps.users });
         const includeSensitive = canViewSensitiveUserData(ctx.auth, resolvedId);
-        log.info('user.get', { user_id: resolvedId });
+        log.info("user.get", { user_id: resolvedId });
         return jsonResponse(
           200,
           {
-            data: await mapUserSummary(user, includeSensitive)
+            data: await mapUserSummary(user, includeSensitive),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -181,10 +203,17 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const userId = await resolveUserId(userIdOrSlug, deps.users);
         if (!userId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         const profile = await deps.users.getProfile(userId);
-        log.info('user.profile.get', { user_id: userId, found: Boolean(profile) });
+        log.info("user.profile.get", {
+          user_id: userId,
+          found: Boolean(profile),
+        });
         if (!profile) {
           return jsonResponse(200, { data: null }, logContext);
         }
@@ -196,9 +225,15 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               id: profile.id,
               user_id: profile.userId,
               display_name: profile.displayName,
-              document_type: includeSensitive ? profile.documentType : undefined,
-              document_number: includeSensitive ? profile.documentNumber : undefined,
-              document_number_masked: maskDocumentNumber(profile.documentNumber),
+              document_type: includeSensitive
+                ? profile.documentType
+                : undefined,
+              document_number: includeSensitive
+                ? profile.documentNumber
+                : undefined,
+              document_number_masked: maskDocumentNumber(
+                profile.documentNumber,
+              ),
               birth_date: includeSensitive ? profile.birthDate : undefined,
               birth_date_masked: maskBirthDate(profile.birthDate),
               phone: profile.phone,
@@ -218,10 +253,10 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               mastodon_url: profile.mastodonUrl,
               youtube_url: profile.youtubeUrl,
               linkedin_url: profile.linkedinUrl,
-              avatar_path: profile.avatarPath
-            }
+              avatar_path: profile.avatarPath,
+            },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -234,13 +269,17 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const userId = await resolveUserId(userIdOrSlug, deps.users);
         if (!userId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         const balance = await getClimateBalance(userId, {
           calculationRepository: deps.calculationRepository,
           compensationHistoryRepository: deps.compensationHistoryRepository,
         });
-        log.info('user.climate_balance.get', { user_id: userId });
+        log.info("user.climate_balance.get", { user_id: userId });
         return jsonResponse(
           200,
           {
@@ -252,7 +291,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               total_contribution_amount: balance.totalContributionAmount,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -266,17 +305,26 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         userId = resolvedUserId;
 
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(updateUserSchema, body);
-        const isAdmin = ctx.auth?.roles.includes('administrator') ?? false;
+        const isAdmin = ctx.auth?.roles.includes("administrator") ?? false;
         const changedFields = changedKeys(validated);
         const hasSensitiveSelfUpdate =
           validated.email !== undefined ||
@@ -285,21 +333,23 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           validated.role !== undefined;
 
         if (!isAdmin && hasSensitiveSelfUpdate) {
-          log.warn('user.update.forbidden_sensitive_self_update', { user_id: userId });
+          log.warn("user.update.forbidden_sensitive_self_update", {
+            user_id: userId,
+          });
           await requestAuditLog.log({
-            actorUserId: ctx.auth?.userId ?? 'anonymous',
-            action: 'user.update.forbidden_sensitive_self_update',
-            entityType: 'user',
+            actorUserId: ctx.auth?.userId ?? "anonymous",
+            action: "user.update.forbidden_sensitive_self_update",
+            entityType: "user",
             entityId: userId,
             success: false,
-            errorCode: 'AUTH_FORBIDDEN',
+            errorCode: "AUTH_FORBIDDEN",
             httpStatus: 403,
-            severity: 'warning',
-            category: ['security', 'user_management'],
+            severity: "warning",
+            category: ["security", "user_management"],
             isSensitive: true,
             changedFields,
           });
-          return errorResponse(403, 'auth.forbidden', undefined, logContext);
+          return errorResponse(403, "auth.forbidden", undefined, logContext);
         }
 
         const previousUser = await deps.users.findById(userId);
@@ -309,9 +359,9 @@ export function createUserHandlers(deps: UserHandlersDeps) {
             email: validated.email,
             password: validated.password,
             locale: validated.locale,
-            status: validated.status
+            status: validated.status,
           },
-          { users: deps.users, passwordHasher: deps.passwordHasher }
+          { users: deps.users, passwordHasher: deps.passwordHasher },
         );
 
         let previousRoles: string[] | undefined;
@@ -320,18 +370,20 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           await deps.users.replaceRoles(userId, [validated.role]);
         }
 
-        log.info('user.update', { user_id: userId });
+        log.info("user.update", { user_id: userId });
         await requestAuditLog.log({
           actorUserId: ctx.auth?.userId ?? userId,
-          action: 'user.updated',
-          entityType: 'user',
+          action: "user.updated",
+          entityType: "user",
           entityId: userId,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['user_management', 'data_modification'],
+          severity: "info",
+          category: ["user_management", "data_modification"],
           isSensitive: true,
-          previousState: previousUser ? summarizeUserForAudit(previousUser) : undefined,
+          previousState: previousUser
+            ? summarizeUserForAudit(previousUser)
+            : undefined,
           newState: summarizeUserForAudit(user),
           changedFields,
         });
@@ -340,26 +392,26 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           const currentRoles = await deps.users.getRoles(userId);
           await requestAuditLog.log({
             actorUserId: ctx.auth?.userId ?? userId,
-            action: 'user.role_changed',
-            entityType: 'user',
+            action: "user.role_changed",
+            entityType: "user",
             entityId: userId,
             success: true,
             httpStatus: 200,
-            severity: 'warning',
-            category: ['user_management', 'security', 'authorization'],
+            severity: "warning",
+            category: ["user_management", "security", "authorization"],
             isSensitive: true,
             previousState: { roles: previousRoles },
             newState: { roles: currentRoles },
-            changedFields: ['roles'],
+            changedFields: ["roles"],
           });
         }
 
         return jsonResponse(
           200,
           {
-            data: await mapUserSummary(user, false)
+            data: await mapUserSummary(user, false),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -373,25 +425,31 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         userId = resolvedUserId;
         const previousUser = await deps.users.findById(userId);
         await deleteUser(userId, { users: deps.users });
-        log.warn('user.deleted', { user_id: userId });
+        log.warn("user.deleted", { user_id: userId });
         await requestAuditLog.log({
           actorUserId: ctx.auth?.userId ?? userId,
-          action: 'user.deleted',
-          entityType: 'user',
+          action: "user.deleted",
+          entityType: "user",
           entityId: userId,
           success: true,
           httpStatus: 200,
-          severity: 'warning',
-          category: ['user_management', 'data_modification'],
+          severity: "warning",
+          category: ["user_management", "data_modification"],
           isSensitive: true,
-          previousState: previousUser ? summarizeUserForAudit(previousUser) : undefined,
+          previousState: previousUser
+            ? summarizeUserForAudit(previousUser)
+            : undefined,
           newState: { deleted: true },
-          changedFields: ['deletedAt'],
+          changedFields: ["deletedAt"],
         });
         return jsonResponse(200, { data: { id: userId } }, logContext);
       } catch (error) {
@@ -406,13 +464,22 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         userId = resolvedUserId;
 
         const body = await parseJson(ctx.request, ctx);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(upsertProfileSchema, body);
@@ -440,23 +507,25 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           blueskyUrl: validated.bluesky_url,
           mastodonUrl: validated.mastodon_url,
           youtubeUrl: validated.youtube_url,
-          linkedinUrl: validated.linkedin_url
+          linkedinUrl: validated.linkedin_url,
         };
 
         const profileResult = await deps.users.upsertProfile(userId, profile);
 
-        log.info('user.profile.upsert', { user_id: userId });
+        log.info("user.profile.upsert", { user_id: userId });
         await requestAuditLog.log({
           actorUserId: ctx.auth?.userId ?? userId,
-          action: 'user.profile.upserted',
-          entityType: 'user_profile',
+          action: "user.profile.upserted",
+          entityType: "user_profile",
           entityId: profileResult.id,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['user_management', 'data_modification', 'privacy'],
+          severity: "info",
+          category: ["user_management", "data_modification", "privacy"],
           isSensitive: true,
-          previousState: previousProfile ? summarizeProfileForAudit(previousProfile) : undefined,
+          previousState: previousProfile
+            ? summarizeProfileForAudit(previousProfile)
+            : undefined,
           newState: summarizeProfileForAudit(profileResult),
           changedFields: changedKeys(validated),
         });
@@ -487,10 +556,10 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               mastodon_url: profileResult.mastodonUrl,
               youtube_url: profileResult.youtubeUrl,
               linkedin_url: profileResult.linkedinUrl,
-              avatar_path: profileResult.avatarPath
-            }
+              avatar_path: profileResult.avatarPath,
+            },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -504,27 +573,46 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const resolvedUserId = await resolveUserId(userId, deps.users);
         if (!resolvedUserId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         userId = resolvedUserId;
 
         const body = await parseJson(ctx.request, ctx, 12 * 1024 * 1024);
-        if (typeof body !== 'object' || body === null) {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const validated = parseWithSchema(uploadProfileAvatarSchema, body);
 
         let bytes: Uint8Array;
         try {
-          const decoded = Buffer.from(validated.file_base64, 'base64');
+          const decoded = Buffer.from(validated.file_base64, "base64");
           bytes = new Uint8Array(decoded);
         } catch {
-          return errorResponse(400, 'profile.avatar.invalid_base64', undefined, logContext);
+          return errorResponse(
+            400,
+            "profile.avatar.invalid_base64",
+            undefined,
+            logContext,
+          );
         }
 
         if (bytes.length === 0) {
-          return errorResponse(400, 'profile.avatar.empty_file', undefined, logContext);
+          return errorResponse(
+            400,
+            "profile.avatar.empty_file",
+            undefined,
+            logContext,
+          );
         }
 
         const existingProfile = await deps.users.getProfile(userId);
@@ -543,20 +631,20 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           avatarPath: storagePath,
         });
 
-        log.info('user.profile.avatar.uploaded', { user_id: userId });
+        log.info("user.profile.avatar.uploaded", { user_id: userId });
         await requestAuditLog.log({
           actorUserId: ctx.auth?.userId ?? userId,
-          action: 'user.profile.avatar.uploaded',
-          entityType: 'user_profile',
+          action: "user.profile.avatar.uploaded",
+          entityType: "user_profile",
           entityId: existingProfile?.id ?? userId,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['user_management', 'data_modification', 'privacy'],
+          severity: "info",
+          category: ["user_management", "data_modification", "privacy"],
           isSensitive: true,
           previousState: { hasAvatar: Boolean(existingProfile?.avatarPath) },
           newState: { hasAvatar: true },
-          changedFields: ['avatarPath'],
+          changedFields: ["avatarPath"],
         });
         return jsonResponse(
           200,
@@ -566,7 +654,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               avatar_url: `/api/v1/users/${userId}/profile/avatar/file`,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -579,21 +667,30 @@ export function createUserHandlers(deps: UserHandlersDeps) {
       try {
         const userId = await resolveUserId(userIdOrSlug, deps.users);
         if (!userId) {
-          return jsonResponse(404, { message_key: 'user.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
         }
         const profile = await deps.users.getProfile(userId);
         if (!profile?.avatarPath) {
-          return errorResponse(404, 'profile.avatar.not_found', undefined, logContext);
+          return errorResponse(
+            404,
+            "profile.avatar.not_found",
+            undefined,
+            logContext,
+          );
         }
 
         const bytes = await deps.profileAvatarStorage.read(profile.avatarPath);
-        log.info('user.profile.avatar.served', { user_id: userId });
+        log.info("user.profile.avatar.served", { user_id: userId });
 
         return new Response(bytes, {
           status: 200,
           headers: {
-            'Content-Type': 'image/webp',
-            'Cache-Control': 'public, max-age=86400',
+            "Content-Type": "image/webp",
+            "Cache-Control": "public, max-age=86400",
           },
         });
       } catch (error) {

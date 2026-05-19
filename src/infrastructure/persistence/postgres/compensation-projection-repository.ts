@@ -1,12 +1,15 @@
-import type { PoolClient } from 'pg';
-import type { CompensationProjection } from '../../../domain/footprint/entities/compensation-projection';
-import type { CompensationProjectionRepository } from '../../../domain/footprint/repositories/compensation-projection-repository';
-import type { DbClient } from './db-client';
+import type { PoolClient } from "pg";
+import type { CompensationProjection } from "../../../domain/footprint/entities/compensation-projection";
+import type { CompensationProjectionRepository } from "../../../domain/footprint/repositories/compensation-projection-repository";
+import type { DbClient } from "./db-client";
 
 export class PostgresCompensationProjectionRepository implements CompensationProjectionRepository {
   constructor(private readonly db: DbClient) {}
 
-  async save(projection: CompensationProjection, client?: PoolClient): Promise<void> {
+  async save(
+    projection: CompensationProjection,
+    client?: PoolClient,
+  ): Promise<void> {
     const executor = client || this.db;
 
     await executor.query(
@@ -24,15 +27,17 @@ export class PostgresCompensationProjectionRepository implements CompensationPro
         projection.horizon_years,
         projection.created_at,
         projection.updated_at,
-        projection.deleted_at
-      ]
+        projection.deleted_at,
+      ],
     );
   }
 
-  async findByCalculationId(calculationId: string): Promise<CompensationProjection | null> {
+  async findByCalculationId(
+    calculationId: string,
+  ): Promise<CompensationProjection | null> {
     const result = await this.db.query(
       `SELECT * FROM compensation_projection WHERE calculation_id = $1 AND deleted_at IS NULL LIMIT 1`,
-      [calculationId]
+      [calculationId],
     );
 
     if (result.rowCount === 0) {
@@ -45,7 +50,7 @@ export class PostgresCompensationProjectionRepository implements CompensationPro
   async findByAreaId(areaId: string): Promise<CompensationProjection[]> {
     const result = await this.db.query(
       `SELECT * FROM compensation_projection WHERE area_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC`,
-      [areaId]
+      [areaId],
     );
 
     return result.rows.map(this.mapRow);
@@ -62,7 +67,7 @@ export class PostgresCompensationProjectionRepository implements CompensationPro
       horizon_years: parseFloat(row.horizon_years),
       created_at: row.created_at,
       updated_at: row.updated_at,
-      deleted_at: row.deleted_at
+      deleted_at: row.deleted_at,
     };
   }
 }

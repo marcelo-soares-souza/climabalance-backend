@@ -1,7 +1,7 @@
-import type { HttpContext } from '../../shared/http/router';
-import { errorResponse, jsonResponse } from '../../shared/http/response';
-import { logger } from '../../shared/utils/logger';
-import { env } from '../../shared/utils/env';
+import type { HttpContext } from "../../shared/http/router";
+import { errorResponse, jsonResponse } from "../../shared/http/response";
+import { logger } from "../../shared/utils/logger";
+import { env } from "../../shared/utils/env";
 
 // Global set to track SSE clients
 const sseClients = new Set<ReadableStreamDefaultController>();
@@ -24,7 +24,7 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
       return jsonResponse(200, {
         buildId: BUILD_VERSION,
         timestamp: BUILD_TIMESTAMP_MS,
-        date: new Date(BUILD_TIMESTAMP_MS).toISOString()
+        date: new Date(BUILD_TIMESTAMP_MS).toISOString(),
       });
     },
 
@@ -38,23 +38,23 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
           // Add client to set
           sseClients.add(controller);
 
-          logger.info('sse.client.connected', {
+          logger.info("sse.client.connected", {
             clientCount: sseClients.size,
-            userAgent: ctx.request.headers.get('user-agent')
+            userAgent: ctx.request.headers.get("user-agent"),
           });
 
           // Send initial connection message
           const initialMessage = `data: ${JSON.stringify({
-            type: 'connected',
+            type: "connected",
             buildId: BUILD_VERSION,
-            timestamp: BUILD_TIMESTAMP_MS
+            timestamp: BUILD_TIMESTAMP_MS,
           })}\n\n`;
           controller.enqueue(new TextEncoder().encode(initialMessage));
 
           // Keep-alive ping every 30 seconds
           const keepAliveInterval = setInterval(() => {
             try {
-              controller.enqueue(new TextEncoder().encode(': keepalive\n\n'));
+              controller.enqueue(new TextEncoder().encode(": keepalive\n\n"));
             } catch {
               clearInterval(keepAliveInterval);
               sseClients.delete(controller);
@@ -62,28 +62,28 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
           }, 30000);
 
           // Cleanup on close
-          ctx.request.signal?.addEventListener('abort', () => {
+          ctx.request.signal?.addEventListener("abort", () => {
             clearInterval(keepAliveInterval);
             sseClients.delete(controller);
-            logger.info('sse.client.disconnected', {
-              clientCount: sseClients.size
+            logger.info("sse.client.disconnected", {
+              clientCount: sseClients.size,
             });
           });
         },
         cancel(controller) {
           sseClients.delete(controller);
-          logger.info('sse.client.cancelled', {
-            clientCount: sseClients.size
+          logger.info("sse.client.cancelled", {
+            clientCount: sseClients.size,
           });
-        }
+        },
       });
 
       return new Response(stream, {
         headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Connection': 'keep-alive',
-          'X-Accel-Buffering': 'no', // Disable nginx buffering
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no", // Disable nginx buffering
         },
       });
     },
@@ -94,16 +94,19 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
      * This would typically be called by a deployment script/webhook
      */
     async notifyUpdate(ctx: HttpContext): Promise<Response> {
-      const body = await ctx.request.json() as { buildId?: string; timestamp?: number };
+      const body = (await ctx.request.json()) as {
+        buildId?: string;
+        timestamp?: number;
+      };
       const { buildId, timestamp } = body;
 
       if (!buildId) {
-        return errorResponse(400, 'request.validation_failed');
+        return errorResponse(400, "request.validation_failed");
       }
 
       const message = `event: version-update\ndata: ${JSON.stringify({
         buildId,
-        timestamp: timestamp || Date.now()
+        timestamp: timestamp || Date.now(),
       })}\n\n`;
 
       const encoder = new TextEncoder();
@@ -120,17 +123,17 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
         }
       }
 
-      logger.info('sse.update.broadcast', {
+      logger.info("sse.update.broadcast", {
         buildId,
         notifiedClients: notifiedCount,
-        totalClients: sseClients.size
+        totalClients: sseClients.size,
       });
 
       return jsonResponse(200, {
         notified: notifiedCount,
-        buildId
+        buildId,
       });
-    }
+    },
   };
 }
 
@@ -141,7 +144,7 @@ export function createUpdateHandlers(_deps: UpdateHandlersDeps) {
 export function broadcastUpdate(buildId: string, timestamp?: number): void {
   const message = `event: version-update\ndata: ${JSON.stringify({
     buildId,
-    timestamp: timestamp || Date.now()
+    timestamp: timestamp || Date.now(),
   })}\n\n`;
 
   const encoder = new TextEncoder();

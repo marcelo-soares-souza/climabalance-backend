@@ -1,8 +1,11 @@
-import { AreaRepository, AreaFilters } from '../../domain/areas/repositories/area-repository';
-import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
-import { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
-import { Biome } from '../../domain/areas/value-objects/biome';
-import { AreaStatus } from '../../domain/areas/value-objects/area-status';
+import {
+  AreaRepository,
+  AreaFilters,
+} from "../../domain/areas/repositories/area-repository";
+import { AreaMediaRepository } from "../../domain/areas/repositories/area-media-repository";
+import { TreePlantingRepository } from "../../domain/areas/repositories/tree-planting-repository";
+import { Biome } from "../../domain/areas/value-objects/biome";
+import { AreaStatus } from "../../domain/areas/value-objects/area-status";
 
 export interface AreaMapItem {
   id: string;
@@ -38,7 +41,7 @@ export interface GetAreasForMapDeps {
 
 export async function getAreasForMap(
   deps: GetAreasForMapDeps,
-  filters?: { biome?: string; status?: string }
+  filters?: { biome?: string; status?: string },
 ): Promise<AreaMapItem[]> {
   const repoFilters: AreaFilters = { onlyActive: true };
 
@@ -54,19 +57,23 @@ export async function getAreasForMap(
 
   const areaIds = areas.map((a) => a.id);
 
-  const [allMedia, plantedCountByAreaId, compensatedCountByAreaId] = await Promise.all([
-    areaIds.length > 0
-      ? deps.areaMediaRepository.listByAreaIds(areaIds)
-      : Promise.resolve([]),
-    areaIds.length > 0
-      ? deps.treePlantingRepository.countByAreaIds(areaIds)
-      : Promise.resolve(new Map<string, number>()),
-    areaIds.length > 0
-      ? deps.treePlantingRepository.sumCompensatedTreeCountByAreaIds(areaIds)
-      : Promise.resolve(new Map<string, number>()),
-  ]);
+  const [allMedia, plantedCountByAreaId, compensatedCountByAreaId] =
+    await Promise.all([
+      areaIds.length > 0
+        ? deps.areaMediaRepository.listByAreaIds(areaIds)
+        : Promise.resolve([]),
+      areaIds.length > 0
+        ? deps.treePlantingRepository.countByAreaIds(areaIds)
+        : Promise.resolve(new Map<string, number>()),
+      areaIds.length > 0
+        ? deps.treePlantingRepository.sumCompensatedTreeCountByAreaIds(areaIds)
+        : Promise.resolve(new Map<string, number>()),
+    ]);
 
-  const mediaByAreaId = new Map<string, { thumbnailUrl: string; imageUrl: string }>();
+  const mediaByAreaId = new Map<
+    string,
+    { thumbnailUrl: string; imageUrl: string }
+  >();
   const usedAreas = new Set<string>();
   const shuffled = allMedia.sort(() => Math.random() - 0.5);
   for (const media of shuffled) {
@@ -109,7 +116,7 @@ export async function getAreasForMap(
         area.defaultHorizonYears
           ? Math.floor(
               area.carbonCapacity.committedTCO2e /
-                (area.tCO2ePerTreePerYear * area.defaultHorizonYears)
+                (area.tCO2ePerTreePerYear * area.defaultHorizonYears),
             )
           : undefined,
       plantedTreesCount: plantedCountByAreaId.get(area.id) || 0,

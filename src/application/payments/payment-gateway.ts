@@ -2,11 +2,11 @@
  * Provider outcomes normalized from gateway-specific responses.
  */
 export type PaymentGatewayOutcome =
-  | 'authorized'
-  | 'declined'
-  | 'in_review'
-  | 'timeout'
-  | 'canceled';
+  | "authorized"
+  | "declined"
+  | "in_review"
+  | "timeout"
+  | "canceled";
 
 /**
  * Payload used to create a card charge in the selected gateway.
@@ -50,7 +50,9 @@ export type PaymentGatewayStatusResult = {
 export interface PaymentGatewayAdapter {
   readonly provider: string;
 
-  createCharge(input: CreatePaymentChargeInput): Promise<PaymentGatewayChargeResult>;
+  createCharge(
+    input: CreatePaymentChargeInput,
+  ): Promise<PaymentGatewayChargeResult>;
 
   getChargeStatus(input: {
     providerReference: string;

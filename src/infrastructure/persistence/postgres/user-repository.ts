@@ -1,8 +1,14 @@
-import { Pool } from 'pg';
-import type { User, UserProfile } from '../../../domain/user/user';
-import type { CreateUserInput, PublicDirectoryItem, UpdateUserInput, UserFilters, UserRepository } from '../../../domain/user/user-repository';
-import { uuidv7 } from '../../../shared/utils/id';
-import type { DbClient } from './db-client';
+import { Pool } from "pg";
+import type { User, UserProfile } from "../../../domain/user/user";
+import type {
+  CreateUserInput,
+  PublicDirectoryItem,
+  UpdateUserInput,
+  UserFilters,
+  UserRepository,
+} from "../../../domain/user/user-repository";
+import { uuidv7 } from "../../../shared/utils/id";
+import type { DbClient } from "./db-client";
 
 function mapUser(row: Record<string, unknown>): User {
   return {
@@ -11,13 +17,17 @@ function mapUser(row: Record<string, unknown>): User {
     passwordHash: row.password_hash as string,
     passwordHashVersion: row.password_hash_version as string | undefined,
     slug: row.slug as string,
-    status: row.status as User['status'],
+    status: row.status as User["status"],
     locale: row.locale as string,
-    emailConfirmedAt: row.email_confirmed_at ? new Date(row.email_confirmed_at as string) : null,
-    lastLoginAt: row.last_login_at ? new Date(row.last_login_at as string) : null,
+    emailConfirmedAt: row.email_confirmed_at
+      ? new Date(row.email_confirmed_at as string)
+      : null,
+    lastLoginAt: row.last_login_at
+      ? new Date(row.last_login_at as string)
+      : null,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
-    deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
+    deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
   };
 }
 
@@ -28,7 +38,9 @@ function mapProfile(row: Record<string, unknown>): UserProfile {
     displayName: row.display_name as string | undefined,
     documentType: row.document_type as string | undefined,
     documentNumber: row.document_number as string | undefined,
-    birthDate: row.birth_date ? new Date(row.birth_date as string).toISOString().split('T')[0] : undefined,
+    birthDate: row.birth_date
+      ? new Date(row.birth_date as string).toISOString().split("T")[0]
+      : undefined,
     phone: row.phone as string | undefined,
     countryCode: row.country_code as string | undefined,
     addressLine1: row.address_line1 as string | undefined,
@@ -49,7 +61,7 @@ function mapProfile(row: Record<string, unknown>): UserProfile {
     avatarPath: row.avatar_path as string | undefined,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
-    deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
+    deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
   };
 }
 
@@ -62,7 +74,16 @@ export class PostgresUserRepository implements UserRepository {
       `INSERT INTO users (id, email, password_hash, slug, status, locale, email_confirmed_at, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
        RETURNING *`,
-      [input.id, input.email, input.passwordHash, input.slug, input.status, input.locale, input.emailConfirmedAt, now]
+      [
+        input.id,
+        input.email,
+        input.passwordHash,
+        input.slug,
+        input.status,
+        input.locale,
+        input.emailConfirmedAt,
+        now,
+      ],
     );
     return mapUser(result.rows[0]);
   }
@@ -111,15 +132,18 @@ export class PostgresUserRepository implements UserRepository {
     values.push(input.id);
 
     const result = await this.db.query(
-      `UPDATE users SET ${fields.join(', ')} WHERE id = $${index} AND deleted_at IS NULL RETURNING *`,
-      values
+      `UPDATE users SET ${fields.join(", ")} WHERE id = $${index} AND deleted_at IS NULL RETURNING *`,
+      values,
     );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
 
   async findById(id: string): Promise<User | null> {
-    const result = await this.db.query(`SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL`, [id]);
+    const result = await this.db.query(
+      `SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL`,
+      [id],
+    );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
@@ -127,7 +151,7 @@ export class PostgresUserRepository implements UserRepository {
   async findByEmail(email: string): Promise<User | null> {
     const result = await this.db.query(
       `SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1`,
-      [email]
+      [email],
     );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
@@ -136,14 +160,14 @@ export class PostgresUserRepository implements UserRepository {
   async findBySlug(slug: string): Promise<User | null> {
     const result = await this.db.query(
       `SELECT * FROM users WHERE slug = $1 AND deleted_at IS NULL`,
-      [slug]
+      [slug],
     );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
   }
 
   async list(filters: UserFilters): Promise<User[]> {
-    const conditions: string[] = ['deleted_at IS NULL'];
+    const conditions: string[] = ["deleted_at IS NULL"];
     const values: unknown[] = [];
     let index = 1;
 
@@ -156,17 +180,26 @@ export class PostgresUserRepository implements UserRepository {
       values.push(`%${filters.search}%`);
     }
 
-    const allowedSortColumns = ['email', 'status', 'created_at', 'updated_at', 'last_login_at'];
-    const sortBy = filters.sortBy && allowedSortColumns.includes(filters.sortBy) ? filters.sortBy : 'updated_at';
-    const sortOrder = filters.sortOrder === 'asc' ? 'ASC' : 'DESC';
+    const allowedSortColumns = [
+      "email",
+      "status",
+      "created_at",
+      "updated_at",
+      "last_login_at",
+    ];
+    const sortBy =
+      filters.sortBy && allowedSortColumns.includes(filters.sortBy)
+        ? filters.sortBy
+        : "updated_at";
+    const sortOrder = filters.sortOrder === "asc" ? "ASC" : "DESC";
 
     const limit = filters.limit ?? 50;
     const offset = filters.offset ?? 0;
     values.push(limit, offset);
 
     const result = await this.db.query(
-      `SELECT * FROM users WHERE ${conditions.join(' AND ')} ORDER BY ${sortBy} ${sortOrder} LIMIT $${index++} OFFSET $${index++}`,
-      values
+      `SELECT * FROM users WHERE ${conditions.join(" AND ")} ORDER BY ${sortBy} ${sortOrder} LIMIT $${index++} OFFSET $${index++}`,
+      values,
     );
     return result.rows.map(mapUser);
   }
@@ -175,7 +208,7 @@ export class PostgresUserRepository implements UserRepository {
     const now = new Date();
     const result = await this.db.query(
       `UPDATE users SET deleted_at = $1, updated_at = $1 WHERE id = $2 RETURNING *`,
-      [now, id]
+      [now, id],
     );
     if (result.rowCount === 0) return null;
     return mapUser(result.rows[0]);
@@ -186,61 +219,90 @@ export class PostgresUserRepository implements UserRepository {
     const client = this.db instanceof Pool ? await this.db.connect() : this.db;
 
     try {
-      if (this.db instanceof Pool) await client.query('BEGIN');
+      if (this.db instanceof Pool) await client.query("BEGIN");
 
-      await client.query(`UPDATE user_profiles SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE user_roles SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE email_confirmations SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE password_reset_tokens SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE refresh_tokens SET deleted_at = $1, updated_at = $1, revoked_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE footprint_calculations SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE area_media SET deleted_at = $1, updated_at = $1 WHERE uploaded_by_user_id = $2 AND deleted_at IS NULL`, [now, userId]);
-      await client.query(`UPDATE tree_plantings SET deleted_at = $1, updated_at = $1 WHERE planted_by_user_id = $2 AND deleted_at IS NULL`, [now, userId]);
+      await client.query(
+        `UPDATE user_profiles SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE user_roles SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE email_confirmations SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE password_reset_tokens SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE refresh_tokens SET deleted_at = $1, updated_at = $1, revoked_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE footprint_calculations SET deleted_at = $1, updated_at = $1 WHERE user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE area_media SET deleted_at = $1, updated_at = $1 WHERE uploaded_by_user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
+      await client.query(
+        `UPDATE tree_plantings SET deleted_at = $1, updated_at = $1 WHERE planted_by_user_id = $2 AND deleted_at IS NULL`,
+        [now, userId],
+      );
 
       await client.query(
         `UPDATE compensations SET deleted_at = $1, updated_at = $1 WHERE supporter_user_id = $2 AND deleted_at IS NULL`,
-        [now, userId]
+        [now, userId],
       );
 
       const areasResult = await client.query(
         `SELECT id FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL`,
-        [userId]
+        [userId],
       );
-      const areaIds = areasResult.rows.map((r: Record<string, unknown>) => r.id as string);
+      const areaIds = areasResult.rows.map(
+        (r: Record<string, unknown>) => r.id as string,
+      );
 
       if (areaIds.length > 0) {
         await client.query(
           `UPDATE areas SET deleted_at = $1, updated_at = $1 WHERE id = ANY($2::text[]) AND deleted_at IS NULL`,
-          [now, areaIds]
+          [now, areaIds],
         );
         await client.query(
           `UPDATE tree_plantings SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
-          [now, areaIds]
+          [now, areaIds],
         );
         await client.query(
           `UPDATE area_media SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
-          [now, areaIds]
+          [now, areaIds],
         );
         await client.query(
           `UPDATE area_criteria SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
-          [now, areaIds]
+          [now, areaIds],
         );
         await client.query(
           `UPDATE compensations SET deleted_at = $1, updated_at = $1 WHERE area_id = ANY($2::text[]) AND deleted_at IS NULL`,
-          [now, areaIds]
+          [now, areaIds],
         );
       }
 
-      if (this.db instanceof Pool) await client.query('COMMIT');
+      if (this.db instanceof Pool) await client.query("COMMIT");
     } catch (error) {
-      if (this.db instanceof Pool) await client.query('ROLLBACK');
+      if (this.db instanceof Pool) await client.query("ROLLBACK");
       throw error;
     } finally {
       if (this.db instanceof Pool) client.release();
     }
   }
 
-  async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> {
+  async upsertProfile(
+    userId: string,
+    profile: Partial<UserProfile>,
+  ): Promise<UserProfile> {
     const existing = await this.getProfile(userId);
     const now = new Date();
 
@@ -279,8 +341,8 @@ export class PostgresUserRepository implements UserRepository {
           profile.youtubeUrl ?? null,
           profile.linkedinUrl ?? null,
           profile.avatarPath ?? null,
-          now
-        ]
+          now,
+        ],
       );
       return mapProfile(result.rows[0]);
     }
@@ -290,28 +352,28 @@ export class PostgresUserRepository implements UserRepository {
     let index = 1;
 
     const entries: [keyof UserProfile, string][] = [
-      ['displayName', 'display_name'],
-      ['documentType', 'document_type'],
-      ['documentNumber', 'document_number'],
-      ['birthDate', 'birth_date'],
-      ['phone', 'phone'],
-      ['countryCode', 'country_code'],
-      ['addressLine1', 'address_line1'],
-      ['addressLine2', 'address_line2'],
-      ['addressCity', 'address_city'],
-      ['addressState', 'address_state'],
-      ['addressPostalCode', 'address_postal_code'],
-      ['addressCountry', 'address_country'],
-      ['about', 'about'],
-      ['websiteUrl', 'website_url'],
-      ['instagramUrl', 'instagram_url'],
-      ['facebookUrl', 'facebook_url'],
-      ['xUrl', 'x_url'],
-      ['blueskyUrl', 'bluesky_url'],
-      ['mastodonUrl', 'mastodon_url'],
-      ['youtubeUrl', 'youtube_url'],
-      ['linkedinUrl', 'linkedin_url'],
-      ['avatarPath', 'avatar_path']
+      ["displayName", "display_name"],
+      ["documentType", "document_type"],
+      ["documentNumber", "document_number"],
+      ["birthDate", "birth_date"],
+      ["phone", "phone"],
+      ["countryCode", "country_code"],
+      ["addressLine1", "address_line1"],
+      ["addressLine2", "address_line2"],
+      ["addressCity", "address_city"],
+      ["addressState", "address_state"],
+      ["addressPostalCode", "address_postal_code"],
+      ["addressCountry", "address_country"],
+      ["about", "about"],
+      ["websiteUrl", "website_url"],
+      ["instagramUrl", "instagram_url"],
+      ["facebookUrl", "facebook_url"],
+      ["xUrl", "x_url"],
+      ["blueskyUrl", "bluesky_url"],
+      ["mastodonUrl", "mastodon_url"],
+      ["youtubeUrl", "youtube_url"],
+      ["linkedinUrl", "linkedin_url"],
+      ["avatarPath", "avatar_path"],
     ];
 
     for (const [key, column] of entries) {
@@ -326,14 +388,17 @@ export class PostgresUserRepository implements UserRepository {
     values.push(existing.id);
 
     const result = await this.db.query(
-      `UPDATE user_profiles SET ${fields.join(', ')} WHERE id = $${index} AND deleted_at IS NULL RETURNING *`,
-      values
+      `UPDATE user_profiles SET ${fields.join(", ")} WHERE id = $${index} AND deleted_at IS NULL RETURNING *`,
+      values,
     );
     return mapProfile(result.rows[0]);
   }
 
   async getProfile(userId: string): Promise<UserProfile | null> {
-    const result = await this.db.query(`SELECT * FROM user_profiles WHERE user_id = $1 AND deleted_at IS NULL`, [userId]);
+    const result = await this.db.query(
+      `SELECT * FROM user_profiles WHERE user_id = $1 AND deleted_at IS NULL`,
+      [userId],
+    );
     if (result.rowCount === 0) return null;
     return mapProfile(result.rows[0]);
   }
@@ -343,12 +408,14 @@ export class PostgresUserRepository implements UserRepository {
       `SELECT roles.role_key FROM user_roles
        JOIN roles ON roles.id = user_roles.role_id
        WHERE user_roles.user_id = $1 AND user_roles.deleted_at IS NULL AND roles.deleted_at IS NULL`,
-      [userId]
+      [userId],
     );
     return result.rows.map((row) => row.role_key as string);
   }
 
-  async getRolesByUserIds(userIds: string[]): Promise<Record<string, string[]>> {
+  async getRolesByUserIds(
+    userIds: string[],
+  ): Promise<Record<string, string[]>> {
     if (userIds.length === 0) return {};
 
     const result = await this.db.query(
@@ -357,7 +424,7 @@ export class PostgresUserRepository implements UserRepository {
        WHERE user_roles.user_id = ANY($1)
          AND user_roles.deleted_at IS NULL
          AND roles.deleted_at IS NULL`,
-      [userIds]
+      [userIds],
     );
 
     const roleMap: Record<string, string[]> = {};
@@ -377,7 +444,7 @@ export class PostgresUserRepository implements UserRepository {
   async updateLastLogin(userId: string, timestamp: Date): Promise<void> {
     await this.db.query(
       `UPDATE users SET last_login_at = $1, updated_at = $1 WHERE id = $2 AND deleted_at IS NULL`,
-      [timestamp, userId]
+      [timestamp, userId],
     );
   }
 
@@ -388,7 +455,7 @@ export class PostgresUserRepository implements UserRepository {
        SELECT $1, $2, roles.id, $3, $3
        FROM roles
        WHERE roles.role_key = $4 AND roles.deleted_at IS NULL`,
-      [uuidv7(), userId, now, roleKey]
+      [uuidv7(), userId, now, roleKey],
     );
   }
 
@@ -398,7 +465,7 @@ export class PostgresUserRepository implements UserRepository {
       `UPDATE user_roles
        SET deleted_at = $2, updated_at = $2
        WHERE user_id = $1 AND deleted_at IS NULL`,
-      [userId, now]
+      [userId, now],
     );
     for (const roleKey of roleKeys) {
       await this.db.query(
@@ -406,7 +473,7 @@ export class PostgresUserRepository implements UserRepository {
          SELECT $1, $2, roles.id, $3, $3
          FROM roles
          WHERE roles.role_key = $4 AND roles.deleted_at IS NULL`,
-        [uuidv7(), userId, now, roleKey]
+        [uuidv7(), userId, now, roleKey],
       );
     }
   }
@@ -418,12 +485,15 @@ export class PostgresUserRepository implements UserRepository {
        WHERE roles.role_key = $1
          AND user_roles.deleted_at IS NULL
          AND roles.deleted_at IS NULL`,
-      [roleKey]
+      [roleKey],
     );
     return result.rows.map((row) => row.user_id as string);
   }
 
-  async listPublicDirectory(limit: number, offset: number): Promise<PublicDirectoryItem[]> {
+  async listPublicDirectory(
+    limit: number,
+    offset: number,
+  ): Promise<PublicDirectoryItem[]> {
     const result = await this.db.query(
       `SELECT
         u.id,
@@ -452,7 +522,7 @@ export class PostgresUserRepository implements UserRepository {
       WHERE u.deleted_at IS NULL AND u.status = 'active'
       ORDER BY total_trees DESC, u.created_at DESC
       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+      [limit, offset],
     );
 
     return result.rows.map((row) => ({

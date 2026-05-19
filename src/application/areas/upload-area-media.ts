@@ -1,19 +1,23 @@
-import sharp from 'sharp';
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
+import sharp from "sharp";
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
 import type {
   AreaMediaRepository,
-  AreaMediaType
-} from '../../domain/areas/repositories/area-media-repository';
-import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
-import { ForbiddenError, NotFoundError, ValidationError } from '../../domain/errors';
-import { canManageAreaMedia } from './area-media-policy';
+  AreaMediaType,
+} from "../../domain/areas/repositories/area-media-repository";
+import type { AreaMediaStorage } from "../../domain/areas/services/area-media-storage";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../../domain/errors";
+import { canManageAreaMedia } from "./area-media-policy";
 
 const maxImageBytes = 8 * 1024 * 1024;
 const maxVideoBytes = 25 * 1024 * 1024;
-const storedPhotoMimeType = 'image/webp';
+const storedPhotoMimeType = "image/webp";
 
-const photoMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const videoMimeTypes = new Set(['video/mp4', 'video/quicktime', 'video/webm']);
+const photoMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+const videoMimeTypes = new Set(["video/mp4", "video/quicktime", "video/webm"]);
 
 export type UploadAreaMediaInput = {
   areaId: string;
@@ -54,15 +58,15 @@ export async function uploadAreaMedia(
       }): Promise<void>;
     };
   },
-  input: UploadAreaMediaInput
+  input: UploadAreaMediaInput,
 ): Promise<UploadAreaMediaResult> {
   const area = await deps.areaRepository.findById(input.areaId);
   if (!area) {
-    throw new NotFoundError('area.not_found');
+    throw new NotFoundError("area.not_found");
   }
 
   if (!canManageAreaMedia(area, input.actorUserId, input.actorRoles)) {
-    throw new ForbiddenError('area.not_owner');
+    throw new ForbiddenError("area.not_owner");
   }
 
   validateMimeType(input.mediaType, input.mimeType);
@@ -72,18 +76,18 @@ export async function uploadAreaMedia(
   if (bytes.length === 0) {
     throw new ValidationError([
       {
-        field: 'file',
-        message: 'empty_file',
+        field: "file",
+        message: "empty_file",
       },
     ]);
   }
 
-  const maxBytes = input.mediaType === 'photo' ? maxImageBytes : maxVideoBytes;
+  const maxBytes = input.mediaType === "photo" ? maxImageBytes : maxVideoBytes;
   if (bytes.length > maxBytes) {
     throw new ValidationError([
       {
-        field: 'file',
-        message: 'file_too_large',
+        field: "file",
+        message: "file_too_large",
       },
     ]);
   }
@@ -94,8 +98,8 @@ export async function uploadAreaMedia(
   if (storedBytes.length > maxBytes) {
     throw new ValidationError([
       {
-        field: 'file_base64',
-        message: 'file_too_large',
+        field: "file_base64",
+        message: "file_too_large",
       },
     ]);
   }
@@ -127,8 +131,8 @@ export async function uploadAreaMedia(
 
   await deps.auditLog.log({
     actorUserId: input.actorUserId,
-    action: 'area.media.uploaded',
-    entityType: 'area_media',
+    action: "area.media.uploaded",
+    entityType: "area_media",
     entityId: mediaId,
     metadata: {
       area_id: area.id,
@@ -153,20 +157,20 @@ export async function uploadAreaMedia(
 }
 
 function validateMimeType(mediaType: AreaMediaType, mimeType: string): void {
-  if (mediaType === 'photo' && !photoMimeTypes.has(mimeType)) {
+  if (mediaType === "photo" && !photoMimeTypes.has(mimeType)) {
     throw new ValidationError([
       {
-        field: 'mime_type',
-        message: 'unsupported_mime_type',
+        field: "mime_type",
+        message: "unsupported_mime_type",
       },
     ]);
   }
 
-  if (mediaType === 'video' && !videoMimeTypes.has(mimeType)) {
+  if (mediaType === "video" && !videoMimeTypes.has(mimeType)) {
     throw new ValidationError([
       {
-        field: 'mime_type',
-        message: 'unsupported_mime_type',
+        field: "mime_type",
+        message: "unsupported_mime_type",
       },
     ]);
   }
@@ -175,15 +179,15 @@ function validateMimeType(mediaType: AreaMediaType, mimeType: string): void {
 async function prepareUpload(
   mediaType: AreaMediaType,
   declaredMimeType: string,
-  bytes: Uint8Array
+  bytes: Uint8Array,
 ): Promise<{ bytes: Uint8Array; mimeType: string }> {
-  if (mediaType === 'photo') {
+  if (mediaType === "photo") {
     const detectedMimeType = detectPhotoMimeType(bytes);
     if (detectedMimeType !== declaredMimeType) {
       throw new ValidationError([
         {
-          field: 'mime_type',
-          message: 'mime_type_mismatch',
+          field: "mime_type",
+          message: "mime_type_mismatch",
         },
       ]);
     }
@@ -200,8 +204,8 @@ async function prepareUpload(
     } catch {
       throw new ValidationError([
         {
-          field: 'file_base64',
-          message: 'invalid_image',
+          field: "file_base64",
+          message: "invalid_image",
         },
       ]);
     }
@@ -211,8 +215,8 @@ async function prepareUpload(
   if (detectedMimeType !== declaredMimeType) {
     throw new ValidationError([
       {
-        field: 'mime_type',
-        message: 'mime_type_mismatch',
+        field: "mime_type",
+        message: "mime_type_mismatch",
       },
     ]);
   }
@@ -221,8 +225,13 @@ async function prepareUpload(
 }
 
 function detectPhotoMimeType(bytes: Uint8Array): string | null {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return 'image/jpeg';
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return "image/jpeg";
   }
 
   if (
@@ -236,23 +245,33 @@ function detectPhotoMimeType(bytes: Uint8Array): string | null {
     bytes[6] === 0x1a &&
     bytes[7] === 0x0a
   ) {
-    return 'image/png';
+    return "image/png";
   }
 
-  if (bytes.length >= 12 && ascii(bytes, 0, 4) === 'RIFF' && ascii(bytes, 8, 12) === 'WEBP') {
-    return 'image/webp';
+  if (
+    bytes.length >= 12 &&
+    ascii(bytes, 0, 4) === "RIFF" &&
+    ascii(bytes, 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
   }
 
   return null;
 }
 
 function detectVideoMimeType(bytes: Uint8Array): string | null {
-  if (bytes.length >= 4 && bytes[0] === 0x1a && bytes[1] === 0x45 && bytes[2] === 0xdf && bytes[3] === 0xa3) {
-    return 'video/webm';
+  if (
+    bytes.length >= 4 &&
+    bytes[0] === 0x1a &&
+    bytes[1] === 0x45 &&
+    bytes[2] === 0xdf &&
+    bytes[3] === 0xa3
+  ) {
+    return "video/webm";
   }
 
-  if (bytes.length >= 12 && ascii(bytes, 4, 8) === 'ftyp') {
-    return ascii(bytes, 8, 12) === 'qt  ' ? 'video/quicktime' : 'video/mp4';
+  if (bytes.length >= 12 && ascii(bytes, 4, 8) === "ftyp") {
+    return ascii(bytes, 8, 12) === "qt  " ? "video/quicktime" : "video/mp4";
   }
 
   return null;

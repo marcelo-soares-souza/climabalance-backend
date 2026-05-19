@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool, PoolClient } from "pg";
 import type {
   CompensationCertificateSnapshot,
   LockedPaymentRecord,
@@ -8,7 +8,7 @@ import type {
   PaymentStore,
   PaymentTransaction,
   PendingPaymentRecord,
-} from '../../../application/payments/payment-store';
+} from "../../../application/payments/payment-store";
 
 /**
  * Transaction-scoped PostgreSQL implementation for payment store operations.
@@ -17,7 +17,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
   constructor(private readonly client: PoolClient) {}
 
   async lockCompensation(
-    compensationId: string
+    compensationId: string,
   ): Promise<PaymentCompensationSnapshot | null> {
     const result = await this.client.query(
       `SELECT
@@ -31,7 +31,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
        WHERE id = $1
          AND deleted_at IS NULL
        FOR UPDATE`,
-      [compensationId]
+      [compensationId],
     );
 
     if (result.rows.length === 0) {
@@ -45,7 +45,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
       areaId: String(row.area_id),
       totalAmount: Number(row.total_amount),
       currency: String(row.currency),
-      status: String(row.status) as PaymentCompensationSnapshot['status'],
+      status: String(row.status) as PaymentCompensationSnapshot["status"],
     };
   }
 
@@ -80,7 +80,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
           record.createdAt,
           record.updatedAt,
           null,
-        ]
+        ],
       );
     } else {
       await this.client.query(
@@ -103,13 +103,13 @@ class PostgresPaymentTransaction implements PaymentTransaction {
           record.createdAt,
           record.updatedAt,
           null,
-        ]
+        ],
       );
     }
   }
 
   async lockLatestPendingPaymentByCompensationId(
-    compensationId: string
+    compensationId: string,
   ): Promise<LockedPaymentRecord | null> {
     const result = await this.client.query(
       `SELECT
@@ -132,7 +132,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
        ORDER BY p.created_at DESC
        LIMIT 1
        FOR UPDATE OF p, c`,
-      [compensationId]
+      [compensationId],
     );
 
     if (result.rows.length === 0) {
@@ -142,7 +142,9 @@ class PostgresPaymentTransaction implements PaymentTransaction {
     return this.mapLockedPayment(result.rows[0] as Record<string, unknown>);
   }
 
-  async lockPaymentById(paymentId: string): Promise<LockedPaymentRecord | null> {
+  async lockPaymentById(
+    paymentId: string,
+  ): Promise<LockedPaymentRecord | null> {
     const result = await this.client.query(
       `SELECT
          p.id,
@@ -161,7 +163,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
          AND p.deleted_at IS NULL
          AND c.deleted_at IS NULL
        FOR UPDATE OF p, c`,
-      [paymentId]
+      [paymentId],
     );
 
     if (result.rows.length === 0) {
@@ -196,7 +198,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
        ORDER BY p.created_at DESC
        LIMIT 1
        FOR UPDATE OF p, c`,
-      [input.provider, input.providerReference]
+      [input.provider, input.providerReference],
     );
 
     if (result.rows.length === 0) {
@@ -207,7 +209,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
   }
 
   async lockPaymentByStripePaymentIntentId(
-    stripePaymentIntentId: string
+    stripePaymentIntentId: string,
   ): Promise<LockedPaymentRecord | null> {
     const result = await this.client.query(
       `SELECT
@@ -227,7 +229,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
          AND p.deleted_at IS NULL
          AND c.deleted_at IS NULL
        FOR UPDATE OF p, c`,
-      [stripePaymentIntentId]
+      [stripePaymentIntentId],
     );
 
     if (result.rows.length === 0) {
@@ -249,13 +251,13 @@ class PostgresPaymentTransaction implements PaymentTransaction {
            paid_at = $3,
            updated_at = $4
        WHERE id = $1 AND deleted_at IS NULL`,
-      [input.paymentId, input.status, input.paidAt ?? null, input.updatedAt]
+      [input.paymentId, input.status, input.paidAt ?? null, input.updatedAt],
     );
   }
 
   async updateCompensationStatus(input: {
     compensationId: string;
-    status: 'pending' | 'paid' | 'canceled' | 'refunded';
+    status: "pending" | "paid" | "canceled" | "refunded";
     updatedAt: Date;
   }): Promise<void> {
     await this.client.query(
@@ -263,7 +265,7 @@ class PostgresPaymentTransaction implements PaymentTransaction {
        SET status = $2,
            updated_at = $3
        WHERE id = $1 AND deleted_at IS NULL`,
-      [input.compensationId, input.status, input.updatedAt]
+      [input.compensationId, input.status, input.updatedAt],
     );
   }
 
@@ -277,10 +279,12 @@ class PostgresPaymentTransaction implements PaymentTransaction {
       providerReference: String(row.provider_reference),
       amount: Number(row.amount),
       currency: String(row.currency),
-      paymentStatus: String(row.payment_status) as LockedPaymentRecord['paymentStatus'],
+      paymentStatus: String(
+        row.payment_status,
+      ) as LockedPaymentRecord["paymentStatus"],
       compensationStatus: String(
-        row.compensation_status
-      ) as LockedPaymentRecord['compensationStatus'],
+        row.compensation_status,
+      ) as LockedPaymentRecord["compensationStatus"],
       paidAt: paidAt ? new Date(String(paidAt)) : undefined,
     };
   }
@@ -293,17 +297,17 @@ export class PostgresPaymentStore implements PaymentStore {
   constructor(private readonly pool: Pool) {}
 
   async runInTransaction<T>(
-    work: (tx: PaymentTransaction) => Promise<T>
+    work: (tx: PaymentTransaction) => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
       const tx = new PostgresPaymentTransaction(client);
       const result = await work(tx);
-      await client.query('COMMIT');
+      await client.query("COMMIT");
       return result;
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
@@ -311,7 +315,8 @@ export class PostgresPaymentStore implements PaymentStore {
   }
 
   async listPendingPayments(limit: number): Promise<PendingPaymentRecord[]> {
-    const effectiveLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 100;
+    const effectiveLimit =
+      Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : 100;
 
     const result = await this.pool.query(
       `SELECT
@@ -331,7 +336,7 @@ export class PostgresPaymentStore implements PaymentStore {
          AND c.deleted_at IS NULL
        ORDER BY p.created_at ASC
        LIMIT $1`,
-      [effectiveLimit]
+      [effectiveLimit],
     );
 
     return result.rows.map((row) => {
@@ -344,16 +349,16 @@ export class PostgresPaymentStore implements PaymentStore {
         providerReference: String(data.provider_reference),
         amount: Number(data.amount),
         currency: String(data.currency),
-        paymentStatus: 'pending' as const,
+        paymentStatus: "pending" as const,
         compensationStatus: String(
-          data.compensation_status
-        ) as PendingPaymentRecord['compensationStatus'],
+          data.compensation_status,
+        ) as PendingPaymentRecord["compensationStatus"],
       };
     });
   }
 
   async getCompensationForCertificate(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateSnapshot | null> {
     const result = await this.pool.query(
       `SELECT
@@ -375,7 +380,7 @@ export class PostgresPaymentStore implements PaymentStore {
        WHERE id = $1
          AND deleted_at IS NULL
        LIMIT 1`,
-      [compensationId]
+      [compensationId],
     );
 
     if (result.rows.length === 0) {
@@ -387,15 +392,20 @@ export class PostgresPaymentStore implements PaymentStore {
       id: String(row.id),
       supporterUserId: String(row.supporter_user_id),
       areaId: String(row.area_id),
-      calculationId: row.calculation_id == null ? null : String(row.calculation_id),
+      calculationId:
+        row.calculation_id == null ? null : String(row.calculation_id),
       compensationMode:
         row.compensation_mode == null
           ? null
-          : (String(row.compensation_mode) as CompensationCertificateSnapshot['compensationMode']),
-      horizonYears: row.horizon_years == null ? null : Number(row.horizon_years),
+          : (String(
+              row.compensation_mode,
+            ) as CompensationCertificateSnapshot["compensationMode"]),
+      horizonYears:
+        row.horizon_years == null ? null : Number(row.horizon_years),
       treesRequested:
         row.trees_requested == null ? null : Number(row.trees_requested),
-      pricePerTree: row.price_per_tree == null ? null : Number(row.price_per_tree),
+      pricePerTree:
+        row.price_per_tree == null ? null : Number(row.price_per_tree),
       estimatedTotalTCO2e:
         row.estimated_total_t_co2e == null
           ? null
@@ -404,7 +414,7 @@ export class PostgresPaymentStore implements PaymentStore {
       treesCount: Number(row.trees_count ?? 0),
       totalAmount: Number(row.total_amount),
       currency: String(row.currency),
-      status: String(row.status) as CompensationCertificateSnapshot['status'],
+      status: String(row.status) as CompensationCertificateSnapshot["status"],
     };
   }
 
@@ -426,7 +436,7 @@ export class PostgresPaymentStore implements PaymentStore {
         input.eventId,
         input.eventType,
         input.processedAt,
-      ]
+      ],
     );
 
     return (result.rowCount ?? 0) > 0;

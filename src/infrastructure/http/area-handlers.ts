@@ -1,21 +1,25 @@
-import type { HttpContext } from '../../shared/http/router';
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import { NotFoundError } from '../../domain/errors';
-import type { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
-import type { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
-import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
-import type { TreePlantingRepository } from '../../domain/areas/repositories/tree-planting-repository';
-import type { AreaSatelliteImageRepository } from '../../domain/areas/repositories/area-satellite-image-repository';
-import type { SatelliteImageStorage } from '../../domain/areas/services/satellite-image-storage';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { UnitOfWork } from '../persistence/unit-of-work';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import { z } from 'zod';
-import { parseJson } from '../../shared/http/request';
-import { jsonResponse, errorResponse, contentDispositionHeader } from '../../shared/http/response';
-import { handleError } from './error-mapper';
+import type { HttpContext } from "../../shared/http/router";
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import { NotFoundError } from "../../domain/errors";
+import type { AreaCriteriaRepository } from "../../domain/areas/repositories/area-criteria-repository";
+import type { AreaMediaRepository } from "../../domain/areas/repositories/area-media-repository";
+import type { AreaMediaStorage } from "../../domain/areas/services/area-media-storage";
+import type { TreePlantingRepository } from "../../domain/areas/repositories/tree-planting-repository";
+import type { AreaSatelliteImageRepository } from "../../domain/areas/repositories/area-satellite-image-repository";
+import type { SatelliteImageStorage } from "../../domain/areas/services/satellite-image-storage";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { UnitOfWork } from "../persistence/unit-of-work";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import { z } from "zod";
+import { parseJson } from "../../shared/http/request";
+import {
+  jsonResponse,
+  errorResponse,
+  contentDispositionHeader,
+} from "../../shared/http/response";
+import { handleError } from "./error-mapper";
 import {
   createAreaSchema,
   updateAreaSchema,
@@ -23,38 +27,44 @@ import {
   rejectAreaSchema,
   listAreasQuerySchema,
   getMapAreasQuerySchema,
-} from './schemas/area-schemas';
-import { parseQueryWithSchema, parseWithSchema } from './schemas/validation-helper';
-import { createArea } from '../../application/areas/create-area';
-import { updateArea } from '../../application/areas/update-area';
-import { deleteArea } from '../../application/areas/delete-area';
-import { getArea } from '../../application/areas/get-area';
-import { listAreas } from '../../application/areas/list-areas';
-import { submitAreaForAudit } from '../../application/areas/submit-area-for-audit';
-import { approveArea } from '../../application/areas/approve-area';
-import { rejectArea } from '../../application/areas/reject-area';
-import { activateArea } from '../../application/areas/activate-area';
-import { suspendArea } from '../../application/areas/suspend-area';
-import { getAreasForMap } from '../../application/areas/get-areas-for-map';
-import { getAreaCapacity } from '../../application/areas/get-area-capacity';
-import { getPlantedTrees } from '../../application/areas/get-planted-trees';
-import { getPendingTreeCount } from '../../application/areas/get-pending-tree-count';
-import { savePlantedTrees } from '../../application/areas/save-planted-trees';
-import { deletePlantedTrees } from '../../application/areas/delete-planted-trees';
-import { uploadAreaMedia } from '../../application/areas/upload-area-media';
-import { listAreaMedia } from '../../application/areas/list-area-media';
-import { deleteAreaMedia } from '../../application/areas/delete-area-media';
-import { getAreaMediaFile } from '../../application/areas/get-area-media-file';
-import { getAreaMediaThumbnail } from '../../application/areas/get-area-media-thumbnail';
-import { fetchAreaSatelliteImage } from '../../application/areas/fetch-area-satellite-image';
-import { getLatestSatelliteImage } from '../../application/areas/get-latest-satellite-image';
-import { serveSatelliteImageFile, serveSatelliteImageThumbnail } from '../../application/areas/serve-satellite-image-file';
-import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
-import { CarbonStockService } from '../../domain/areas/services/carbon-stock.service';
-import { buildLogContext } from '../../shared/http/log-context';
-import type { JobQueue } from '../../domain/jobs/job-queue';
-import { withAuditLogContext } from '../../shared/http/audit-log-with-context';
-import { requireAuth } from '../../shared/http/auth-context';
+} from "./schemas/area-schemas";
+import {
+  parseQueryWithSchema,
+  parseWithSchema,
+} from "./schemas/validation-helper";
+import { createArea } from "../../application/areas/create-area";
+import { updateArea } from "../../application/areas/update-area";
+import { deleteArea } from "../../application/areas/delete-area";
+import { getArea } from "../../application/areas/get-area";
+import { listAreas } from "../../application/areas/list-areas";
+import { submitAreaForAudit } from "../../application/areas/submit-area-for-audit";
+import { approveArea } from "../../application/areas/approve-area";
+import { rejectArea } from "../../application/areas/reject-area";
+import { activateArea } from "../../application/areas/activate-area";
+import { suspendArea } from "../../application/areas/suspend-area";
+import { getAreasForMap } from "../../application/areas/get-areas-for-map";
+import { getAreaCapacity } from "../../application/areas/get-area-capacity";
+import { getPlantedTrees } from "../../application/areas/get-planted-trees";
+import { getPendingTreeCount } from "../../application/areas/get-pending-tree-count";
+import { savePlantedTrees } from "../../application/areas/save-planted-trees";
+import { deletePlantedTrees } from "../../application/areas/delete-planted-trees";
+import { uploadAreaMedia } from "../../application/areas/upload-area-media";
+import { listAreaMedia } from "../../application/areas/list-area-media";
+import { deleteAreaMedia } from "../../application/areas/delete-area-media";
+import { getAreaMediaFile } from "../../application/areas/get-area-media-file";
+import { getAreaMediaThumbnail } from "../../application/areas/get-area-media-thumbnail";
+import { fetchAreaSatelliteImage } from "../../application/areas/fetch-area-satellite-image";
+import { getLatestSatelliteImage } from "../../application/areas/get-latest-satellite-image";
+import {
+  serveSatelliteImageFile,
+  serveSatelliteImageThumbnail,
+} from "../../application/areas/serve-satellite-image-file";
+import { AreaAuditService } from "../../domain/areas/services/area-audit.service";
+import { CarbonStockService } from "../../domain/areas/services/carbon-stock.service";
+import { buildLogContext } from "../../shared/http/log-context";
+import type { JobQueue } from "../../domain/jobs/job-queue";
+import { withAuditLogContext } from "../../shared/http/audit-log-with-context";
+import { requireAuth } from "../../shared/http/auth-context";
 
 export interface AreaHandlersDeps {
   users: UserRepository;
@@ -65,7 +75,7 @@ export interface AreaHandlersDeps {
   areaSatelliteImageRepository: AreaSatelliteImageRepository;
   satelliteImageStorage: SatelliteImageStorage;
   treePlantingRepository: TreePlantingRepository;
-  auditLog: Pick<AuditLogRepository, 'log'>;
+  auditLog: Pick<AuditLogRepository, "log">;
   unitOfWork: UnitOfWork;
   idGenerator: IdGenerator;
   clock: Clock;
@@ -76,27 +86,31 @@ export interface AreaHandlersDeps {
   earthSearchEnabled: boolean;
 }
 
-const AREA_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const AREA_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function resolveAreaId(id: string, areaRepository: AreaRepository): Promise<string> {
+async function resolveAreaId(
+  id: string,
+  areaRepository: AreaRepository,
+): Promise<string> {
   if (AREA_UUID_REGEX.test(id)) return id;
   const area = await areaRepository.findBySlug(id);
   if (area) return area.id;
   const areaById = await areaRepository.findById(id);
   if (areaById) return areaById.id;
-  throw new NotFoundError('area.not_found');
+  throw new NotFoundError("area.not_found");
 }
 
 export function createAreaHandlers(deps: AreaHandlersDeps) {
   const canViewSensitiveAreaData = (
-    auth: HttpContext['auth'],
+    auth: HttpContext["auth"],
     ownerUserId: string,
   ): boolean => {
     if (!auth) return false;
     return (
-      auth.userId === ownerUserId
-      || auth.roles.includes('administrator')
-      || auth.roles.includes('analyst')
+      auth.userId === ownerUserId ||
+      auth.roles.includes("administrator") ||
+      auth.roles.includes("analyst")
     );
   };
 
@@ -148,23 +162,25 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             defaultHorizonYears: validated.defaultHorizonYears,
             treeSpecies: validated.treeSpecies,
             externalLink: validated.externalLink,
-          }
+          },
         );
 
         const owner = await deps.users.findById(auth.userId);
-        await deps.jobQueue.enqueue('area.created', {
-          areaId: result.id,
-          areaName: result.name,
-          producerEmail: owner?.email ?? '',
-        }).catch(() => {});
+        await deps.jobQueue
+          .enqueue("area.created", {
+            areaId: result.id,
+            areaName: result.name,
+            producerEmail: owner?.email ?? "",
+          })
+          .catch(() => {});
 
         return jsonResponse(
           201,
           {
             data: result,
-            messages: ['area.created'],
+            messages: ["area.created"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -187,7 +203,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           id,
           ctx.auth?.userId,
-          ctx.auth?.roles
+          ctx.auth?.roles,
         );
         const includeSensitive = canViewSensitiveAreaData(
           ctx.auth,
@@ -202,7 +218,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
               ownerEmail: includeSensitive ? result.ownerEmail : undefined,
             },
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -231,33 +247,39 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           {
             areaId: id,
             userId: auth.userId,
-            isAdmin: auth.roles.includes('administrator'),
+            isAdmin: auth.roles.includes("administrator"),
             ...validated,
-          }
+          },
         );
 
         const updatedArea = await deps.areaRepository.findById(id);
 
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'area.updated',
-          entityType: 'area',
+          action: "area.updated",
+          entityType: "area",
           entityId: id,
           success: true,
           httpStatus: 200,
-          severity: 'info',
-          category: ['data_modification'],
-          previousState: previousArea ? summarizeAreaForAudit(previousArea) : undefined,
-          newState: updatedArea ? summarizeAreaForAudit(updatedArea) : undefined,
-          changedFields: Object.keys(validated).filter((k) => validated[k as keyof typeof validated] !== undefined),
+          severity: "info",
+          category: ["data_modification"],
+          previousState: previousArea
+            ? summarizeAreaForAudit(previousArea)
+            : undefined,
+          newState: updatedArea
+            ? summarizeAreaForAudit(updatedArea)
+            : undefined,
+          changedFields: Object.keys(validated).filter(
+            (k) => validated[k as keyof typeof validated] !== undefined,
+          ),
         });
 
         return jsonResponse(
           200,
           {
-            messages: ['area.updated'],
+            messages: ["area.updated"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -286,31 +308,33 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           {
             areaId: id,
             userId: auth.userId,
-            isAdmin: auth.roles.includes('administrator'),
-          }
+            isAdmin: auth.roles.includes("administrator"),
+          },
         );
 
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'area.deleted',
-          entityType: 'area',
+          action: "area.deleted",
+          entityType: "area",
           entityId: id,
           success: true,
           httpStatus: 200,
-          severity: 'warning',
-          category: ['data_modification'],
+          severity: "warning",
+          category: ["data_modification"],
           isSensitive: true,
-          previousState: previousArea ? summarizeAreaForAudit(previousArea) : undefined,
+          previousState: previousArea
+            ? summarizeAreaForAudit(previousArea)
+            : undefined,
           newState: { deleted: true },
-          changedFields: ['deletedAt'],
+          changedFields: ["deletedAt"],
         });
 
         return jsonResponse(
           200,
           {
-            messages: ['area.deleted'],
+            messages: ["area.deleted"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -326,10 +350,12 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
       try {
         const query = parseQueryWithSchema(listAreasQuerySchema, ctx.query);
 
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const ownerUserId = query.ownerUserId && !uuidRegex.test(query.ownerUserId)
-          ? (await deps.users.findBySlug(query.ownerUserId))?.id
-          : query.ownerUserId;
+        const uuidRegex =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const ownerUserId =
+          query.ownerUserId && !uuidRegex.test(query.ownerUserId)
+            ? (await deps.users.findBySlug(query.ownerUserId))?.id
+            : query.ownerUserId;
 
         const result = await listAreas(
           {
@@ -342,10 +368,14 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             roles: ctx.auth?.roles,
             ...query,
             ownerUserId,
-          }
+          },
         );
 
-        return jsonResponse(200, { data: { items: result.data, nextCursor: result.nextCursor } }, logContext);
+        return jsonResponse(
+          200,
+          { data: { items: result.data, nextCursor: result.nextCursor } },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
@@ -367,23 +397,25 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             auditService,
           },
           id,
-          auth.userId
+          auth.userId,
         );
 
         if (area) {
-          await deps.jobQueue.enqueue('area.audit_requested', {
-            areaId: id,
-            areaName: area.name,
-            producerEmail: auth.userId,
-          }).catch(() => {});
+          await deps.jobQueue
+            .enqueue("area.audit_requested", {
+              areaId: id,
+              areaName: area.name,
+              producerEmail: auth.userId,
+            })
+            .catch(() => {});
         }
 
         return jsonResponse(
           200,
           {
-            messages: ['area.submitted_for_audit'],
+            messages: ["area.submitted_for_audit"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -413,24 +445,26 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             analystId: auth.userId,
             criteria: validated.criteria,
             notes: validated.notes,
-          }
+          },
         );
 
         if (area) {
           const owner = await deps.users.findById(area.ownerUserId);
-          await deps.jobQueue.enqueue('area.approved', {
-            areaId: id,
-            areaName: area.name,
-            producerEmail: owner?.email ?? '',
-          }).catch(() => {});
+          await deps.jobQueue
+            .enqueue("area.approved", {
+              areaId: id,
+              areaName: area.name,
+              producerEmail: owner?.email ?? "",
+            })
+            .catch(() => {});
         }
 
         return jsonResponse(
           200,
           {
-            messages: ['area.approved'],
+            messages: ["area.approved"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -458,25 +492,27 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           },
           id,
           auth.userId,
-          validated.reason
+          validated.reason,
         );
 
         if (area) {
           const owner = await deps.users.findById(area.ownerUserId);
-          await deps.jobQueue.enqueue('area.rejected', {
-            areaId: id,
-            areaName: area.name,
-            producerEmail: owner?.email ?? '',
-            reason: validated.reason,
-          }).catch(() => {});
+          await deps.jobQueue
+            .enqueue("area.rejected", {
+              areaId: id,
+              areaName: area.name,
+              producerEmail: owner?.email ?? "",
+              reason: validated.reason,
+            })
+            .catch(() => {});
         }
 
         return jsonResponse(
           200,
           {
-            messages: ['area.rejected'],
+            messages: ["area.rejected"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -498,15 +534,15 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             auditService,
           },
           id,
-          auth.userId
+          auth.userId,
         );
 
         return jsonResponse(
           200,
           {
-            messages: ['area.activated'],
+            messages: ["area.activated"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -528,15 +564,15 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
             auditService,
           },
           id,
-          auth.userId
+          auth.userId,
         );
 
         return jsonResponse(
           200,
           {
-            messages: ['area.suspended'],
+            messages: ["area.suspended"],
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -547,7 +583,7 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
      * GET /api/v1/map/areas
      * Get areas for map display (public endpoint)
      */
-async getForMap(ctx: HttpContext) {
+    async getForMap(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
         const query = parseQueryWithSchema(getMapAreasQuerySchema, ctx.query);
@@ -558,10 +594,10 @@ async getForMap(ctx: HttpContext) {
             areaMediaRepository: deps.areaMediaRepository,
             treePlantingRepository: deps.treePlantingRepository,
           },
-          query
+          query,
         );
 
-return jsonResponse(200, { data: result }, logContext);
+        return jsonResponse(200, { data: result }, logContext);
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
@@ -631,10 +667,21 @@ return jsonResponse(200, { data: result }, logContext);
 
         const area = await deps.areaRepository.findById(id);
         if (!area) {
-          return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "area.not_found" },
+            logContext,
+          );
         }
-        if (area.ownerUserId !== auth.userId && !auth.roles.includes('administrator')) {
-          return jsonResponse(403, { message_key: 'auth.forbidden' }, logContext);
+        if (
+          area.ownerUserId !== auth.userId &&
+          !auth.roles.includes("administrator")
+        ) {
+          return jsonResponse(
+            403,
+            { message_key: "auth.forbidden" },
+            logContext,
+          );
         }
 
         await savePlantedTrees(
@@ -648,22 +695,26 @@ return jsonResponse(200, { data: result }, logContext);
 
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'area.trees_planted',
-          entityType: 'tree_planting',
+          action: "area.trees_planted",
+          entityType: "tree_planting",
           entityId: id,
           success: true,
           httpStatus: 201,
-          severity: 'info',
-          category: ['compliance', 'data_modification'],
+          severity: "info",
+          category: ["compliance", "data_modification"],
           isSensitive: true,
           newState: {
             areaId: id,
             plantedCount: points.length,
           },
-          changedFields: ['points'],
+          changedFields: ["points"],
           resourceChanges: points.length,
         });
-        return jsonResponse(201, { message_key: 'area.trees_planted' }, logContext);
+        return jsonResponse(
+          201,
+          { message_key: "area.trees_planted" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
@@ -681,25 +732,37 @@ return jsonResponse(200, { data: result }, logContext);
         const auth = requireAuth(ctx);
         const area = await deps.areaRepository.findById(id);
         if (!area) {
-          return jsonResponse(404, { message_key: 'area.not_found' }, logContext);
+          return jsonResponse(
+            404,
+            { message_key: "area.not_found" },
+            logContext,
+          );
         }
-        if (area.ownerUserId !== auth.userId && !auth.roles.includes('administrator')) {
-          return jsonResponse(403, { message_key: 'auth.forbidden' }, logContext);
+        if (
+          area.ownerUserId !== auth.userId &&
+          !auth.roles.includes("administrator")
+        ) {
+          return jsonResponse(
+            403,
+            { message_key: "auth.forbidden" },
+            logContext,
+          );
         }
-        const previousCount = await deps.treePlantingRepository.countByAreaId(id);
+        const previousCount =
+          await deps.treePlantingRepository.countByAreaId(id);
         await deletePlantedTrees(
           { treePlantingRepository: deps.treePlantingRepository },
           id,
         );
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'area.trees_deleted',
-          entityType: 'tree_planting',
+          action: "area.trees_deleted",
+          entityType: "tree_planting",
           entityId: id,
           success: true,
           httpStatus: 200,
-          severity: 'warning',
-          category: ['compliance', 'data_modification'],
+          severity: "warning",
+          category: ["compliance", "data_modification"],
           isSensitive: true,
           previousState: {
             areaId: id,
@@ -709,10 +772,14 @@ return jsonResponse(200, { data: result }, logContext);
             areaId: id,
             plantedCount: 0,
           },
-          changedFields: ['deletedAt'],
+          changedFields: ["deletedAt"],
           resourceChanges: previousCount,
         });
-        return jsonResponse(200, { message_key: 'area.trees_deleted' }, logContext);
+        return jsonResponse(
+          200,
+          { message_key: "area.trees_deleted" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
@@ -730,7 +797,7 @@ return jsonResponse(200, { data: result }, logContext);
           {
             carbonStockService,
           },
-          id
+          id,
         );
 
         return jsonResponse(200, { data: result }, logContext);
@@ -751,17 +818,28 @@ return jsonResponse(200, { data: result }, logContext);
         const auth = requireAuth(ctx);
 
         const formData = await ctx.request.formData();
-        const fileField = formData.get('file');
-        if (!fileField || typeof fileField === 'string') {
-          return errorResponse(400, 'request.invalid_body', undefined, logContext);
+        const fileField = formData.get("file");
+        if (!fileField || typeof fileField === "string") {
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
         const file = fileField as File;
 
-        const mediaType = (formData.get('media_type') as string) ?? 'photo';
-        const description = (formData.get('description') as string) || undefined;
+        const mediaType = (formData.get("media_type") as string) ?? "photo";
+        const description =
+          (formData.get("description") as string) || undefined;
 
-        if (mediaType !== 'photo' && mediaType !== 'video') {
-          return errorResponse(400, 'request.validation_failed', { fieldErrors: [{ field: 'media_type', message: 'invalid' }] }, logContext);
+        if (mediaType !== "photo" && mediaType !== "video") {
+          return errorResponse(
+            400,
+            "request.validation_failed",
+            { fieldErrors: [{ field: "media_type", message: "invalid" }] },
+            logContext,
+          );
         }
 
         const result = await uploadAreaMedia(
@@ -782,7 +860,7 @@ return jsonResponse(200, { data: result }, logContext);
             mimeType: file.type,
             fileName: file.name,
             fileBuffer: new Uint8Array(await file.arrayBuffer()),
-          }
+          },
         );
 
         return jsonResponse(
@@ -792,9 +870,9 @@ return jsonResponse(200, { data: result }, logContext);
               ...result,
               downloadUrl: `/api/v1/areas/media/${result.id}/file`,
             },
-            message_key: 'area.media_uploaded',
+            message_key: "area.media_uploaded",
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -818,7 +896,7 @@ return jsonResponse(200, { data: result }, logContext);
             areaId: id,
             actorUserId: ctx.auth?.userId,
             actorRoles: ctx.auth?.roles,
-          }
+          },
         );
 
         return jsonResponse(
@@ -827,10 +905,13 @@ return jsonResponse(200, { data: result }, logContext);
             data: result.map((item) => ({
               ...item,
               downloadUrl: `/api/v1/areas/media/${item.id}/file`,
-              thumbnailUrl: item.mediaType === 'photo' ? `/api/v1/areas/media/${item.id}/thumbnail` : undefined,
+              thumbnailUrl:
+                item.mediaType === "photo"
+                  ? `/api/v1/areas/media/${item.id}/thumbnail`
+                  : undefined,
             })),
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -858,15 +939,15 @@ return jsonResponse(200, { data: result }, logContext);
             mediaId,
             actorUserId: auth.userId,
             actorRoles: auth.roles,
-          }
+          },
         );
 
         return jsonResponse(
           200,
           {
-            message_key: 'area.media_deleted',
+            message_key: "area.media_deleted",
           },
-          logContext
+          logContext,
         );
       } catch (error) {
         return handleError(error, undefined, logContext);
@@ -890,15 +971,18 @@ return jsonResponse(200, { data: result }, logContext);
             mediaId,
             actorUserId: ctx.auth?.userId,
             actorRoles: ctx.auth?.roles,
-          }
+          },
         );
 
         return new Response(file.bytes, {
           status: 200,
           headers: {
-            'content-type': file.mimeType,
-            'cache-control': 'public, max-age=3600',
-            'content-disposition': contentDispositionHeader(resolveMediaDisposition(file.mimeType), file.fileName),
+            "content-type": file.mimeType,
+            "cache-control": "public, max-age=3600",
+            "content-disposition": contentDispositionHeader(
+              resolveMediaDisposition(file.mimeType),
+              file.fileName,
+            ),
           },
         });
       } catch (error) {
@@ -925,14 +1009,14 @@ return jsonResponse(200, { data: result }, logContext);
             mediaId,
             actorUserId: ctx.auth?.userId,
             actorRoles: ctx.auth?.roles,
-          }
+          },
         );
 
         return new Response(thumb.bytes, {
           status: 200,
           headers: {
-            'content-type': thumb.mimeType,
-            'cache-control': 'public, max-age=86400',
+            "content-type": thumb.mimeType,
+            "cache-control": "public, max-age=86400",
           },
         });
       } catch (error) {
@@ -952,7 +1036,11 @@ return jsonResponse(200, { data: result }, logContext);
         const auth = requireAuth(ctx);
 
         if (!deps.earthSearchEnabled) {
-          return jsonResponse(503, { message_key: 'satellite.disabled' }, logContext);
+          return jsonResponse(
+            503,
+            { message_key: "satellite.disabled" },
+            logContext,
+          );
         }
 
         const result = await fetchAreaSatelliteImage(
@@ -975,13 +1063,13 @@ return jsonResponse(200, { data: result }, logContext);
 
         await requestAuditLog.log({
           actorUserId: auth.userId,
-          action: 'area.satellite_image.fetched',
-          entityType: 'area_satellite_image',
+          action: "area.satellite_image.fetched",
+          entityType: "area_satellite_image",
           entityId: result.id,
           success: true,
           httpStatus: 201,
-          severity: 'info',
-          category: ['compliance', 'data_modification'],
+          severity: "info",
+          category: ["compliance", "data_modification"],
           isSensitive: true,
           newState: {
             areaId: id,
@@ -991,9 +1079,13 @@ return jsonResponse(200, { data: result }, logContext);
             cloudCover: result.cloudCover,
             isFallback: result.isFallback,
           },
-          changedFields: ['satelliteImage'],
+          changedFields: ["satelliteImage"],
         });
-        return jsonResponse(201, { data: result, message_key: 'satellite.fetched' }, logContext);
+        return jsonResponse(
+          201,
+          { data: result, message_key: "satellite.fetched" },
+          logContext,
+        );
       } catch (error) {
         return handleError(error, undefined, logContext);
       }
@@ -1036,8 +1128,8 @@ return jsonResponse(200, { data: result }, logContext);
         return new Response(file.bytes, {
           status: 200,
           headers: {
-            'content-type': file.mimeType,
-            'cache-control': 'public, max-age=86400',
+            "content-type": file.mimeType,
+            "cache-control": "public, max-age=86400",
           },
         });
       } catch (error) {
@@ -1063,8 +1155,8 @@ return jsonResponse(200, { data: result }, logContext);
         return new Response(file.bytes, {
           status: 200,
           headers: {
-            'content-type': file.mimeType,
-            'cache-control': 'public, max-age=86400',
+            "content-type": file.mimeType,
+            "cache-control": "public, max-age=86400",
           },
         });
       } catch (error) {
@@ -1083,7 +1175,11 @@ function summarizeAreaForAudit(area: {
   state?: string;
   city?: string;
   description?: string;
-  carbonCapacity?: { totalCapacityTCO2e: number; pricePerTree?: number; maxPurchasableTrees?: number | null };
+  carbonCapacity?: {
+    totalCapacityTCO2e: number;
+    pricePerTree?: number;
+    maxPurchasableTrees?: number | null;
+  };
 }): Record<string, unknown> {
   return {
     name: area.name,
@@ -1098,6 +1194,6 @@ function summarizeAreaForAudit(area: {
   };
 }
 
-function resolveMediaDisposition(mimeType: string): 'inline' | 'attachment' {
-  return mimeType.startsWith('image/') ? 'inline' : 'attachment';
+function resolveMediaDisposition(mimeType: string): "inline" | "attachment" {
+  return mimeType.startsWith("image/") ? "inline" : "attachment";
 }

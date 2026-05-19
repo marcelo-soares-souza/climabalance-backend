@@ -1,4 +1,4 @@
-import type { FootprintInput } from '../entities/footprint-input';
+import type { FootprintInput } from "../entities/footprint-input";
 
 /**
  * Footprint Input Repository interface

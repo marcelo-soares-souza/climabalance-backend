@@ -1,9 +1,9 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool, PoolClient } from "pg";
 import type {
   AreaContributionItem,
   CompensationHistoryItem,
   CompensationHistoryRepository,
-} from '../../../domain/compensations/repositories/compensation-history-repository';
+} from "../../../domain/compensations/repositories/compensation-history-repository";
 
 function mapRow(row: Record<string, unknown>): CompensationHistoryItem {
   return {
@@ -12,15 +12,19 @@ function mapRow(row: Record<string, unknown>): CompensationHistoryItem {
     areaId: String(row.area_id),
     areaName: row.area_name == null ? null : String(row.area_name),
     areaSlug: row.area_slug == null ? null : String(row.area_slug),
-    calculationId: row.calculation_id == null ? null : String(row.calculation_id),
+    calculationId:
+      row.calculation_id == null ? null : String(row.calculation_id),
     compensationMode:
       row.compensation_mode == null
-        ? 'tco2e'
-        : (String(row.compensation_mode) as CompensationHistoryItem['compensationMode']),
+        ? "tco2e"
+        : (String(
+            row.compensation_mode,
+          ) as CompensationHistoryItem["compensationMode"]),
     horizonYears: row.horizon_years == null ? null : Number(row.horizon_years),
     treesRequested:
       row.trees_requested == null ? null : Number(row.trees_requested),
-    pricePerTree: row.price_per_tree == null ? null : Number(row.price_per_tree),
+    pricePerTree:
+      row.price_per_tree == null ? null : Number(row.price_per_tree),
     estimatedTotalTCO2e:
       row.estimated_total_t_co2e == null
         ? null
@@ -29,48 +33,45 @@ function mapRow(row: Record<string, unknown>): CompensationHistoryItem {
     treesCount: row.trees_count == null ? null : Number(row.trees_count),
     totalAmount: Number(row.total_amount),
     currency: String(row.currency),
-    status: String(row.status) as CompensationHistoryItem['status'],
+    status: String(row.status) as CompensationHistoryItem["status"],
     createdAt: new Date(String(row.created_at)),
   };
 }
 
 function mapAreaContributionRow(
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
 ): AreaContributionItem {
   return {
     compensationId: String(row.compensation_id),
     supporterUserId: String(row.supporter_user_id),
     supporterSlug:
-      row.supporter_slug == null
-        ? null
-        : String(row.supporter_slug),
+      row.supporter_slug == null ? null : String(row.supporter_slug),
     supporterDisplayName:
       row.supporter_display_name == null
         ? null
         : String(row.supporter_display_name),
     supporterEmail:
-      row.supporter_email == null
-        ? null
-        : String(row.supporter_email),
+      row.supporter_email == null ? null : String(row.supporter_email),
     treesCount: Number(row.trees_count ?? 0),
     totalTCO2e: Number(row.total_t_co2e ?? 0),
     compensatedAt: new Date(String(row.compensated_at)),
   };
 }
 
-export class PostgresCompensationHistoryRepository
-  implements CompensationHistoryRepository
-{
+export class PostgresCompensationHistoryRepository implements CompensationHistoryRepository {
   constructor(private readonly pool: Pool | PoolClient) {}
 
   async listBySupporter(input: {
     supporterUserId: string;
-    status?: CompensationHistoryItem['status'];
+    status?: CompensationHistoryItem["status"];
     limit: number;
     offset: number;
   }): Promise<CompensationHistoryItem[]> {
     const params: Array<string | number> = [input.supporterUserId];
-    const where: string[] = ['c.supporter_user_id = $1', 'c.deleted_at IS NULL'];
+    const where: string[] = [
+      "c.supporter_user_id = $1",
+      "c.deleted_at IS NULL",
+    ];
 
     if (input.status) {
       params.push(input.status);
@@ -103,11 +104,11 @@ export class PostgresCompensationHistoryRepository
         c.created_at
       FROM compensations c
       LEFT JOIN areas a ON a.id = c.area_id
-      WHERE ${where.join(' AND ')}
+      WHERE ${where.join(" AND ")}
       ORDER BY c.updated_at DESC, c.created_at DESC
       LIMIT $${limitParam}
       OFFSET $${offsetParam}`,
-      params
+      params,
     );
 
     return result.rows.map((row) => mapRow(row as Record<string, unknown>));
@@ -142,15 +143,17 @@ export class PostgresCompensationHistoryRepository
       ORDER BY c.updated_at DESC
       LIMIT $2
       OFFSET $3`,
-      [input.areaId, input.limit, input.offset]
+      [input.areaId, input.limit, input.offset],
     );
 
     return result.rows.map((row) =>
-      mapAreaContributionRow(row as Record<string, unknown>)
+      mapAreaContributionRow(row as Record<string, unknown>),
     );
   }
 
-  async findById(compensationId: string): Promise<CompensationHistoryItem | null> {
+  async findById(
+    compensationId: string,
+  ): Promise<CompensationHistoryItem | null> {
     const result = await this.pool.query(
       `SELECT
         c.id,
@@ -174,7 +177,7 @@ export class PostgresCompensationHistoryRepository
       LEFT JOIN areas a ON a.id = c.area_id
       WHERE c.id = $1
         AND c.deleted_at IS NULL`,
-      [compensationId]
+      [compensationId],
     );
 
     if (result.rows.length === 0) {
@@ -192,7 +195,7 @@ export class PostgresCompensationHistoryRepository
        WHERE area_id = $1
          AND status = 'paid'
          AND deleted_at IS NULL`,
-      [areaId]
+      [areaId],
     );
     return Number(result.rows[0]?.total ?? 0);
   }
@@ -238,13 +241,17 @@ export class PostgresCompensationHistoryRepository
       WHERE supporter_user_id = $1
         AND status = 'paid'
         AND deleted_at IS NULL`,
-      [userId]
+      [userId],
     );
 
     return {
-      estimatedOffsetTCO2e: Number(result.rows[0]?.estimated_offset_t_co2e ?? 0),
+      estimatedOffsetTCO2e: Number(
+        result.rows[0]?.estimated_offset_t_co2e ?? 0,
+      ),
       totalTreesPurchased: Number(result.rows[0]?.total_trees_purchased ?? 0),
-      totalContributionAmount: Number(result.rows[0]?.total_contribution_amount ?? 0),
+      totalContributionAmount: Number(
+        result.rows[0]?.total_contribution_amount ?? 0,
+      ),
     };
   }
 }

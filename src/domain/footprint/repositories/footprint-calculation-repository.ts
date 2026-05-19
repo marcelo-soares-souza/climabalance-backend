@@ -1,6 +1,6 @@
-import type { FootprintCalculation } from '../entities/footprint-calculation';
-import type { ProfileType } from '../value-objects/profile-type';
-import type { CalculationStatus } from '../value-objects/calculation-status';
+import type { FootprintCalculation } from "../entities/footprint-calculation";
+import type { ProfileType } from "../value-objects/profile-type";
+import type { CalculationStatus } from "../value-objects/calculation-status";
 
 export type FootprintCalculationWithUser = FootprintCalculation & {
   user_email?: string | null;
@@ -36,7 +36,7 @@ export interface FootprintCalculationRepository {
       profile_type?: ProfileType;
       limit?: number;
       offset?: number;
-    }
+    },
   ): Promise<FootprintCalculationWithUser[]>;
 
   /**

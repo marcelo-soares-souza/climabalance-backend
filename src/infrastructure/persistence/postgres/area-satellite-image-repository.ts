@@ -1,6 +1,6 @@
-import type { Pool, PoolClient } from 'pg';
-import { AreaSatelliteImage } from '../../../domain/areas/entities/area-satellite-image';
-import type { AreaSatelliteImageRepository } from '../../../domain/areas/repositories/area-satellite-image-repository';
+import type { Pool, PoolClient } from "pg";
+import { AreaSatelliteImage } from "../../../domain/areas/entities/area-satellite-image";
+import type { AreaSatelliteImageRepository } from "../../../domain/areas/repositories/area-satellite-image-repository";
 
 function mapRow(row: Record<string, unknown>): AreaSatelliteImage {
   return new AreaSatelliteImage({
@@ -16,8 +16,10 @@ function mapRow(row: Record<string, unknown>): AreaSatelliteImage {
     bboxEast: Number(row.bbox_east),
     bboxNorth: Number(row.bbox_north),
     storagePath: String(row.storage_path),
-    thumbnailPath: row.thumbnail_path == null ? null : String(row.thumbnail_path),
-    fileSizeBytes: row.file_size_bytes == null ? null : Number(row.file_size_bytes),
+    thumbnailPath:
+      row.thumbnail_path == null ? null : String(row.thumbnail_path),
+    fileSizeBytes:
+      row.file_size_bytes == null ? null : Number(row.file_size_bytes),
     isFallback: Boolean(row.is_fallback),
     createdAt: new Date(String(row.created_at)),
     deletedAt: row.deleted_at ? new Date(String(row.deleted_at)) : null,
@@ -36,11 +38,23 @@ export class PostgresAreaSatelliteImageRepository implements AreaSatelliteImageR
         created_at, deleted_at
       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [
-        image.id, image.areaId, image.requestedByUserId, image.sceneId, image.collection,
-        image.captureDate, image.cloudCover,
-        image.bboxWest, image.bboxSouth, image.bboxEast, image.bboxNorth,
-        image.storagePath, image.thumbnailPath, image.fileSizeBytes, image.isFallback,
-        image.createdAt, image.deletedAt,
+        image.id,
+        image.areaId,
+        image.requestedByUserId,
+        image.sceneId,
+        image.collection,
+        image.captureDate,
+        image.cloudCover,
+        image.bboxWest,
+        image.bboxSouth,
+        image.bboxEast,
+        image.bboxNorth,
+        image.storagePath,
+        image.thumbnailPath,
+        image.fileSizeBytes,
+        image.isFallback,
+        image.createdAt,
+        image.deletedAt,
       ],
     );
   }
@@ -65,7 +79,10 @@ export class PostgresAreaSatelliteImageRepository implements AreaSatelliteImageR
     return mapRow(result.rows[0] as Record<string, unknown>);
   }
 
-  async softDeletePreviousForArea(areaId: string, deletedAt: Date): Promise<void> {
+  async softDeletePreviousForArea(
+    areaId: string,
+    deletedAt: Date,
+  ): Promise<void> {
     await this.pool.query(
       `UPDATE area_satellite_images
        SET deleted_at = $2

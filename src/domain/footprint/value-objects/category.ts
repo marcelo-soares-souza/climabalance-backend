@@ -13,35 +13,35 @@
  * - scope3: Value chain (logistics, employee commute, business travel)
  */
 export type FootprintCategory =
-  | 'energy'
-  | 'fuel'
-  | 'transport'
-  | 'flights'
-  | 'scope1'
-  | 'scope2'
-  | 'scope3';
+  | "energy"
+  | "fuel"
+  | "transport"
+  | "flights"
+  | "scope1"
+  | "scope2"
+  | "scope3";
 
 export const FOOTPRINT_CATEGORIES: FootprintCategory[] = [
-  'energy',
-  'fuel',
-  'transport',
-  'flights',
-  'scope1',
-  'scope2',
-  'scope3'
+  "energy",
+  "fuel",
+  "transport",
+  "flights",
+  "scope1",
+  "scope2",
+  "scope3",
 ];
 
 export const INDIVIDUAL_CATEGORIES: FootprintCategory[] = [
-  'energy',
-  'fuel',
-  'transport',
-  'flights'
+  "energy",
+  "fuel",
+  "transport",
+  "flights",
 ];
 
 export const LEGAL_ENTITY_CATEGORIES: FootprintCategory[] = [
-  'scope1',
-  'scope2',
-  'scope3'
+  "scope1",
+  "scope2",
+  "scope3",
 ];
 
 export function isValidCategory(value: string): value is FootprintCategory {
@@ -50,11 +50,17 @@ export function isValidCategory(value: string): value is FootprintCategory {
 
 export function validateCategory(value: string): FootprintCategory {
   if (!isValidCategory(value)) {
-    throw new Error(`Invalid category: ${value}. Must be one of: ${FOOTPRINT_CATEGORIES.join(', ')}`);
+    throw new Error(
+      `Invalid category: ${value}. Must be one of: ${FOOTPRINT_CATEGORIES.join(", ")}`,
+    );
   }
   return value;
 }
 
-export function getCategoriesForProfileType(profileType: 'individual' | 'legal_entity'): FootprintCategory[] {
-  return profileType === 'individual' ? INDIVIDUAL_CATEGORIES : LEGAL_ENTITY_CATEGORIES;
+export function getCategoriesForProfileType(
+  profileType: "individual" | "legal_entity",
+): FootprintCategory[] {
+  return profileType === "individual"
+    ? INDIVIDUAL_CATEGORIES
+    : LEGAL_ENTITY_CATEGORIES;
 }

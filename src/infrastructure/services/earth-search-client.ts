@@ -1,6 +1,6 @@
-import { fromUrl } from 'geotiff';
-import sharp from 'sharp';
-import proj4 from 'proj4';
+import { fromUrl } from "geotiff";
+import sharp from "sharp";
+import proj4 from "proj4";
 
 export interface StacScene {
   id: string;
@@ -34,13 +34,16 @@ function isUtmProjection(originX: number): boolean {
   return Math.abs(originX) > 180;
 }
 
-function transformToUtm(
-  bbox: { west: number; south: number; east: number; north: number },
-): { west: number; south: number; east: number; north: number } {
+function transformToUtm(bbox: {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}): { west: number; south: number; east: number; north: number } {
   const lat = (bbox.south + bbox.north) / 2;
   const lng = (bbox.west + bbox.east) / 2;
   const zone = Math.floor((lng + 180) / 6) + 1;
-  const southFlag = lat >= 0 ? '' : ' +south';
+  const southFlag = lat >= 0 ? "" : " +south";
   const def = `+proj=utm +zone=${zone}${southFlag} +datum=WGS84 +units=m +no_defs`;
 
   const sw = proj4(def, [bbox.west, bbox.south]);
@@ -57,7 +60,7 @@ function transformToUtm(
 }
 
 function calculatePixelWindow(
-  image: import('geotiff').GeoTIFFImage,
+  image: import("geotiff").GeoTIFFImage,
   bbox: { west: number; south: number; east: number; north: number },
 ): PixelWindow {
   const originX = image.getOrigin()[0];
@@ -102,9 +105,9 @@ function calculatePixelWindow(
   return { window: [pxMinX, pxMinY, pxMaxX, pxMaxY], tileWidth, tileHeight };
 }
 
-const SENTINEL_COLLECTION = 'sentinel-2-l2a';
-const LANDSAT_COLLECTION = 'landsat-c2l2';
-const STAC_URL = 'https://earth-search.aws.element84.com/v1/search';
+const SENTINEL_COLLECTION = "sentinel-2-l2a";
+const LANDSAT_COLLECTION = "landsat-c2l2";
+const STAC_URL = "https://earth-search.aws.element84.com/v1/search";
 
 export async function searchStacScenes(
   params: SearchParams,
@@ -115,17 +118,17 @@ export async function searchStacScenes(
     collections: [SENTINEL_COLLECTION],
     limit: 50,
     intersects: {
-      type: 'Point',
+      type: "Point",
       coordinates: [params.lng, params.lat],
     },
-    query: { 'eo:cloud_cover': { lt: params.maxCloud } },
+    query: { "eo:cloud_cover": { lt: params.maxCloud } },
     datetime,
-    sortby: [{ field: 'properties.eo:cloud_cover', direction: 'asc' }],
+    sortby: [{ field: "properties.eo:cloud_cover", direction: "asc" }],
   };
 
   const res = await fetch(STAC_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -137,7 +140,7 @@ export async function searchStacScenes(
     features?: Array<{
       id: string;
       collection: string;
-      properties: { datetime: string; 'eo:cloud_cover'?: number };
+      properties: { datetime: string; "eo:cloud_cover"?: number };
       assets: Record<string, { href: string; type?: string; title?: string }>;
     }>;
   };
@@ -148,7 +151,7 @@ export async function searchStacScenes(
     id: f.id,
     collection: f.collection,
     datetime: f.properties.datetime,
-    cloudCover: f.properties['eo:cloud_cover'] ?? null,
+    cloudCover: f.properties["eo:cloud_cover"] ?? null,
     assets: f.assets,
   }));
 }
@@ -162,17 +165,17 @@ export async function searchLandsatFallback(
     collections: [LANDSAT_COLLECTION],
     limit: 50,
     intersects: {
-      type: 'Point',
+      type: "Point",
       coordinates: [params.lng, params.lat],
     },
-    query: { 'eo:cloud_cover': { lt: params.maxCloud } },
+    query: { "eo:cloud_cover": { lt: params.maxCloud } },
     datetime,
-    sortby: [{ field: 'properties.eo:cloud_cover', direction: 'asc' }],
+    sortby: [{ field: "properties.eo:cloud_cover", direction: "asc" }],
   };
 
   const res = await fetch(STAC_URL, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 
@@ -182,7 +185,7 @@ export async function searchLandsatFallback(
     features?: Array<{
       id: string;
       collection: string;
-      properties: { datetime: string; 'eo:cloud_cover'?: number };
+      properties: { datetime: string; "eo:cloud_cover"?: number };
       assets: Record<string, { href: string; type?: string; title?: string }>;
     }>;
   };
@@ -193,7 +196,7 @@ export async function searchLandsatFallback(
     id: f.id,
     collection: f.collection,
     datetime: f.properties.datetime,
-    cloudCover: f.properties['eo:cloud_cover'] ?? null,
+    cloudCover: f.properties["eo:cloud_cover"] ?? null,
     assets: f.assets,
   }));
 }
@@ -212,11 +215,11 @@ export async function downloadRgbComposite(
   const isSentinel = scene.collection === SENTINEL_COLLECTION;
 
   const bandMap = isSentinel
-    ? { red: 'B04', green: 'B03', blue: 'B02' }
-    : { red: 'red', green: 'green', blue: 'nir08' };
+    ? { red: "B04", green: "B03", blue: "B02" }
+    : { red: "red", green: "green", blue: "nir08" };
 
   const bandKeys = [bandMap.red, bandMap.green, bandMap.blue] as const;
-  const bandNames = ['red', 'green', 'blue'] as const;
+  const bandNames = ["red", "green", "blue"] as const;
 
   const hrefs: string[] = [];
   for (const key of bandKeys) {
@@ -243,10 +246,13 @@ async function composeFromBands(
   const tiffs = await Promise.all(hrefs.map((h) => fromUrl(h)));
   const images = await Promise.all(tiffs.map((t) => t.getImage()));
 
-  const { window, tileWidth, tileHeight } = calculatePixelWindow(images[0], bbox);
+  const { window, tileWidth, tileHeight } = calculatePixelWindow(
+    images[0],
+    bbox,
+  );
 
   if (tileWidth <= 0 || tileHeight <= 0) {
-    throw new Error('Bbox does not intersect scene');
+    throw new Error("Bbox does not intersect scene");
   }
 
   const bandData = await Promise.all(
@@ -268,11 +274,15 @@ async function composeFromBands(
   const jpeg = await sharp(rgbBuffer, {
     raw: { width: tileWidth, height: tileHeight, channels: 3 },
   })
-    .resize(1024, 1024, { fit: 'outside', kernel: 'lanczos3' })
+    .resize(1024, 1024, { fit: "outside", kernel: "lanczos3" })
     .jpeg({ quality: 85 })
     .toBuffer();
 
-  return { bytes: new Uint8Array(jpeg), mimeType: 'image/jpeg', isFallback: false };
+  return {
+    bytes: new Uint8Array(jpeg),
+    mimeType: "image/jpeg",
+    isFallback: false,
+  };
 }
 
 function applyLinearStretch(
@@ -333,11 +343,15 @@ async function cropVisualGeoTiff(
     const jpeg = await sharp(rgbBuffer, {
       raw: { width: tileWidth, height: tileHeight, channels: 3 },
     })
-      .resize(1024, 1024, { fit: 'outside', kernel: 'lanczos3' })
+      .resize(1024, 1024, { fit: "outside", kernel: "lanczos3" })
       .jpeg({ quality: 85 })
       .toBuffer();
 
-    return { bytes: new Uint8Array(jpeg), mimeType: 'image/jpeg', isFallback: true };
+    return {
+      bytes: new Uint8Array(jpeg),
+      mimeType: "image/jpeg",
+      isFallback: true,
+    };
   } catch {
     return null;
   }
@@ -352,11 +366,10 @@ async function downloadVisualFallback(
   bbox: { west: number; south: number; east: number; north: number },
 ): Promise<ProcessedImage> {
   const visualAsset =
-    scene.assets['visual'] ??
-    scene.assets['rendered_preview'];
+    scene.assets["visual"] ?? scene.assets["rendered_preview"];
 
   if (!visualAsset?.href) {
-    throw new Error('No visual or rendered_preview asset available');
+    throw new Error("No visual or rendered_preview asset available");
   }
 
   const cropped = await cropVisualGeoTiff(visualAsset.href, bbox);
@@ -373,21 +386,25 @@ async function downloadVisualFallback(
   let jpeg: Buffer;
   try {
     jpeg = await sharp(bytes)
-      .resize(2048, 2048, { fit: 'inside', withoutEnlargement: true })
+      .resize(2048, 2048, { fit: "inside", withoutEnlargement: true })
       .jpeg({ quality: 85 })
       .toBuffer();
   } catch {
-    throw new Error('Failed to decode visual asset (unsupported format)');
+    throw new Error("Failed to decode visual asset (unsupported format)");
   }
 
-  return { bytes: new Uint8Array(jpeg), mimeType: 'image/jpeg', isFallback: true };
+  return {
+    bytes: new Uint8Array(jpeg),
+    mimeType: "image/jpeg",
+    isFallback: true,
+  };
 }
 
 export async function generateThumbnail(
   imageBytes: Uint8Array,
 ): Promise<Uint8Array> {
   const thumb = await sharp(Buffer.from(imageBytes))
-    .resize(400, 400, { fit: 'inside', withoutEnlargement: true })
+    .resize(400, 400, { fit: "inside", withoutEnlargement: true })
     .webp({ quality: 80 })
     .toBuffer();
   return new Uint8Array(thumb);

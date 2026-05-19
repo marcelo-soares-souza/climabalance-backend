@@ -1,4 +1,4 @@
-import type { DbClient } from './db-client';
+import type { DbClient } from "./db-client";
 
 export type StripeConnectAccountRecord = {
   id: string;
@@ -15,14 +15,14 @@ export class PostgresStripeConnectRepository {
   constructor(private readonly db: DbClient) {}
 
   async findByUserId(
-    userId: string
+    userId: string,
   ): Promise<StripeConnectAccountRecord | null> {
     const result = await this.db.query(
       `SELECT id, user_id, stripe_account_id, charges_enabled,
               payouts_enabled, country, created_at, updated_at
        FROM stripe_connect_accounts
        WHERE user_id = $1 AND deleted_at IS NULL`,
-      [userId]
+      [userId],
     );
 
     if (result.rows.length === 0) {
@@ -36,9 +36,7 @@ export class PostgresStripeConnectRepository {
   /**
    * Adapter for StripeConnectLookup port from the payment use case.
    */
-  async getByUserId(
-    userId: string
-  ): Promise<{
+  async getByUserId(userId: string): Promise<{
     stripeAccountId: string;
     chargesEnabled: boolean;
     payoutsEnabled: boolean;
@@ -53,14 +51,14 @@ export class PostgresStripeConnectRepository {
   }
 
   async findByStripeAccountId(
-    stripeAccountId: string
+    stripeAccountId: string,
   ): Promise<StripeConnectAccountRecord | null> {
     const result = await this.db.query(
       `SELECT id, user_id, stripe_account_id, charges_enabled,
               payouts_enabled, country, created_at, updated_at
        FROM stripe_connect_accounts
        WHERE stripe_account_id = $1 AND deleted_at IS NULL`,
-      [stripeAccountId]
+      [stripeAccountId],
     );
 
     if (result.rows.length === 0) {
@@ -95,7 +93,7 @@ export class PostgresStripeConnectRepository {
         record.country,
         record.createdAt,
         record.updatedAt,
-      ]
+      ],
     );
   }
 
@@ -103,13 +101,13 @@ export class PostgresStripeConnectRepository {
     id: string,
     chargesEnabled: boolean,
     payoutsEnabled: boolean,
-    updatedAt: Date
+    updatedAt: Date,
   ): Promise<void> {
     await this.db.query(
       `UPDATE stripe_connect_accounts
        SET charges_enabled = $2, payouts_enabled = $3, updated_at = $4
        WHERE id = $1 AND deleted_at IS NULL`,
-      [id, chargesEnabled, payoutsEnabled, updatedAt]
+      [id, chargesEnabled, payoutsEnabled, updatedAt],
     );
   }
 }

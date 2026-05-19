@@ -1,4 +1,4 @@
-import type { CompensationProjection } from '../entities/compensation-projection';
+import type { CompensationProjection } from "../entities/compensation-projection";
 
 /**
  * Compensation Projection Repository interface
@@ -12,7 +12,9 @@ export interface CompensationProjectionRepository {
   /**
    * Find projection by calculation ID
    */
-  findByCalculationId(calculationId: string): Promise<CompensationProjection | null>;
+  findByCalculationId(
+    calculationId: string,
+  ): Promise<CompensationProjection | null>;
 
   /**
    * Find projections by area ID

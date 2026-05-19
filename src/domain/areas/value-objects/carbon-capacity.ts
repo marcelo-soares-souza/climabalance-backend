@@ -8,11 +8,11 @@ export class CarbonCapacity {
 
   constructor(totalCapacity: number, committed: number = 0) {
     if (totalCapacity < 0) {
-      throw new Error('Total capacity cannot be negative');
+      throw new Error("Total capacity cannot be negative");
     }
 
     if (committed < 0) {
-      throw new Error('Committed capacity cannot be negative');
+      throw new Error("Committed capacity cannot be negative");
     }
 
     // Allow over-commitment: committed can exceed total capacity
@@ -41,30 +41,30 @@ export class CarbonCapacity {
 
   reserve(amountTCO2e: number): CarbonCapacity {
     if (amountTCO2e <= 0) {
-      throw new Error('Reserve amount must be positive');
+      throw new Error("Reserve amount must be positive");
     }
 
     // Allow over-commitment: no validation against available capacity
     return new CarbonCapacity(
       this.totalCapacityTCO2e,
-      this.committedTCO2e + amountTCO2e
+      this.committedTCO2e + amountTCO2e,
     );
   }
 
   release(amountTCO2e: number): CarbonCapacity {
     if (amountTCO2e < 0) {
-      throw new Error('Release amount cannot be negative');
+      throw new Error("Release amount cannot be negative");
     }
 
     if (amountTCO2e > this.committedTCO2e) {
       throw new Error(
-        `Cannot release ${amountTCO2e} tCO2e. Committed: ${this.committedTCO2e} tCO2e`
+        `Cannot release ${amountTCO2e} tCO2e. Committed: ${this.committedTCO2e} tCO2e`,
       );
     }
 
     return new CarbonCapacity(
       this.totalCapacityTCO2e,
-      this.committedTCO2e - amountTCO2e
+      this.committedTCO2e - amountTCO2e,
     );
   }
 

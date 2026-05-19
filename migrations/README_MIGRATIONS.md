@@ -18,6 +18,7 @@ Todas as migrações do projeto são **completamente idempotentes** e podem ser 
 ## Técnicas de Idempotência Usadas
 
 ### 1. CREATE TABLE IF NOT EXISTS
+
 ```sql
 CREATE TABLE IF NOT EXISTS areas (
   id VARCHAR(36) PRIMARY KEY,
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS areas (
 ```
 
 ### 2. Verificação de Colunas com DO $$
+
 ```sql
 DO $$
 BEGIN
@@ -37,6 +39,7 @@ END $$;
 ```
 
 ### 3. DROP ... IF EXISTS antes de CREATE
+
 ```sql
 ALTER TABLE areas DROP CONSTRAINT IF EXISTS check_status;
 ALTER TABLE areas ADD CONSTRAINT check_status
@@ -44,17 +47,20 @@ ALTER TABLE areas ADD CONSTRAINT check_status
 ```
 
 ### 4. CREATE INDEX IF NOT EXISTS
+
 ```sql
 CREATE INDEX IF NOT EXISTS idx_areas_status ON areas(status);
 ```
 
 ### 5. INSERT ... ON CONFLICT DO NOTHING
+
 ```sql
 INSERT INTO emission_factors (...) VALUES (...)
 ON CONFLICT (id) DO NOTHING;
 ```
 
 ### 6. DROP VIEW IF EXISTS + CREATE OR REPLACE
+
 ```sql
 DROP VIEW IF EXISTS available_areas;
 CREATE OR REPLACE VIEW available_areas AS ...
@@ -69,6 +75,7 @@ CREATE OR REPLACE VIEW available_areas AS ...
    - `005_update_areas_schema.sql` (substituído)
 
 2. **RENAME COLUMN não idempotente**:
+
    ```sql
    -- ANTES (erro se já renomeado):
    ALTER TABLE areas RENAME COLUMN producer_id TO owner_user_id;
@@ -81,6 +88,7 @@ CREATE OR REPLACE VIEW available_areas AS ...
    ```
 
 3. **ADD CONSTRAINT duplicado**:
+
    ```sql
    -- ANTES (erro se já existe):
    ALTER TABLE areas ADD CONSTRAINT check_status CHECK (...);
@@ -121,6 +129,7 @@ bun run migrate
 ## Arquivos Backup
 
 Os arquivos antigos foram preservados:
+
 - `005_create_areas_and_projects.sql.bak`
 - `005_update_areas_schema.sql.bak`
 - `006_seed_area_criteria_templates.sql.bak`
@@ -128,6 +137,7 @@ Os arquivos antigos foram preservados:
 ## Conformidade PostgreSQL ✅
 
 Todas as migrações usam sintaxe padrão PostgreSQL:
+
 - ✅ `IF NOT EXISTS` / `IF EXISTS`
 - ✅ `DO $$ BEGIN ... END $$;` (blocos anônimos)
 - ✅ `CREATE OR REPLACE VIEW`
@@ -159,11 +169,13 @@ Todas as migrações usam sintaxe padrão PostgreSQL:
 ## Rollback
 
 Migrações idempotentes não precisam de rollback explícito, pois:
+
 - Não duplicam dados (ON CONFLICT)
 - Não quebram se já executadas (IF EXISTS)
 - Podem ser revertidas manualmente se necessário
 
 Para reverter Migration 005 manualmente:
+
 ```sql
 -- Remover tabelas
 DROP TABLE IF EXISTS area_criteria CASCADE;

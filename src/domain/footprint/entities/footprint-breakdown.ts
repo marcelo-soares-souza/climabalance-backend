@@ -1,4 +1,4 @@
-import type { FootprintCategory } from '../value-objects/category';
+import type { FootprintCategory } from "../value-objects/category";
 
 /**
  * Footprint Result Breakdown entity

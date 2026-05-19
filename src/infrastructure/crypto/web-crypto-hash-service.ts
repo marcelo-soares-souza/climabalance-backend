@@ -1,4 +1,4 @@
-import type { HashService } from '../../domain/services/hash-service';
+import type { HashService } from "../../domain/services/hash-service";
 
 /**
  * Implementation of HashService using Web Crypto API.
@@ -7,7 +7,7 @@ import type { HashService } from '../../domain/services/hash-service';
 export class WebCryptoHashService implements HashService {
   async sha256(input: string): Promise<string> {
     const data = new TextEncoder().encode(input);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return Buffer.from(digest).toString('hex');
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return Buffer.from(digest).toString("hex");
   }
 }

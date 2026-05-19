@@ -1,9 +1,12 @@
-import { AreaRepository, AreaFilters } from '../../domain/areas/repositories/area-repository';
-import { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
-import { Area } from '../../domain/areas/entities/area';
-import { AreaStatus } from '../../domain/areas/value-objects/area-status';
-import { Biome } from '../../domain/areas/value-objects/biome';
-import type { UserRepository } from '../../domain/user/user-repository';
+import {
+  AreaRepository,
+  AreaFilters,
+} from "../../domain/areas/repositories/area-repository";
+import { AreaMediaRepository } from "../../domain/areas/repositories/area-media-repository";
+import { Area } from "../../domain/areas/entities/area";
+import { AreaStatus } from "../../domain/areas/value-objects/area-status";
+import { Biome } from "../../domain/areas/value-objects/biome";
+import type { UserRepository } from "../../domain/user/user-repository";
 
 export interface ListAreasRequest {
   userId?: string;
@@ -53,10 +56,10 @@ export interface PaginatedAreasResult {
 export interface ListAreasDeps {
   areaRepository: AreaRepository;
   areaMediaRepository: AreaMediaRepository;
-  userRepository?: Pick<UserRepository, 'findById'>;
+  userRepository?: Pick<UserRepository, "findById">;
 }
 
-const PRIVILEGED_ROLES = ['administrator', 'analyst'];
+const PRIVILEGED_ROLES = ["administrator", "analyst"];
 
 function isPrivileged(roles?: string[]): boolean {
   return roles?.some((r) => PRIVILEGED_ROLES.includes(r)) ?? false;
@@ -64,9 +67,10 @@ function isPrivileged(roles?: string[]): boolean {
 
 export async function listAreas(
   deps: ListAreasDeps,
-  request: ListAreasRequest
+  request: ListAreasRequest,
 ): Promise<PaginatedAreasResult> {
-  const isPaginated = request.cursor !== undefined || request.limit !== undefined;
+  const isPaginated =
+    request.cursor !== undefined || request.limit !== undefined;
   const pageSize = request.limit ?? 20;
   const filters: AreaFilters = isPaginated ? { limit: pageSize + 1 } : {};
 
@@ -125,24 +129,36 @@ export async function listAreas(
 
   const areaIds = pageAreas.map((a) => a.id);
   const ownerIds = [...new Set(pageAreas.map((a) => a.ownerUserId))];
-  const allMedia = areaIds.length > 0
-    ? await deps.areaMediaRepository.listByAreaIds(areaIds)
-    : [];
-  const owners = deps.userRepository && ownerIds.length > 0
-    ? await Promise.all(ownerIds.map(async (ownerId) => deps.userRepository!.findById(ownerId)))
-    : [];
+  const allMedia =
+    areaIds.length > 0
+      ? await deps.areaMediaRepository.listByAreaIds(areaIds)
+      : [];
+  const owners =
+    deps.userRepository && ownerIds.length > 0
+      ? await Promise.all(
+          ownerIds.map(async (ownerId) =>
+            deps.userRepository!.findById(ownerId),
+          ),
+        )
+      : [];
   const ownerSlugById = new Map(
     owners
       .filter((owner): owner is NonNullable<typeof owner> => owner != null)
-      .map((owner) => [owner.id, owner.slug])
+      .map((owner) => [owner.id, owner.slug]),
   );
   const deletedOwnerIds = new Set(
     owners
-      .filter((owner): owner is NonNullable<typeof owner> => owner != null && owner.deletedAt != null)
-      .map((owner) => owner.id)
+      .filter(
+        (owner): owner is NonNullable<typeof owner> =>
+          owner != null && owner.deletedAt != null,
+      )
+      .map((owner) => owner.id),
   );
 
-  const mediaByAreaId = new Map<string, { thumbnailUrl: string; imageUrl: string }>();
+  const mediaByAreaId = new Map<
+    string,
+    { thumbnailUrl: string; imageUrl: string }
+  >();
   const usedAreas = new Set<string>();
   const shuffled = allMedia.sort(() => Math.random() - 0.5);
   for (const media of shuffled) {
@@ -189,7 +205,9 @@ export async function listAreas(
     };
   });
 
-  const data = allAreas.filter((item) => !deletedOwnerIds.has(item.ownerUserId));
+  const data = allAreas.filter(
+    (item) => !deletedOwnerIds.has(item.ownerUserId),
+  );
 
   return { data, nextCursor };
 }

@@ -21,12 +21,12 @@ export interface ClimateBalance {
 
 export async function getClimateBalance(
   userId: string,
-  deps: GetClimateBalanceDeps
+  deps: GetClimateBalanceDeps,
 ): Promise<ClimateBalance> {
   const [grossEmissionsTCO2e, contributionSummary] = await Promise.all([
     deps.calculationRepository.sumFinalizedTCO2eByUser(userId),
     deps.compensationHistoryRepository.getPaidContributionSummaryBySupporter(
-      userId
+      userId,
     ),
   ]);
 

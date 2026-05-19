@@ -8,7 +8,7 @@ export type CompensationCertificatePdfData = {
   supporterUserId: string;
   areaId: string;
   calculationId?: string;
-  compensationMode?: 'tco2e' | 'tree_purchase';
+  compensationMode?: "tco2e" | "tree_purchase";
   horizonYears?: number;
   treesRequested?: number;
   pricePerTree?: number;

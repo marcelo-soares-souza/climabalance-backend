@@ -1,6 +1,6 @@
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import type { AreaMediaRepository } from '../../domain/areas/repositories/area-media-repository';
-import type { AreaMediaStorage } from '../../domain/areas/services/area-media-storage';
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import type { AreaMediaRepository } from "../../domain/areas/repositories/area-media-repository";
+import type { AreaMediaStorage } from "../../domain/areas/services/area-media-storage";
 
 export interface DeleteAreaRequest {
   userId: string;
@@ -17,16 +17,16 @@ export interface DeleteAreaDeps {
 
 export async function deleteArea(
   deps: DeleteAreaDeps,
-  request: DeleteAreaRequest
+  request: DeleteAreaRequest,
 ): Promise<void> {
   const area = await deps.areaRepository.findById(request.areaId);
 
   if (!area) {
-    throw new Error('Area not found');
+    throw new Error("Area not found");
   }
 
   if (!area.canBeDeletedBy(request.userId, request.isAdmin ?? false)) {
-    throw new Error('User cannot delete this area');
+    throw new Error("User cannot delete this area");
   }
 
   const deletedAt = deps.clock.now();

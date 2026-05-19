@@ -1,6 +1,6 @@
-import { Area } from '../entities/area';
-import { AreaStatus } from '../value-objects/area-status';
-import { Biome } from '../value-objects/biome';
+import { Area } from "../entities/area";
+import { AreaStatus } from "../value-objects/area-status";
+import { Biome } from "../value-objects/biome";
 
 export interface AreaFilters {
   status?: AreaStatus;
@@ -53,7 +53,10 @@ export interface AreaRepository {
   /**
    * Find active areas with available capacity (for map)
    */
-  findActiveWithCapacity(filters?: { biome?: Biome }, client?: any): Promise<Area[]>;
+  findActiveWithCapacity(
+    filters?: { biome?: Biome },
+    client?: any,
+  ): Promise<Area[]>;
 
   /**
    * Find areas within a bounding box
@@ -67,7 +70,7 @@ export interface AreaRepository {
     latitude: number,
     longitude: number,
     limit?: number,
-    client?: any
+    client?: any,
   ): Promise<Area[]>;
 
   /**
@@ -93,5 +96,9 @@ export interface AreaRepository {
   /**
    * Get global platform stats
    */
-  getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }>;
+  getGlobalStats(): Promise<{
+    totalAreas: number;
+    totalTreesPlanted: number;
+    totalCO2Captured: number;
+  }>;
 }

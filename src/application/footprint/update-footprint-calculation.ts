@@ -1,15 +1,19 @@
-import type { FootprintCalculationRepository } from '../../domain/footprint/repositories/footprint-calculation-repository';
-import type { EmissionFactorRepository } from '../../domain/footprint/repositories/emission-factor-repository';
-import type { UnitOfWork } from '../../infrastructure/persistence/unit-of-work';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { CreateFootprintInputDTO } from '../../domain/footprint/entities/footprint-input';
-import { FootprintCalculatorService } from '../../domain/footprint/services/footprint-calculator.service';
-import { Period } from '../../domain/footprint/value-objects/period';
-import { canEditCalculation } from '../../domain/footprint/entities/footprint-calculation';
-import { validateInputValue } from '../../domain/footprint/entities/footprint-input';
-import { validateDataQuality } from '../../domain/footprint/value-objects/data-quality';
-import { NotFoundError, ForbiddenError, ValidationError } from '../../domain/errors';
+import type { FootprintCalculationRepository } from "../../domain/footprint/repositories/footprint-calculation-repository";
+import type { EmissionFactorRepository } from "../../domain/footprint/repositories/emission-factor-repository";
+import type { UnitOfWork } from "../../infrastructure/persistence/unit-of-work";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { CreateFootprintInputDTO } from "../../domain/footprint/entities/footprint-input";
+import { FootprintCalculatorService } from "../../domain/footprint/services/footprint-calculator.service";
+import { Period } from "../../domain/footprint/value-objects/period";
+import { canEditCalculation } from "../../domain/footprint/entities/footprint-calculation";
+import { validateInputValue } from "../../domain/footprint/entities/footprint-input";
+import { validateDataQuality } from "../../domain/footprint/value-objects/data-quality";
+import {
+  NotFoundError,
+  ForbiddenError,
+  ValidationError,
+} from "../../domain/errors";
 
 export interface UpdateFootprintCalculationRequest {
   calculation_id: string;
@@ -31,36 +35,44 @@ export interface UpdateFootprintCalculationDeps {
 
 export async function updateFootprintCalculation(
   deps: UpdateFootprintCalculationDeps,
-  request: UpdateFootprintCalculationRequest
+  request: UpdateFootprintCalculationRequest,
 ): Promise<void> {
   // 1. Get existing calculation
-  const calculation = await deps.calculationRepository.findById(request.calculation_id);
+  const calculation = await deps.calculationRepository.findById(
+    request.calculation_id,
+  );
 
   if (!calculation) {
-    throw new NotFoundError('footprint.calculation.not_found');
+    throw new NotFoundError("footprint.calculation.not_found");
   }
 
   // Allow admin to edit any calculation, regular users only their own
   if (calculation.user_id !== request.user_id && !request.isAdmin) {
-    throw new ForbiddenError('footprint.calculation.not_owner');
+    throw new ForbiddenError("footprint.calculation.not_owner");
   }
 
   if (!canEditCalculation(calculation, request.isAdmin)) {
     throw new ValidationError([
-      { field: 'status', message: 'Cannot edit finalized calculation' }
+      { field: "status", message: "Cannot edit finalized calculation" },
     ]);
   }
 
   // 2. Update period if provided
   let period = new Period(calculation.period_start, calculation.period_end);
   if (request.period_start || request.period_end) {
-    const startStr = request.period_start || calculation.period_start.toISOString().split('T')[0]!;
-    const endStr = request.period_end || calculation.period_end.toISOString().split('T')[0]!;
+    const startStr =
+      request.period_start ||
+      calculation.period_start.toISOString().split("T")[0]!;
+    const endStr =
+      request.period_end || calculation.period_end.toISOString().split("T")[0]!;
     try {
       period = Period.fromStrings(startStr, endStr);
     } catch (error) {
       throw new ValidationError([
-        { field: 'period', message: error instanceof Error ? error.message : 'Invalid period' }
+        {
+          field: "period",
+          message: error instanceof Error ? error.message : "Invalid period",
+        },
       ]);
     }
   }
@@ -70,7 +82,11 @@ export async function updateFootprintCalculation(
       calculation.data_quality = validateDataQuality(request.data_quality);
     } catch (error) {
       throw new ValidationError([
-        { field: 'data_quality', message: error instanceof Error ? error.message : 'Invalid data quality' }
+        {
+          field: "data_quality",
+          message:
+            error instanceof Error ? error.message : "Invalid data quality",
+        },
       ]);
     }
   }
@@ -84,24 +100,28 @@ export async function updateFootprintCalculation(
         throw new ValidationError([
           {
             field: `inputs.${index}.value`,
-            message: error instanceof Error ? error.message : 'Invalid input value'
-          }
+            message:
+              error instanceof Error ? error.message : "Invalid input value",
+          },
         ]);
       }
     }
 
     const factors = await deps.emissionFactorRepository.findByVersionAndRegion(
       calculation.factors_version,
-      'BR'
+      "BR",
     );
 
     const calculatorService = new FootprintCalculatorService();
-    let calculationResult: ReturnType<FootprintCalculatorService['calculate']>;
+    let calculationResult: ReturnType<FootprintCalculatorService["calculate"]>;
     try {
       calculationResult = calculatorService.calculate(request.inputs, factors);
     } catch (error) {
       throw new ValidationError([
-        { field: 'inputs', message: error instanceof Error ? error.message : 'Invalid inputs' }
+        {
+          field: "inputs",
+          message: error instanceof Error ? error.message : "Invalid inputs",
+        },
       ]);
     }
 
@@ -126,19 +146,23 @@ export async function updateFootprintCalculation(
 
       // Save new inputs
       const now = deps.clock.now();
-      const inputEntities = calculationResult.inputsWithEmissions.map((item) => ({
-        id: deps.idGenerator.generate(),
-        calculation_id: calculation.id,
-        activity_type: item.activity_type,
-        category: item.input.category,
-        quantity: item.input.value,
-        unit: item.input.unit,
-        kg_co2e: item.kg_co2e,
-        metadata_json: item.input.metadata ? JSON.stringify(item.input.metadata) : null,
-        created_at: now,
-        updated_at: now,
-        deleted_at: null
-      }));
+      const inputEntities = calculationResult.inputsWithEmissions.map(
+        (item) => ({
+          id: deps.idGenerator.generate(),
+          calculation_id: calculation.id,
+          activity_type: item.activity_type,
+          category: item.input.category,
+          quantity: item.input.value,
+          unit: item.input.unit,
+          kg_co2e: item.kg_co2e,
+          metadata_json: item.input.metadata
+            ? JSON.stringify(item.input.metadata)
+            : null,
+          created_at: now,
+          updated_at: now,
+          deleted_at: null,
+        }),
+      );
 
       await inputRepository.saveMany(inputEntities);
 
@@ -151,7 +175,7 @@ export async function updateFootprintCalculation(
         t_co2e: item.t_co2e,
         created_at: now,
         updated_at: now,
-        deleted_at: null
+        deleted_at: null,
       }));
 
       await breakdownRepository.saveMany(breakdownEntities);

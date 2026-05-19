@@ -1,6 +1,6 @@
-import { AreaCriterion } from '../entities/area-criterion';
-import { AreaRepository } from '../repositories/area-repository';
-import { AreaCriteriaRepository } from '../repositories/area-criteria-repository';
+import { AreaCriterion } from "../entities/area-criterion";
+import { AreaRepository } from "../repositories/area-repository";
+import { AreaCriteriaRepository } from "../repositories/area-criteria-repository";
 
 export interface AuditLogPort {
   log(entry: {
@@ -33,15 +33,19 @@ export class AreaAuditService {
   /**
    * Submit area for audit
    */
-  async submitForAudit(areaId: string, userId: string, client?: any): Promise<void> {
+  async submitForAudit(
+    areaId: string,
+    userId: string,
+    client?: any,
+  ): Promise<void> {
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     if (area.ownerUserId !== userId) {
-      throw new Error('User is not the owner of this area');
+      throw new Error("User is not the owner of this area");
     }
 
     // Use domain entity business rule
@@ -51,8 +55,8 @@ export class AreaAuditService {
 
     await this.deps.auditLog.log({
       actorUserId: userId,
-      action: 'area.submitted_for_audit',
-      entityType: 'area',
+      action: "area.submitted_for_audit",
+      entityType: "area",
       entityId: areaId,
     });
   }
@@ -70,18 +74,18 @@ export class AreaAuditService {
       notes?: string;
     }>,
     notes?: string,
-    client?: any
+    client?: any,
   ): Promise<void> {
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     // Verify all criteria are met
     const allMet = criteria.every((c) => c.met === true);
     if (!allMet) {
-      throw new Error('Cannot approve area: not all criteria are met');
+      throw new Error("Cannot approve area: not all criteria are met");
     }
 
     // Use domain entity business rule
@@ -101,15 +105,15 @@ export class AreaAuditService {
           notes: c.notes,
           createdAt: this.deps.clock.now(),
           updatedAt: this.deps.clock.now(),
-        })
+        }),
     );
 
     await this.deps.criteriaRepository.saveMany(criteriaEntities, client);
 
     await this.deps.auditLog.log({
       actorUserId: analystId,
-      action: 'area.approved',
-      entityType: 'area',
+      action: "area.approved",
+      entityType: "area",
       entityId: areaId,
       metadata: { criteriaCount: criteria.length },
     });
@@ -122,16 +126,16 @@ export class AreaAuditService {
     areaId: string,
     analystId: string,
     reason: string,
-    client?: any
+    client?: any,
   ): Promise<void> {
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     if (!reason || reason.length < 10) {
-      throw new Error('Rejection reason must be at least 10 characters');
+      throw new Error("Rejection reason must be at least 10 characters");
     }
 
     // Use domain entity business rule
@@ -141,8 +145,8 @@ export class AreaAuditService {
 
     await this.deps.auditLog.log({
       actorUserId: analystId,
-      action: 'area.rejected',
-      entityType: 'area',
+      action: "area.rejected",
+      entityType: "area",
       entityId: areaId,
       metadata: { reason },
     });
@@ -151,11 +155,15 @@ export class AreaAuditService {
   /**
    * Activate area for compensation (admin/analyst)
    */
-  async activateArea(areaId: string, userId: string, client?: any): Promise<void> {
+  async activateArea(
+    areaId: string,
+    userId: string,
+    client?: any,
+  ): Promise<void> {
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     // Use domain entity business rule
@@ -165,8 +173,8 @@ export class AreaAuditService {
 
     await this.deps.auditLog.log({
       actorUserId: userId,
-      action: 'area.activated',
-      entityType: 'area',
+      action: "area.activated",
+      entityType: "area",
       entityId: areaId,
     });
   }
@@ -174,11 +182,15 @@ export class AreaAuditService {
   /**
    * Suspend area (admin only)
    */
-  async suspendArea(areaId: string, userId: string, client?: any): Promise<void> {
+  async suspendArea(
+    areaId: string,
+    userId: string,
+    client?: any,
+  ): Promise<void> {
     const area = await this.deps.areaRepository.findById(areaId, client);
 
     if (!area) {
-      throw new Error('Area not found');
+      throw new Error("Area not found");
     }
 
     // Use domain entity business rule
@@ -188,8 +200,8 @@ export class AreaAuditService {
 
     await this.deps.auditLog.log({
       actorUserId: userId,
-      action: 'area.suspended',
-      entityType: 'area',
+      action: "area.suspended",
+      entityType: "area",
       entityId: areaId,
     });
   }

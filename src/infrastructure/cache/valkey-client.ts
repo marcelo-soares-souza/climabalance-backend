@@ -1,6 +1,6 @@
-import Redis from 'ioredis';
-import { env } from '../../shared/utils/env';
-import { logger } from '../../shared/utils/logger';
+import Redis from "ioredis";
+import { env } from "../../shared/utils/env";
+import { logger } from "../../shared/utils/logger";
 
 export const valkey = new Redis(env.valkeyUrl, {
   lazyConnect: true,
@@ -11,14 +11,16 @@ export const valkey = new Redis(env.valkeyUrl, {
   },
 });
 
-valkey.on('connect', () => logger.info('valkey.connected'));
-valkey.on('error', (err) => logger.error('valkey.error', { error: err.message }));
-valkey.on('close', () => logger.warn('valkey.closed'));
+valkey.on("connect", () => logger.info("valkey.connected"));
+valkey.on("error", (err) =>
+  logger.error("valkey.error", { error: err.message }),
+);
+valkey.on("close", () => logger.warn("valkey.closed"));
 
 export async function connectValkey(): Promise<void> {
   try {
     await valkey.connect();
   } catch {
-    logger.warn('valkey.connect_failed', { msg: 'running without valkey' });
+    logger.warn("valkey.connect_failed", { msg: "running without valkey" });
   }
 }

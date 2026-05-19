@@ -1,6 +1,6 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import type { SatelliteImageStorage } from '../../domain/areas/services/satellite-image-storage';
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { SatelliteImageStorage } from "../../domain/areas/services/satellite-image-storage";
 
 export class LocalSatelliteImageStorage implements SatelliteImageStorage {
   constructor(private readonly basePath: string) {}
@@ -14,7 +14,7 @@ export class LocalSatelliteImageStorage implements SatelliteImageStorage {
     bytes: Uint8Array,
     mimeType: string,
   ): Promise<{ storagePath: string }> {
-    const ext = mimeType === 'image/jpeg' ? 'jpg' : 'png';
+    const ext = mimeType === "image/jpeg" ? "jpg" : "png";
     const fileName = `${imageId}.${ext}`;
     const fullPath = path.join(this.basePath, fileName);
     await this.ensureDir(this.basePath);

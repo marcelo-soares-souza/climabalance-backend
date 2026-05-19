@@ -1,6 +1,6 @@
-import nodemailer from 'nodemailer';
-import type { EmailMessage, EmailSender } from './email-sender';
-import { logger } from '../../shared/utils/logger';
+import nodemailer from "nodemailer";
+import type { EmailMessage, EmailSender } from "./email-sender";
+import { logger } from "../../shared/utils/logger";
 
 export type SMTPConfig = {
   host: string;
@@ -24,15 +24,15 @@ export class SMTPEmailSender implements EmailSender {
       secure: config.port === 465,
       auth: {
         user: config.auth.user,
-        pass: config.auth.pass
-      }
+        pass: config.auth.pass,
+      },
     });
   }
 
   async send(message: EmailMessage): Promise<void> {
-    logger.info('email.sending', {
+    logger.info("email.sending", {
       to: message.to,
-      subject: message.subject
+      subject: message.subject,
     });
 
     try {
@@ -41,19 +41,19 @@ export class SMTPEmailSender implements EmailSender {
         to: message.to,
         subject: message.subject,
         text: message.text,
-        html: message.html
+        html: message.html,
       });
 
-      logger.info('email.sent', {
+      logger.info("email.sent", {
         to: message.to,
         subject: message.subject,
-        messageId: result.messageId
+        messageId: result.messageId,
       });
     } catch (error) {
-      logger.error('email.failed', {
+      logger.error("email.failed", {
         to: message.to,
         subject: message.subject,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }

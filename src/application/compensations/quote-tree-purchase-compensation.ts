@@ -1,6 +1,6 @@
-import type { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import type { CompensationHistoryRepository } from '../../domain/compensations/repositories/compensation-history-repository';
-import { NotFoundError, ValidationError } from '../../domain/errors';
+import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import type { CompensationHistoryRepository } from "../../domain/compensations/repositories/compensation-history-repository";
+import { NotFoundError, ValidationError } from "../../domain/errors";
 
 export const TREE_PURCHASE_HORIZON_YEARS = 20;
 const DEFAULT_T_CO2E_PER_TREE_PER_YEAR = 0.00075;
@@ -20,7 +20,7 @@ export type QuoteTreePurchaseCompensationInput = {
 
 export type QuoteTreePurchaseCompensationResult = {
   areaId: string;
-  compensationMode: 'tree_purchase';
+  compensationMode: "tree_purchase";
   horizonYears: number;
   treesRequested: number;
   estimatedKgCO2PerTreePerYear: number;
@@ -40,26 +40,29 @@ export async function quoteTreePurchaseCompensation(
     treePriceResolver?: (currency: string, areaId: string) => number | null;
     defaultMaxPurchasableTrees: number;
   },
-  input: QuoteTreePurchaseCompensationInput
+  input: QuoteTreePurchaseCompensationInput,
 ): Promise<QuoteTreePurchaseCompensationResult> {
   validateInput(input);
 
   const area = await deps.areaRepository.findById(input.areaId);
   if (!area) {
-    throw new NotFoundError('area.not_found');
+    throw new NotFoundError("area.not_found");
   }
 
   if (!area.isActive()) {
     throw new ValidationError([
       {
-        field: 'area_id',
-        message: 'area_not_active',
+        field: "area_id",
+        message: "area_not_active",
       },
     ]);
   }
 
-  const effectiveMax = area.getEffectiveMaxPurchasableTrees(deps.defaultMaxPurchasableTrees);
-  const paidTreeCount = await deps.compensationHistoryRepository.sumPaidTreeCountByArea(area.id);
+  const effectiveMax = area.getEffectiveMaxPurchasableTrees(
+    deps.defaultMaxPurchasableTrees,
+  );
+  const paidTreeCount =
+    await deps.compensationHistoryRepository.sumPaidTreeCountByArea(area.id);
   const remainingPurchasableTrees = Math.max(0, effectiveMax - paidTreeCount);
 
   const tCO2ePerTreePerYear =
@@ -82,15 +85,15 @@ export async function quoteTreePurchaseCompensation(
   if (!resolvedPrice || resolvedPrice <= 0) {
     throw new ValidationError([
       {
-        field: 'currency',
-        message: 'unsupported_currency',
+        field: "currency",
+        message: "unsupported_currency",
       },
     ]);
   }
 
   return {
     areaId: area.id,
-    compensationMode: 'tree_purchase',
+    compensationMode: "tree_purchase",
     horizonYears,
     treesRequested: input.treesRequested,
     estimatedKgCO2PerTreePerYear,
@@ -107,13 +110,13 @@ export async function quoteTreePurchaseCompensation(
 function validateInput(input: QuoteTreePurchaseCompensationInput): void {
   const errors: Array<{ field: string; message: string }> = [];
   if (!input.areaId || !input.areaId.trim()) {
-    errors.push({ field: 'area_id', message: 'required' });
+    errors.push({ field: "area_id", message: "required" });
   }
   if (!Number.isFinite(input.treesRequested) || input.treesRequested <= 0) {
-    errors.push({ field: 'trees_requested', message: 'must_be_positive' });
+    errors.push({ field: "trees_requested", message: "must_be_positive" });
   }
   if (!input.currency || input.currency.trim().length !== 3) {
-    errors.push({ field: 'currency', message: 'must_be_iso_4217' });
+    errors.push({ field: "currency", message: "must_be_iso_4217" });
   }
   if (errors.length > 0) {
     throw new ValidationError(errors);

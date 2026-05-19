@@ -1,6 +1,6 @@
-import { Pool, PoolClient } from 'pg';
-import { AreaCriterion } from '../../../domain/areas/entities/area-criterion';
-import { AreaCriteriaRepository } from '../../../domain/areas/repositories/area-criteria-repository';
+import { Pool, PoolClient } from "pg";
+import { AreaCriterion } from "../../../domain/areas/entities/area-criterion";
+import { AreaCriteriaRepository } from "../../../domain/areas/repositories/area-criteria-repository";
 
 export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
   constructor(private pool: Pool) {}
@@ -28,11 +28,14 @@ export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
         criterion.createdAt,
         criterion.updatedAt,
         criterion.deletedAt || null,
-      ]
+      ],
     );
   }
 
-  async saveMany(criteria: AreaCriterion[], client?: PoolClient): Promise<void> {
+  async saveMany(
+    criteria: AreaCriterion[],
+    client?: PoolClient,
+  ): Promise<void> {
     if (criteria.length === 0) return;
 
     const db = client || this.pool;
@@ -55,7 +58,7 @@ export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
         criterion.notes || null,
         criterion.createdAt,
         criterion.updatedAt,
-        criterion.deletedAt || null
+        criterion.deletedAt || null,
       );
     }
 
@@ -63,24 +66,27 @@ export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
       `INSERT INTO area_criteria (
         id, area_id, criterion_key, criterion_label, met, notes,
         created_at, updated_at, deleted_at
-      ) VALUES ${placeholders.join(', ')}
+      ) VALUES ${placeholders.join(", ")}
       ON CONFLICT (id) DO UPDATE SET
         met = EXCLUDED.met,
         notes = EXCLUDED.notes,
         updated_at = EXCLUDED.updated_at,
         deleted_at = EXCLUDED.deleted_at`,
-      values
+      values,
     );
   }
 
-  async findByAreaId(areaId: string, client?: PoolClient): Promise<AreaCriterion[]> {
+  async findByAreaId(
+    areaId: string,
+    client?: PoolClient,
+  ): Promise<AreaCriterion[]> {
     const db = client || this.pool;
 
     const result = await db.query(
       `SELECT * FROM area_criteria
        WHERE area_id = $1 AND deleted_at IS NULL
        ORDER BY criterion_key`,
-      [areaId]
+      [areaId],
     );
 
     return result.rows.map((row) => this.mapRowToCriterion(row));
@@ -90,8 +96,8 @@ export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
     const db = client || this.pool;
 
     await db.query(
-      'UPDATE area_criteria SET deleted_at = CURRENT_TIMESTAMP WHERE area_id = $1',
-      [areaId]
+      "UPDATE area_criteria SET deleted_at = CURRENT_TIMESTAMP WHERE area_id = $1",
+      [areaId],
     );
   }
 
@@ -99,14 +105,17 @@ export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
     const db = client || this.pool;
 
     const result = await db.query(
-      'SELECT COUNT(*) FROM area_criteria WHERE area_id = $1 AND deleted_at IS NULL',
-      [areaId]
+      "SELECT COUNT(*) FROM area_criteria WHERE area_id = $1 AND deleted_at IS NULL",
+      [areaId],
     );
 
     return parseInt(result.rows[0].count, 10);
   }
 
-  async areAllMetForArea(areaId: string, client?: PoolClient): Promise<boolean> {
+  async areAllMetForArea(
+    areaId: string,
+    client?: PoolClient,
+  ): Promise<boolean> {
     const db = client || this.pool;
 
     const result = await db.query(
@@ -114,7 +123,7 @@ export class PostgresAreaCriteriaRepository implements AreaCriteriaRepository {
               SUM(CASE WHEN met = true THEN 1 ELSE 0 END) as met_count
        FROM area_criteria
        WHERE area_id = $1 AND deleted_at IS NULL`,
-      [areaId]
+      [areaId],
     );
 
     const row = result.rows[0];

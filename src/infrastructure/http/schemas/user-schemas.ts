@@ -1,50 +1,73 @@
-import { z } from 'zod';
-import { emailSchema } from './common-schemas';
+import { z } from "zod";
+import { emailSchema } from "./common-schemas";
 
-const userStatusSchema = z.enum(['active', 'pending', 'suspended']);
+const userStatusSchema = z.enum(["active", "pending", "suspended"]);
 
 const optionalTrimmedString = (max: number) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed === '' ? undefined : trimmed;
-    },
-    z.string().max(max, { message: 'too_long' }).optional()
-  ).optional();
+  z
+    .preprocess(
+      (value) => {
+        if (typeof value !== "string") return value;
+        const trimmed = value.trim();
+        return trimmed === "" ? undefined : trimmed;
+      },
+      z.string().max(max, { message: "too_long" }).optional(),
+    )
+    .optional();
 
 const optionalUrl = (max: number) =>
-  z.preprocess(
-    (value) => {
-      if (typeof value !== 'string') return value;
-      const trimmed = value.trim();
-      return trimmed === '' ? undefined : trimmed;
-    },
-    z.string().max(max, { message: 'too_long' }).url({ message: 'invalid_url' }).optional()
-  ).optional();
+  z
+    .preprocess(
+      (value) => {
+        if (typeof value !== "string") return value;
+        const trimmed = value.trim();
+        return trimmed === "" ? undefined : trimmed;
+      },
+      z
+        .string()
+        .max(max, { message: "too_long" })
+        .url({ message: "invalid_url" })
+        .optional(),
+    )
+    .optional();
 
-const roleSchema = z.enum(['individual', 'producer', 'legal_entity', 'analyst', 'administrator']);
+const roleSchema = z.enum([
+  "individual",
+  "producer",
+  "legal_entity",
+  "analyst",
+  "administrator",
+]);
 
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
-  password: z.string().min(8, { message: 'too_short' }).max(200, { message: 'too_long' }).optional(),
+  password: z
+    .string()
+    .min(8, { message: "too_short" })
+    .max(200, { message: "too_long" })
+    .optional(),
   locale: z.string().min(1).max(10).optional(),
   status: userStatusSchema.optional(),
-  role: roleSchema.optional()
+  role: roleSchema.optional(),
 });
 
 export const listUsersQuerySchema = z.object({
   status: userStatusSchema.optional(),
   search: optionalTrimmedString(200),
-  sort_by: z.enum(['email', 'status', 'created_at', 'updated_at', 'last_login_at']).optional(),
-  sort_order: z.enum(['asc', 'desc']).optional(),
+  sort_by: z
+    .enum(["email", "status", "created_at", "updated_at", "last_login_at"])
+    .optional(),
+  sort_order: z.enum(["asc", "desc"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
 
 export const uploadProfileAvatarSchema = z.object({
-  mime_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-  file_base64: z.string().min(1).max(10 * 1024 * 1024)
+  mime_type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  file_base64: z
+    .string()
+    .min(1)
+    .max(10 * 1024 * 1024),
 });
 
 export const upsertProfileSchema = z.object({
@@ -68,5 +91,5 @@ export const upsertProfileSchema = z.object({
   bluesky_url: optionalUrl(500),
   mastodon_url: optionalUrl(500),
   youtube_url: optionalUrl(500),
-  linkedin_url: optionalUrl(500)
+  linkedin_url: optionalUrl(500),
 });

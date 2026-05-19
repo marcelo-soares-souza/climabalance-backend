@@ -1,7 +1,11 @@
-import { ForbiddenError, NotFoundError, ValidationError } from '../../domain/errors';
-import type { PaymentGatewayAdapter } from './payment-gateway';
-import { mapGatewayOutcomeToPaymentStatus } from './payment-status';
-import type { PaymentStore } from './payment-store';
+import {
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../../domain/errors";
+import type { PaymentGatewayAdapter } from "./payment-gateway";
+import { mapGatewayOutcomeToPaymentStatus } from "./payment-status";
+import type { PaymentStore } from "./payment-store";
 
 /**
  * Input payload for simulating a credit-card payment.
@@ -22,11 +26,11 @@ export type SimulateCardPaymentInput = {
  * Payment simulator outcomes mirrored from gateway behavior.
  */
 export type CardSimulationOutcome =
-  | 'authorized'
-  | 'declined'
-  | 'in_review'
-  | 'timeout'
-  | 'canceled';
+  | "authorized"
+  | "declined"
+  | "in_review"
+  | "timeout"
+  | "canceled";
 
 /**
  * Result returned after simulation and local state synchronization.
@@ -37,12 +41,12 @@ export type SimulateCardPaymentResult = {
   provider: string;
   providerReference: string;
   simulationStatus: CardSimulationOutcome;
-  paymentStatus: 'pending' | 'paid' | 'failed';
+  paymentStatus: "pending" | "paid" | "failed";
   amount: number;
   currency: string;
   installments: number;
   processedAt: Date;
-  compensationStatus: 'pending' | 'paid' | 'canceled' | 'refunded';
+  compensationStatus: "pending" | "paid" | "canceled" | "refunded";
 };
 
 /**
@@ -64,7 +68,7 @@ export async function simulateCardPayment(
       }): Promise<void>;
     };
   },
-  input: SimulateCardPaymentInput
+  input: SimulateCardPaymentInput,
 ): Promise<SimulateCardPaymentResult> {
   validateInput(input);
 
@@ -75,18 +79,18 @@ export async function simulateCardPayment(
   const result = await deps.store.runInTransaction(async (tx) => {
     const compensation = await tx.lockCompensation(input.compensationId);
     if (!compensation) {
-      throw new NotFoundError('compensation.not_found');
+      throw new NotFoundError("compensation.not_found");
     }
 
-    const isAdmin = input.actorRoles.includes('administrator');
+    const isAdmin = input.actorRoles.includes("administrator");
     const isOwner = compensation.supporterUserId === input.actorUserId;
     if (!isAdmin && !isOwner) {
-      throw new ForbiddenError('auth.forbidden');
+      throw new ForbiddenError("auth.forbidden");
     }
 
-    if (compensation.status !== 'pending') {
+    if (compensation.status !== "pending") {
       throw new ValidationError([
-        { field: 'compensation_id', message: 'invalid_compensation_status' },
+        { field: "compensation_id", message: "invalid_compensation_status" },
       ]);
     }
 
@@ -103,7 +107,9 @@ export async function simulateCardPayment(
       installments: input.installments,
     });
 
-    const paymentStatus = mapGatewayOutcomeToPaymentStatus(gatewayResult.outcome);
+    const paymentStatus = mapGatewayOutcomeToPaymentStatus(
+      gatewayResult.outcome,
+    );
 
     await tx.insertPayment({
       id: paymentId,
@@ -113,27 +119,30 @@ export async function simulateCardPayment(
       amount: compensation.totalAmount,
       currency: compensation.currency,
       status: paymentStatus,
-      paidAt: paymentStatus === 'paid' ? gatewayResult.processedAt : undefined,
+      paidAt: paymentStatus === "paid" ? gatewayResult.processedAt : undefined,
       createdAt: now,
       updatedAt: now,
     });
 
-    let compensationStatus: 'pending' | 'paid' | 'canceled' | 'refunded' =
+    let compensationStatus: "pending" | "paid" | "canceled" | "refunded" =
       compensation.status;
-    if (paymentStatus === 'paid') {
+    if (paymentStatus === "paid") {
       await tx.updateCompensationStatus({
         compensationId: compensation.id,
-        status: 'paid',
+        status: "paid",
         updatedAt: now,
       });
-      compensationStatus = 'paid';
-    } else if (paymentStatus === 'failed' && compensation.status === 'pending') {
+      compensationStatus = "paid";
+    } else if (
+      paymentStatus === "failed" &&
+      compensation.status === "pending"
+    ) {
       await tx.updateCompensationStatus({
         compensationId: compensation.id,
-        status: 'canceled',
+        status: "canceled",
         updatedAt: now,
       });
-      compensationStatus = 'canceled';
+      compensationStatus = "canceled";
     }
 
     return {
@@ -142,7 +151,7 @@ export async function simulateCardPayment(
       provider: gatewayResult.provider,
       providerReference: gatewayResult.providerReference,
       simulationStatus: gatewayResult.outcome,
-      paymentStatus: paymentStatus as 'pending' | 'paid' | 'failed',
+      paymentStatus: paymentStatus as "pending" | "paid" | "failed",
       amount: compensation.totalAmount,
       currency: compensation.currency,
       installments: input.installments,
@@ -153,8 +162,8 @@ export async function simulateCardPayment(
 
   await deps.auditLog.log({
     actorUserId: input.actorUserId,
-    action: 'payment.simulated',
-    entityType: 'payment',
+    action: "payment.simulated",
+    entityType: "payment",
     entityId: result.paymentId,
     metadata: {
       compensation_id: result.compensationId,
@@ -181,19 +190,23 @@ function validateInput(input: SimulateCardPaymentInput): void {
   const cvv = normalizeDigits(input.cvv);
 
   if (!input.compensationId.trim()) {
-    errors.push({ field: 'compensation_id', message: 'required' });
+    errors.push({ field: "compensation_id", message: "required" });
   }
   if (!input.cardholderName.trim()) {
-    errors.push({ field: 'cardholder_name', message: 'required' });
+    errors.push({ field: "cardholder_name", message: "required" });
   }
   if (!/^\d{13,19}$/.test(cardNumber)) {
-    errors.push({ field: 'card_number', message: 'invalid_card_number' });
+    errors.push({ field: "card_number", message: "invalid_card_number" });
   }
   if (!/^\d{3,4}$/.test(cvv)) {
-    errors.push({ field: 'cvv', message: 'invalid_cvv' });
+    errors.push({ field: "cvv", message: "invalid_cvv" });
   }
-  if (!Number.isInteger(input.expirationMonth) || input.expirationMonth < 1 || input.expirationMonth > 12) {
-    errors.push({ field: 'expiration_month', message: 'invalid_month' });
+  if (
+    !Number.isInteger(input.expirationMonth) ||
+    input.expirationMonth < 1 ||
+    input.expirationMonth > 12
+  ) {
+    errors.push({ field: "expiration_month", message: "invalid_month" });
   }
 
   const nowYear = new Date().getUTCFullYear();
@@ -202,11 +215,15 @@ function validateInput(input: SimulateCardPaymentInput): void {
     input.expirationYear < nowYear ||
     input.expirationYear > nowYear + 20
   ) {
-    errors.push({ field: 'expiration_year', message: 'invalid_year' });
+    errors.push({ field: "expiration_year", message: "invalid_year" });
   }
 
-  if (!Number.isInteger(input.installments) || input.installments < 1 || input.installments > 12) {
-    errors.push({ field: 'installments', message: 'invalid_installments' });
+  if (
+    !Number.isInteger(input.installments) ||
+    input.installments < 1 ||
+    input.installments > 12
+  ) {
+    errors.push({ field: "installments", message: "invalid_installments" });
   }
 
   if (errors.length > 0) {
@@ -218,5 +235,5 @@ function validateInput(input: SimulateCardPaymentInput): void {
  * Keeps only numeric digits from card and CVV inputs.
  */
 function normalizeDigits(value: string): string {
-  return value.replace(/\D/g, '');
+  return value.replace(/\D/g, "");
 }

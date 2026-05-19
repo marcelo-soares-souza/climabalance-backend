@@ -1,7 +1,11 @@
-import { ForbiddenError, NotFoundError, ValidationError } from '../../domain/errors';
-import type { PaymentGatewayAdapter } from './payment-gateway';
-import type { PaymentStore } from './payment-store';
-import type { StripePaymentGatewayAdapter } from '../../infrastructure/payments/stripe-gateway';
+import {
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "../../domain/errors";
+import type { PaymentGatewayAdapter } from "./payment-gateway";
+import type { PaymentStore } from "./payment-store";
+import type { StripePaymentGatewayAdapter } from "../../infrastructure/payments/stripe-gateway";
 
 export type AreaOwnerLookup = {
   getOwnerUserId(areaId: string): Promise<string | null>;
@@ -19,14 +23,14 @@ export type CreateStripePaymentIntentInput = {
   actorUserId: string;
   actorRoles: string[];
   compensationId: string;
-  paymentMethod: 'card' | 'pix';
+  paymentMethod: "card" | "pix";
 };
 
 export type CreateStripePaymentIntentResult = {
   paymentId: string;
   compensationId: string;
-  paymentStatus: 'pending' | 'paid' | 'failed';
-  compensationStatus: 'pending' | 'paid' | 'canceled';
+  paymentStatus: "pending" | "paid" | "failed";
+  compensationStatus: "pending" | "paid" | "canceled";
   amount: number;
   currency: string;
   processedAt: Date;
@@ -57,17 +61,17 @@ export async function createStripePaymentIntent(
     };
     platformFeePercent: number;
   },
-  input: CreateStripePaymentIntentInput
+  input: CreateStripePaymentIntentInput,
 ): Promise<CreateStripePaymentIntentResult> {
-  if (!['card', 'pix'].includes(input.paymentMethod)) {
+  if (!["card", "pix"].includes(input.paymentMethod)) {
     throw new ValidationError([
-      { field: 'payment_method', message: 'invalid_payment_method' },
+      { field: "payment_method", message: "invalid_payment_method" },
     ]);
   }
 
   if (!input.compensationId.trim()) {
     throw new ValidationError([
-      { field: 'compensation_id', message: 'required' },
+      { field: "compensation_id", message: "required" },
     ]);
   }
 
@@ -75,27 +79,27 @@ export async function createStripePaymentIntent(
   const paymentId = deps.idGenerator.generate();
   const stripeGateway = deps.paymentGateway as StripePaymentGatewayAdapter;
 
-  if (deps.paymentGateway.provider !== 'stripe') {
+  if (deps.paymentGateway.provider !== "stripe") {
     throw new ValidationError([
-      { field: 'provider', message: 'stripe_not_available' },
+      { field: "provider", message: "stripe_not_available" },
     ]);
   }
 
   const result = await deps.store.runInTransaction(async (tx) => {
     const compensation = await tx.lockCompensation(input.compensationId);
     if (!compensation) {
-      throw new NotFoundError('compensation.not_found');
+      throw new NotFoundError("compensation.not_found");
     }
 
-    const isAdmin = input.actorRoles.includes('administrator');
+    const isAdmin = input.actorRoles.includes("administrator");
     const isOwner = compensation.supporterUserId === input.actorUserId;
     if (!isAdmin && !isOwner) {
-      throw new ForbiddenError('auth.forbidden');
+      throw new ForbiddenError("auth.forbidden");
     }
 
-    if (compensation.status !== 'pending') {
+    if (compensation.status !== "pending") {
       throw new ValidationError([
-        { field: 'compensation_id', message: 'invalid_compensation_status' },
+        { field: "compensation_id", message: "invalid_compensation_status" },
       ]);
     }
 
@@ -104,8 +108,8 @@ export async function createStripePaymentIntent(
     if (existingPendingPayment) {
       await deps.auditLog.log({
         actorUserId: input.actorUserId,
-        action: 'payment.intent_duplicate_attempted',
-        entityType: 'compensation',
+        action: "payment.intent_duplicate_attempted",
+        entityType: "compensation",
         entityId: compensation.id,
         metadata: {
           existing_payment_id: existingPendingPayment.id,
@@ -113,33 +117,32 @@ export async function createStripePaymentIntent(
         },
       });
       throw new ValidationError([
-        { field: 'compensation_id', message: 'payment_already_pending' },
+        { field: "compensation_id", message: "payment_already_pending" },
       ]);
     }
 
     const ownerUserId = await deps.areaOwnerLookup.getOwnerUserId(
-      compensation.areaId
+      compensation.areaId,
     );
     if (!ownerUserId) {
-      throw new NotFoundError('area.not_found');
+      throw new NotFoundError("area.not_found");
     }
 
-    const stripeAccount = await deps.stripeConnectLookup.getByUserId(
-      ownerUserId
-    );
+    const stripeAccount =
+      await deps.stripeConnectLookup.getByUserId(ownerUserId);
     if (
       !stripeAccount ||
       !stripeAccount.chargesEnabled ||
       !stripeAccount.payoutsEnabled
     ) {
       throw new ValidationError([
-        { field: 'compensation_id', message: 'producer_not_onboarded' },
+        { field: "compensation_id", message: "producer_not_onboarded" },
       ]);
     }
 
-    if (input.paymentMethod === 'pix' && compensation.currency !== 'BRL') {
+    if (input.paymentMethod === "pix" && compensation.currency !== "BRL") {
       throw new ValidationError([
-        { field: 'payment_method', message: 'pix_requires_brl' },
+        { field: "payment_method", message: "pix_requires_brl" },
       ]);
     }
 
@@ -162,11 +165,11 @@ export async function createStripePaymentIntent(
     await tx.insertPayment({
       id: paymentId,
       compensationId: compensation.id,
-      provider: 'stripe',
+      provider: "stripe",
       providerReference: `pi_${paymentIntent.paymentIntentId}`,
       amount: compensation.totalAmount,
       currency: compensation.currency,
-      status: 'pending',
+      status: "pending",
       createdAt: now,
       updatedAt: now,
       paymentMethod: input.paymentMethod,
@@ -176,7 +179,7 @@ export async function createStripePaymentIntent(
     return {
       paymentId,
       compensationId: compensation.id,
-      paymentStatus: 'pending' as const,
+      paymentStatus: "pending" as const,
       compensationStatus: compensation.status,
       amount: compensation.totalAmount,
       currency: compensation.currency,
@@ -190,8 +193,8 @@ export async function createStripePaymentIntent(
 
   await deps.auditLog.log({
     actorUserId: input.actorUserId,
-    action: 'payment.intent_created',
-    entityType: 'payment',
+    action: "payment.intent_created",
+    entityType: "payment",
     entityId: result.paymentId,
     metadata: {
       compensation_id: result.compensationId,

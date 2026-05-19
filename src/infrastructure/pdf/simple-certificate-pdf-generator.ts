@@ -1,11 +1,9 @@
 import type {
   CompensationCertificatePdfData,
   CompensationCertificatePdfGenerator,
-} from '../../domain/compensations/services/certificate-pdf-generator';
+} from "../../domain/compensations/services/certificate-pdf-generator";
 
-export class SimpleCertificatePdfGenerator
-  implements CompensationCertificatePdfGenerator
-{
+export class SimpleCertificatePdfGenerator implements CompensationCertificatePdfGenerator {
   async generate(data: CompensationCertificatePdfData): Promise<Uint8Array> {
     const lines = buildCertificateLines(data);
     return buildSimplePdf(lines);
@@ -15,21 +13,21 @@ export class SimpleCertificatePdfGenerator
 function buildCertificateLines(data: CompensationCertificatePdfData): string[] {
   const issuedAt = formatUtcDate(data.issuedAt);
   const amount = `${data.totalAmount.toFixed(2)} ${data.currency.toUpperCase()}`;
-  const mode = data.compensationMode ?? 'tree_purchase';
+  const mode = data.compensationMode ?? "tree_purchase";
   const horizon = data.horizonYears ?? 20;
   return [
-    'Tree Planting Contribution Certificate',
-    'Centro Brasil no Clima',
-    '',
+    "Tree Planting Contribution Certificate",
+    "Centro Brasil no Clima",
+    "",
     `Certificate Number: ${data.certificateNumber}`,
     `Issued At (UTC): ${issuedAt}`,
-    '',
+    "",
     `Contribution ID: ${data.compensationId}`,
     `Contribution Mode: ${mode}`,
     `Supporter User ID: ${data.supporterUserId}`,
     `Area ID: ${data.areaId}`,
-    `Calculation ID: ${data.calculationId ?? '-'}`,
-    '',
+    `Calculation ID: ${data.calculationId ?? "-"}`,
+    "",
     `Estimated Offset Supported: ${data.totalTCO2e.toFixed(6)} tCO2e`,
     `Trees Count: ${data.treesCount}`,
     `Trees Requested: ${data.treesRequested ?? data.treesCount}`,
@@ -37,25 +35,25 @@ function buildCertificateLines(data: CompensationCertificatePdfData): string[] {
     `Estimated Total in Horizon: ${(data.estimatedTotalTCO2e ?? data.totalTCO2e).toFixed(6)} tCO2e`,
     `Price per Tree: ${(data.pricePerTree ?? 0).toFixed(2)} ${data.currency.toUpperCase()}`,
     `Total Amount: ${amount}`,
-    '',
-    `Authenticity Hash: ${data.authenticityHash ?? '-'}`,
-    `Validation URL: ${data.validationUrl ?? '-'}`,
-    `QR Payload: ${data.qrCodeData ?? data.validationUrl ?? '-'}`,
-    '',
-    'This document certifies a paid tree-planting contribution with estimated climate impact.',
+    "",
+    `Authenticity Hash: ${data.authenticityHash ?? "-"}`,
+    `Validation URL: ${data.validationUrl ?? "-"}`,
+    `QR Payload: ${data.qrCodeData ?? data.validationUrl ?? "-"}`,
+    "",
+    "This document certifies a paid tree-planting contribution with estimated climate impact.",
   ];
 }
 
 function formatUtcDate(value: Date): string {
-  return value.toISOString().replace('T', ' ').replace('Z', ' UTC');
+  return value.toISOString().replace("T", " ").replace("Z", " UTC");
 }
 
 function escapePdfText(value: string): string {
   return value
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)')
-    .replace(/\r?\n/g, ' ');
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/\r?\n/g, " ");
 }
 
 function buildSimplePdf(lines: string[]): Uint8Array {
@@ -64,46 +62,46 @@ function buildSimplePdf(lines: string[]): Uint8Array {
   let y = 790;
   for (const [index, line] of lines.entries()) {
     const fontSize = index === 0 ? 20 : index === 1 ? 14 : 11;
-    commands.push('BT');
+    commands.push("BT");
     commands.push(`/F1 ${fontSize} Tf`);
     commands.push(`40 ${y} Td`);
     commands.push(`(${escapePdfText(line)}) Tj`);
-    commands.push('ET');
+    commands.push("ET");
     y -= index <= 1 ? 26 : 18;
   }
 
-  const contentStream = `${commands.join('\n')}\n`;
-  const contentLength = Buffer.byteLength(contentStream, 'utf8');
+  const contentStream = `${commands.join("\n")}\n`;
+  const contentLength = Buffer.byteLength(contentStream, "utf8");
 
   const objects = [
-    '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-    '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
     [
-      '3 0 obj',
-      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]',
-      '/Resources << /Font << /F1 4 0 R >> >>',
-      '/Contents 5 0 R >>',
-      'endobj',
-      '',
-    ].join('\n'),
-    '4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
+      "3 0 obj",
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]",
+      "/Resources << /Font << /F1 4 0 R >> >>",
+      "/Contents 5 0 R >>",
+      "endobj",
+      "",
+    ].join("\n"),
+    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
     `5 0 obj\n<< /Length ${contentLength} >>\nstream\n${contentStream}endstream\nendobj\n`,
   ];
 
-  let pdf = '%PDF-1.4\n';
+  let pdf = "%PDF-1.4\n";
   const offsets = [0];
 
   for (const object of objects) {
-    offsets.push(Buffer.byteLength(pdf, 'utf8'));
+    offsets.push(Buffer.byteLength(pdf, "utf8"));
     pdf += object;
   }
 
-  const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+  const xrefOffset = Buffer.byteLength(pdf, "utf8");
   pdf += `xref\n0 ${objects.length + 1}\n`;
-  pdf += '0000000000 65535 f \n';
+  pdf += "0000000000 65535 f \n";
 
   for (let index = 1; index <= objects.length; index += 1) {
-    const offset = String(offsets[index]).padStart(10, '0');
+    const offset = String(offsets[index]).padStart(10, "0");
     pdf += `${offset} 00000 n \n`;
   }
 

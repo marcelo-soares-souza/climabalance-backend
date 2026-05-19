@@ -1,4 +1,4 @@
-import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
+import { AreaAuditService } from "../../domain/areas/services/area-audit.service";
 
 export interface SubmitAreaForAuditDeps {
   auditService: AreaAuditService;
@@ -7,7 +7,7 @@ export interface SubmitAreaForAuditDeps {
 export async function submitAreaForAudit(
   deps: SubmitAreaForAuditDeps,
   areaId: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   await deps.auditService.submitForAudit(areaId, userId);
 }

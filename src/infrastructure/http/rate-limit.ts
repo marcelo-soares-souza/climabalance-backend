@@ -1,10 +1,16 @@
-import type { Handler, HttpContext } from '../../shared/http/router';
-import { buildLogContext } from '../../shared/http/log-context';
-import { errorResponse } from '../../shared/http/response';
-import { valkey } from '../cache/valkey-client';
-import { env } from '../../shared/utils/env';
+import type { Handler, HttpContext } from "../../shared/http/router";
+import { buildLogContext } from "../../shared/http/log-context";
+import { errorResponse } from "../../shared/http/response";
+import { valkey } from "../cache/valkey-client";
+import { env } from "../../shared/utils/env";
 
-export type RateLimitBucket = 'auth' | 'public' | 'protected' | 'admin' | 'media' | 'user';
+export type RateLimitBucket =
+  | "auth"
+  | "public"
+  | "protected"
+  | "admin"
+  | "media"
+  | "user";
 
 export type RateLimitPolicy = {
   limit: number;
@@ -37,11 +43,14 @@ type RateLimitDecision = {
 };
 
 export class InMemoryRateLimiter {
-  private readonly records = new Map<string, { count: number; resetAtMs: number }>();
+  private readonly records = new Map<
+    string,
+    { count: number; resetAtMs: number }
+  >();
 
   constructor(
     private readonly policies: RateLimitPolicies = defaultRateLimitPolicies,
-    private readonly nowMs: () => number = () => Date.now()
+    private readonly nowMs: () => number = () => Date.now(),
   ) {}
 
   consume(input: RateLimitInput): RateLimitDecision {
@@ -54,17 +63,38 @@ export class InMemoryRateLimiter {
     if (!existing || existing.resetAtMs <= now) {
       const resetAtMs = now + policy.windowSeconds * 1000;
       this.records.set(key, { count: 1, resetAtMs });
-      return { allowed: true, limit: policy.limit, remaining: Math.max(policy.limit - 1, 0), resetAtMs, retryAfterSeconds: 0 };
+      return {
+        allowed: true,
+        limit: policy.limit,
+        remaining: Math.max(policy.limit - 1, 0),
+        resetAtMs,
+        retryAfterSeconds: 0,
+      };
     }
 
     if (existing.count >= policy.limit) {
-      const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAtMs - now) / 1000));
-      return { allowed: false, limit: policy.limit, remaining: 0, resetAtMs: existing.resetAtMs, retryAfterSeconds };
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((existing.resetAtMs - now) / 1000),
+      );
+      return {
+        allowed: false,
+        limit: policy.limit,
+        remaining: 0,
+        resetAtMs: existing.resetAtMs,
+        retryAfterSeconds,
+      };
     }
 
     existing.count += 1;
     this.records.set(key, existing);
-    return { allowed: true, limit: policy.limit, remaining: Math.max(policy.limit - existing.count, 0), resetAtMs: existing.resetAtMs, retryAfterSeconds: 0 };
+    return {
+      allowed: true,
+      limit: policy.limit,
+      remaining: Math.max(policy.limit - existing.count, 0),
+      resetAtMs: existing.resetAtMs,
+      retryAfterSeconds: 0,
+    };
   }
 
   private pruneExpired() {
@@ -78,17 +108,14 @@ export class InMemoryRateLimiter {
 export async function consumeValkeyRateLimit(
   input: RateLimitInput,
   policies?: RateLimitPolicies,
-  fallbackLimiter: InMemoryRateLimiter = new InMemoryRateLimiter(policies)
+  fallbackLimiter: InMemoryRateLimiter = new InMemoryRateLimiter(policies),
 ): Promise<RateLimitDecision> {
   const p = (policies ?? defaultRateLimitPolicies)[input.bucket];
   const key = `rl:${input.bucket}:${input.clientId}:${input.routeKey}`;
   try {
-    const result = await valkey.multi()
-      .incr(key)
-      .pttl(key)
-      .exec();
+    const result = await valkey.multi().incr(key).pttl(key).exec();
 
-    if (!result) throw new Error('valkey no result');
+    if (!result) throw new Error("valkey no result");
 
     const count = result[0][1] as number;
     let ttl = result[1][1] as number;
@@ -102,19 +129,41 @@ export async function consumeValkeyRateLimit(
     const remaining = Math.max(p.limit - count, 0);
 
     if (count > p.limit) {
-      return { allowed: false, limit: p.limit, remaining: 0, resetAtMs, retryAfterSeconds: Math.max(1, Math.ceil(ttl / 1000)) };
+      return {
+        allowed: false,
+        limit: p.limit,
+        remaining: 0,
+        resetAtMs,
+        retryAfterSeconds: Math.max(1, Math.ceil(ttl / 1000)),
+      };
     }
 
-    return { allowed: true, limit: p.limit, remaining, resetAtMs, retryAfterSeconds: 0 };
+    return {
+      allowed: true,
+      limit: p.limit,
+      remaining,
+      resetAtMs,
+      retryAfterSeconds: 0,
+    };
   } catch {
-    if (env.appEnv === 'production' || env.appEnv === 'staging') {
-      return { allowed: false, limit: p.limit, remaining: 0, resetAtMs: Date.now() + 60_000, retryAfterSeconds: 60 };
+    if (env.appEnv === "production" || env.appEnv === "staging") {
+      return {
+        allowed: false,
+        limit: p.limit,
+        remaining: 0,
+        resetAtMs: Date.now() + 60_000,
+        retryAfterSeconds: 60,
+      };
     }
     return fallbackLimiter.consume(input);
   }
 }
 
-export async function checkLoginLockout(identifier: string): Promise<{ blocked: boolean; remainingAttempts: number; retryAfterSeconds: number }> {
+export async function checkLoginLockout(identifier: string): Promise<{
+  blocked: boolean;
+  remainingAttempts: number;
+  retryAfterSeconds: number;
+}> {
   const key = `login:lockout:${identifier}`;
   try {
     const ttl = await valkey.ttl(key);
@@ -123,13 +172,20 @@ export async function checkLoginLockout(identifier: string): Promise<{ blocked: 
     }
     const attempts = await valkey.get(`login:attempts:${identifier}`);
     const count = attempts ? Number(attempts) : 0;
-    return { blocked: false, remainingAttempts: Math.max(5 - count, 0), retryAfterSeconds: 0 };
+    return {
+      blocked: false,
+      remainingAttempts: Math.max(5 - count, 0),
+      retryAfterSeconds: 0,
+    };
   } catch {
     return { blocked: false, remainingAttempts: 5, retryAfterSeconds: 0 };
   }
 }
 
-export async function recordLoginAttempt(identifier: string, success: boolean): Promise<void> {
+export async function recordLoginAttempt(
+  identifier: string,
+  success: boolean,
+): Promise<void> {
   const key = `login:attempts:${identifier}`;
   try {
     if (success) {
@@ -139,24 +195,36 @@ export async function recordLoginAttempt(identifier: string, success: boolean): 
       const count = await valkey.incr(key);
       await valkey.expire(key, 900); // 15min window
       if (count >= 5) {
-        await valkey.set(`login:lockout:${identifier}`, '1', 'EX', 300); // 5min lockout
+        await valkey.set(`login:lockout:${identifier}`, "1", "EX", 300); // 5min lockout
       }
     }
-  } catch { /* valkey unavailable */ }
+  } catch {
+    /* valkey unavailable */
+  }
 }
 
 export function withRateLimit(
   limiter: InMemoryRateLimiter,
   options: { bucket: RateLimitBucket; routeKey: string; distributed?: boolean },
-  handler: Handler
+  handler: Handler,
 ): Handler {
   return async (ctx: HttpContext) => {
-    const input = { bucket: options.bucket, routeKey: options.routeKey, clientId: ctx.clientIp ?? 'unknown' };
-    const decision = options.distributed === false
-      ? limiter.consume(input)
-      : await consumeValkeyRateLimit(input, undefined, limiter);
+    const input = {
+      bucket: options.bucket,
+      routeKey: options.routeKey,
+      clientId: ctx.clientIp ?? "unknown",
+    };
+    const decision =
+      options.distributed === false
+        ? limiter.consume(input)
+        : await consumeValkeyRateLimit(input, undefined, limiter);
     if (!decision.allowed) {
-      const response = errorResponse(429, 'request.rate_limited', { retry_after_seconds: decision.retryAfterSeconds }, buildLogContext(ctx));
+      const response = errorResponse(
+        429,
+        "request.rate_limited",
+        { retry_after_seconds: decision.retryAfterSeconds },
+        buildLogContext(ctx),
+      );
       return applyRateLimitHeaders(response, decision);
     }
     const response = await handler(ctx);
@@ -167,17 +235,27 @@ export function withRateLimit(
 export function withUserRateLimit(
   limiter: InMemoryRateLimiter,
   options: { bucket: RateLimitBucket; routeKey: string; distributed?: boolean },
-  handler: Handler
+  handler: Handler,
 ): Handler {
   return async (ctx: HttpContext) => {
     const userId = ctx.auth?.userId;
-    const clientId = userId ? `user:${userId}` : ctx.clientIp ?? 'unknown';
-    const input = { bucket: options.bucket, routeKey: options.routeKey, clientId };
-    const decision = options.distributed === false
-      ? limiter.consume(input)
-      : await consumeValkeyRateLimit(input, undefined, limiter);
+    const clientId = userId ? `user:${userId}` : (ctx.clientIp ?? "unknown");
+    const input = {
+      bucket: options.bucket,
+      routeKey: options.routeKey,
+      clientId,
+    };
+    const decision =
+      options.distributed === false
+        ? limiter.consume(input)
+        : await consumeValkeyRateLimit(input, undefined, limiter);
     if (!decision.allowed) {
-      const response = errorResponse(429, 'request.rate_limited', { retry_after_seconds: decision.retryAfterSeconds }, buildLogContext(ctx));
+      const response = errorResponse(
+        429,
+        "request.rate_limited",
+        { retry_after_seconds: decision.retryAfterSeconds },
+        buildLogContext(ctx),
+      );
       return applyRateLimitHeaders(response, decision);
     }
     const response = await handler(ctx);
@@ -185,11 +263,22 @@ export function withUserRateLimit(
   };
 }
 
-function applyRateLimitHeaders(response: Response, decision: RateLimitDecision): Response {
+function applyRateLimitHeaders(
+  response: Response,
+  decision: RateLimitDecision,
+): Response {
   const headers = new Headers(response.headers);
-  headers.set('x-ratelimit-limit', String(decision.limit));
-  headers.set('x-ratelimit-remaining', String(decision.remaining));
-  headers.set('x-ratelimit-reset', String(Math.ceil(decision.resetAtMs / 1000)));
-  if (!decision.allowed) headers.set('retry-after', String(decision.retryAfterSeconds));
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  headers.set("x-ratelimit-limit", String(decision.limit));
+  headers.set("x-ratelimit-remaining", String(decision.remaining));
+  headers.set(
+    "x-ratelimit-reset",
+    String(Math.ceil(decision.resetAtMs / 1000)),
+  );
+  if (!decision.allowed)
+    headers.set("retry-after", String(decision.retryAfterSeconds));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }

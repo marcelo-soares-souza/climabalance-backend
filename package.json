@@ -8,6 +8,8 @@
     "build": "bun x tsc -p tsconfig.json",
     "lint": "eslint .",
     "audit": "bun audit",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
     "typecheck": "bun x tsc --noEmit",
     "db:create": "bun src/scripts/create-db.ts",
     "seed:admin": "bun src/scripts/seed-admin.ts",
@@ -34,6 +36,7 @@
     "@types/proj4": "^2.19.0",
     "eslint": "^10.3.0",
     "globals": "^17.6.0",
-    "typescript-eslint": "^8.59.3"
+    "typescript-eslint": "^8.59.3",
+    "prettier": "^3.8.3"
   }
 }

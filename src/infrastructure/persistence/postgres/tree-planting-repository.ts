@@ -1,9 +1,9 @@
-import type { Pool, PoolClient } from 'pg';
-import { TreePlanting } from '../../../domain/areas/entities/tree-planting';
+import type { Pool, PoolClient } from "pg";
+import { TreePlanting } from "../../../domain/areas/entities/tree-planting";
 import type {
   TreePlantingRepository,
   CreateTreePlantingRecord,
-} from '../../../domain/areas/repositories/tree-planting-repository';
+} from "../../../domain/areas/repositories/tree-planting-repository";
 
 function mapRow(row: Record<string, unknown>): TreePlanting {
   return new TreePlanting(
@@ -39,7 +39,7 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
 
   async countByAreaIds(areaIds: string[]): Promise<Map<string, number>> {
     if (areaIds.length === 0) return new Map();
-    const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(',');
+    const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(",");
     const result = await this.pool.query(
       `SELECT area_id, COUNT(*)::int AS count FROM tree_plantings WHERE area_id IN (${placeholders}) AND deleted_at IS NULL GROUP BY area_id`,
       areaIds,
@@ -63,9 +63,11 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
     return Number((result.rows[0] as Record<string, unknown>)?.total ?? 0);
   }
 
-  async sumCompensatedTreeCountByAreaIds(areaIds: string[]): Promise<Map<string, number>> {
+  async sumCompensatedTreeCountByAreaIds(
+    areaIds: string[],
+  ): Promise<Map<string, number>> {
     if (areaIds.length === 0) return new Map();
-    const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(',');
+    const placeholders = areaIds.map((_, i) => `$${i + 1}`).join(",");
     const result = await this.pool.query(
       `SELECT area_id, COALESCE(SUM(trees_count), 0)::int AS total FROM compensations WHERE area_id IN (${placeholders}) AND status = 'paid' AND deleted_at IS NULL GROUP BY area_id`,
       areaIds,
@@ -89,7 +91,7 @@ export class PostgresTreePlantingRepository implements TreePlantingRepository {
         const base = i * 7;
         return `($${base + 1},$${base + 2},$${base + 3},ST_SetSRID(ST_MakePoint($${base + 5},$${base + 4}), 4326),$${base + 6},$${base + 7})`;
       })
-      .join(',');
+      .join(",");
 
     const params = records.flatMap((r) => [
       r.id,

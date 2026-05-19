@@ -1,14 +1,14 @@
-import type { AuditLogEntry } from '../../domain/audit/audit-log-repository';
+import type { AuditLogEntry } from "../../domain/audit/audit-log-repository";
 
 export interface AlertNotifier {
   notify(entry: AuditLogEntry): Promise<void>;
 }
 
 const ALERT_RULES: Array<{ action: string }> = [
-  { action: 'auth.refresh_reuse_detected' },
-  { action: 'auth.fingerprint_mismatch' },
-  { action: 'payment.webhook_invalid_signature' },
-  { action: 'auth.login_locked' },
+  { action: "auth.refresh_reuse_detected" },
+  { action: "auth.fingerprint_mismatch" },
+  { action: "payment.webhook_invalid_signature" },
+  { action: "auth.login_locked" },
 ];
 
 const SEVERITY_ORDER: Record<string, number> = {
@@ -30,9 +30,13 @@ function isRateLimited(entry: AuditLogEntry): boolean {
   return false;
 }
 
-export function shouldAlert(entry: AuditLogEntry, severityThreshold: string): boolean {
-  const entrySeverity = SEVERITY_ORDER[entry.severity ?? 'info'] ?? 0;
-  const threshold = SEVERITY_ORDER[severityThreshold] ?? SEVERITY_ORDER.critical;
+export function shouldAlert(
+  entry: AuditLogEntry,
+  severityThreshold: string,
+): boolean {
+  const entrySeverity = SEVERITY_ORDER[entry.severity ?? "info"] ?? 0;
+  const threshold =
+    SEVERITY_ORDER[severityThreshold] ?? SEVERITY_ORDER.critical;
 
   if (entrySeverity >= threshold) return true;
   if (ALERT_RULES.some((rule) => rule.action === entry.action)) return true;
@@ -41,7 +45,13 @@ export function shouldAlert(entry: AuditLogEntry, severityThreshold: string): bo
 
 export class EmailAlertNotifier implements AlertNotifier {
   constructor(
-    private readonly emailSender: { send(options: { to: string; subject: string; text: string }): Promise<void> },
+    private readonly emailSender: {
+      send(options: {
+        to: string;
+        subject: string;
+        text: string;
+      }): Promise<void>;
+    },
     private readonly to: string,
   ) {}
 
@@ -53,11 +63,13 @@ export class EmailAlertNotifier implements AlertNotifier {
       text: [
         `Action: ${entry.action}`,
         `Severity: ${entry.severity}`,
-        `Entity: ${entry.entityType} (${entry.entityId ?? 'N/A'})`,
-        `Actor: ${entry.actorUserId ?? 'anonymous'}`,
+        `Entity: ${entry.entityType} (${entry.entityId ?? "N/A"})`,
+        `Actor: ${entry.actorUserId ?? "anonymous"}`,
         `Time: ${entry.createdAt.toISOString()}`,
-        entry.errorCode ? `Error: ${entry.errorCode}` : '',
-      ].filter(Boolean).join('\n'),
+        entry.errorCode ? `Error: ${entry.errorCode}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     });
   }
 }
@@ -68,10 +80,10 @@ export class WebhookAlertNotifier implements AlertNotifier {
   async notify(entry: AuditLogEntry): Promise<void> {
     if (isRateLimited(entry)) return;
     await fetch(this.webhookUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      method: "POST",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        event: 'audit.alert',
+        event: "audit.alert",
         action: entry.action,
         severity: entry.severity,
         entity_type: entry.entityType,
@@ -95,7 +107,9 @@ export class CompositeAlertNotifier implements AlertNotifier {
 export function buildAlertNotifier(env: {
   alertEmailTo?: string;
   alertWebhookUrl?: string;
-  emailSender?: { send(options: { to: string; subject: string; text: string }): Promise<void> };
+  emailSender?: {
+    send(options: { to: string; subject: string; text: string }): Promise<void>;
+  };
 }): AlertNotifier | null {
   const notifiers: AlertNotifier[] = [];
 

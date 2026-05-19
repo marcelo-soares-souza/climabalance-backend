@@ -1,7 +1,7 @@
 import type {
   AreaContributionItem,
   CompensationHistoryRepository,
-} from '../../domain/compensations/repositories/compensation-history-repository';
+} from "../../domain/compensations/repositories/compensation-history-repository";
 
 export type ListAreaContributionsInput = {
   areaId: string;
@@ -13,7 +13,7 @@ export async function listAreaContributions(
   deps: {
     historyRepository: CompensationHistoryRepository;
   },
-  input: ListAreaContributionsInput
+  input: ListAreaContributionsInput,
 ): Promise<AreaContributionItem[]> {
   return deps.historyRepository.listPaidTreePurchaseByArea({
     areaId: input.areaId,

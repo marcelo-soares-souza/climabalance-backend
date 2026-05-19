@@ -1,17 +1,17 @@
-import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { ConsentRepository } from '../../domain/user/consent-repository';
-import type { EmailSender } from '../../infrastructure/email/email-sender';
-import type { PasswordHasher } from '../../infrastructure/crypto/password';
-import type { UnitOfWork } from '../../infrastructure/persistence/unit-of-work';
-import type { TokenGenerator } from '../../domain/services/token-generator';
-import type { HashService } from '../../domain/services/hash-service';
-import type { IdGenerator } from '../../domain/services/id-generator';
-import type { Clock } from '../../domain/services/clock';
-import type { Config } from '../../domain/services/config';
-import { EmailAlreadyExistsError } from '../../domain/errors';
-import { buildConfirmationEmail } from '../../infrastructure/email/templates';
-import { slugify, slugWithSuffix } from '../../shared/utils/slugify';
+import type { EmailConfirmationRepository } from "../../domain/user/email-confirmation-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { ConsentRepository } from "../../domain/user/consent-repository";
+import type { EmailSender } from "../../infrastructure/email/email-sender";
+import type { PasswordHasher } from "../../infrastructure/crypto/password";
+import type { UnitOfWork } from "../../infrastructure/persistence/unit-of-work";
+import type { TokenGenerator } from "../../domain/services/token-generator";
+import type { HashService } from "../../domain/services/hash-service";
+import type { IdGenerator } from "../../domain/services/id-generator";
+import type { Clock } from "../../domain/services/clock";
+import type { Config } from "../../domain/services/config";
+import { EmailAlreadyExistsError } from "../../domain/errors";
+import { buildConfirmationEmail } from "../../infrastructure/email/templates";
+import { slugify, slugWithSuffix } from "../../shared/utils/slugify";
 
 export type RegisterUserInput = {
   email: string;
@@ -44,7 +44,7 @@ export async function registerUser(
     idGenerator: IdGenerator;
     clock: Clock;
     config: Config;
-  }
+  },
 ): Promise<RegisterUserResult> {
   // Check for existing user outside transaction (read-only)
   const existing = await deps.users.findByEmail(input.email);
@@ -63,7 +63,7 @@ export async function registerUser(
 
     const slugSource = input.displayName
       ? slugify(input.displayName)
-      : slugify(input.email.split('@')[0]);
+      : slugify(input.email.split("@")[0]);
     const existingSlug = await usersRepo.findBySlug(slugSource);
     const slug = existingSlug ? slugWithSuffix(slugSource, id) : slugSource;
 
@@ -72,17 +72,17 @@ export async function registerUser(
       email: input.email,
       passwordHash,
       slug,
-      status: 'pending',
-      locale: input.locale ?? 'pt-BR',
-      emailConfirmedAt: null
+      status: "pending",
+      locale: input.locale ?? "pt-BR",
+      emailConfirmedAt: null,
     });
 
-    await usersRepo.assignRole(user.id, input.roleKey ?? 'individual');
+    await usersRepo.assignRole(user.id, input.roleKey ?? "individual");
 
     if (input.displayName) {
       await usersRepo.upsertProfile(user.id, {
         id: deps.idGenerator.generate(),
-        displayName: input.displayName
+        displayName: input.displayName,
       });
     }
 
@@ -91,9 +91,9 @@ export async function registerUser(
       await consentsRepo.recordConsent({
         id: deps.idGenerator.generate(),
         userId: user.id,
-        consentType: 'privacy_policy',
+        consentType: "privacy_policy",
         consented: input.acceptedPrivacy,
-        version: '2026-04-24',
+        version: "2026-04-24",
         ipAddress: input.ipAddress,
       });
     }
@@ -103,9 +103,9 @@ export async function registerUser(
       await consentsRepo.recordConsent({
         id: deps.idGenerator.generate(),
         userId: user.id,
-        consentType: 'terms_of_use',
+        consentType: "terms_of_use",
         consented: input.acceptedTerms,
-        version: '2026-01',
+        version: "2026-01",
         ipAddress: input.ipAddress,
       });
     }
@@ -113,7 +113,9 @@ export async function registerUser(
     const rawToken = deps.tokenGenerator.generate();
     const tokenHash = await deps.hashService.sha256(rawToken);
     const now = deps.clock.now();
-    const expiresAt = new Date(now.getTime() + deps.config.emailConfirmTtlMinutes * 60 * 1000);
+    const expiresAt = new Date(
+      now.getTime() + deps.config.emailConfirmTtlMinutes * 60 * 1000,
+    );
     await confirmationsRepo.create({
       id: deps.idGenerator.generate(),
       userId: user.id,
@@ -123,7 +125,7 @@ export async function registerUser(
       confirmedAt: null,
       createdAt: now,
       updatedAt: now,
-      deletedAt: null
+      deletedAt: null,
     });
 
     return { user, rawToken };
@@ -131,8 +133,10 @@ export async function registerUser(
 
   // External side effects after transaction (email)
   const confirmUrl = `${deps.config.frontendUrl}/confirm-email?token=${rawToken}`;
-  const locale = input.locale ?? 'pt-BR';
-  await deps.emailSender.send(buildConfirmationEmail(locale, user.email, confirmUrl));
+  const locale = input.locale ?? "pt-BR";
+  await deps.emailSender.send(
+    buildConfirmationEmail(locale, user.email, confirmUrl),
+  );
 
   return { id: user.id, email: user.email, status: user.status };
 }

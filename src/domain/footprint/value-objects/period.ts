@@ -4,14 +4,14 @@
 export class Period {
   constructor(
     public readonly start: Date,
-    public readonly end: Date
+    public readonly end: Date,
   ) {
     this.validate();
   }
 
   private validate(): void {
     if (this.start >= this.end) {
-      throw new Error('Period start must be before end');
+      throw new Error("Period start must be before end");
     }
 
     const maxPeriodDays = 366; // Max 1 year
@@ -60,8 +60,8 @@ export class Period {
    */
   toJSON(): { start: string; end: string } {
     return {
-      start: this.start.toISOString().split('T')[0]!,
-      end: this.end.toISOString().split('T')[0]!
+      start: this.start.toISOString().split("T")[0]!,
+      end: this.end.toISOString().split("T")[0]!,
     };
   }
 

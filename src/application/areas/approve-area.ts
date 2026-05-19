@@ -1,4 +1,4 @@
-import { AreaAuditService } from '../../domain/areas/services/area-audit.service';
+import { AreaAuditService } from "../../domain/areas/services/area-audit.service";
 
 export interface ApproveAreaRequest {
   areaId: string;
@@ -18,12 +18,12 @@ export interface ApproveAreaDeps {
 
 export async function approveArea(
   deps: ApproveAreaDeps,
-  request: ApproveAreaRequest
+  request: ApproveAreaRequest,
 ): Promise<void> {
   await deps.auditService.approveArea(
     request.areaId,
     request.analystId,
     request.criteria,
-    request.notes
+    request.notes,
   );
 }

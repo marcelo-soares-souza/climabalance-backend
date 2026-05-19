@@ -1,6 +1,7 @@
 # Fix: Captura de IP e Contexto no Audit Log
 
 ## Problema
+
 O audit log não estava capturando `client_ip`, `user_agent` e outros campos de contexto porque os handlers não estavam passando o `HttpContext`.
 
 ## Solução Implementada
@@ -8,6 +9,7 @@ O audit log não estava capturando `client_ip`, `user_agent` e outros campos de 
 ### 1. Auto-extração de Contexto
 
 O repositório agora aceita um parâmetro opcional `ctx` que extrai automaticamente:
+
 - `clientIp` - do ctx.clientIp ou headers x-real-ip/x-forwarded-for
 - `userAgent` - do header user-agent
 - `requestId` - do ctx.requestId
@@ -16,8 +18,8 @@ O repositório agora aceita um parâmetro opcional `ctx` que extrai automaticame
 ```typescript
 await auditLog.log({
   actorUserId: userId,
-  action: 'user.login',
-  entityType: 'user',
+  action: "user.login",
+  entityType: "user",
   entityId: userId,
   ctx, // <-- Passa o HttpContext aqui!
   success: true,
@@ -28,10 +30,12 @@ await auditLog.log({
 ### 2. Status Atual
 
 **Handlers HTTP atualizados:**
+
 - ✅ `auth-handlers.ts` - Login já captura contexto completo
 - ⚠️ `payment-handlers.ts` - Função helper interna (não crítico)
 
 **Application Services:**
+
 - ⏳ Ainda não atualizados (não têm acesso ao ctx)
 - Não é crítico - continuam funcionando, apenas sem IP/user agent
 
@@ -84,8 +88,8 @@ const auditContext = {
   ctx,
   success: true,
   httpStatus: 200,
-  severity: 'info' as const,
-  category: ['compliance'],
+  severity: "info" as const,
+  category: ["compliance"],
 };
 
 await someApplicationService({
@@ -110,9 +114,9 @@ async function someApplicationService(input: ServiceInput) {
 
   await deps.auditLog.log({
     actorUserId: input.actorUserId,
-    action: 'action',
-    entityType: 'entity',
-    entityId: 'id',
+    action: "action",
+    entityType: "entity",
+    entityId: "id",
     ...input.auditContext, // Spread do contexto
   });
 }
@@ -121,6 +125,7 @@ async function someApplicationService(input: ServiceInput) {
 ## Verificar Captura
 
 ### Query de Teste
+
 ```sql
 SELECT
   action,
@@ -138,6 +143,7 @@ LIMIT 10;
 ```
 
 ### Teste Manual
+
 1. Fazer login via frontend ou API
 2. Executar a query acima
 3. Verificar se `client_ip` e `user_agent` estão populados
@@ -145,21 +151,25 @@ LIMIT 10;
 ## Próximos Passos
 
 ### Prioridade Alta
+
 - [ ] Atualizar handlers de área (create, update, delete, approve, reject)
 - [ ] Atualizar handlers de compensação
 - [ ] Atualizar handlers de pagamento (webhook, reconcile)
 
 ### Prioridade Média
+
 - [ ] Passar audit context para application services principais
 - [ ] Adicionar testes para verificar captura de IP
 
 ### Prioridade Baixa
+
 - [ ] Integrar com serviço GeoIP para country_code e city
 - [ ] Adicionar session_id tracking
 
 ## Retrocompatibilidade
 
 ✅ A mudança é **100% retrocompatível**:
+
 - Handlers que não passam `ctx` continuam funcionando
 - Apenas não terão IP/user agent/request ID
 - Podem ser atualizados gradualmente

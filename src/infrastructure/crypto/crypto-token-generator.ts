@@ -1,5 +1,5 @@
-import type { TokenGenerator } from '../../domain/services/token-generator';
-import { base64UrlEncode } from '../../shared/utils/base64url';
+import type { TokenGenerator } from "../../domain/services/token-generator";
+import { base64UrlEncode } from "../../shared/utils/base64url";
 
 /**
  * Implementation of TokenGenerator using Web Crypto API.

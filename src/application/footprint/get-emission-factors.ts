@@ -1,5 +1,5 @@
-import type { EmissionFactorRepository } from '../../domain/footprint/repositories/emission-factor-repository';
-import type { FootprintCategory } from '../../domain/footprint/value-objects/category';
+import type { EmissionFactorRepository } from "../../domain/footprint/repositories/emission-factor-repository";
+import type { FootprintCategory } from "../../domain/footprint/value-objects/category";
 
 export interface GetEmissionFactorsRequest {
   version?: string;
@@ -26,13 +26,15 @@ export interface GetEmissionFactorsDeps {
 
 export async function getEmissionFactors(
   deps: GetEmissionFactorsDeps,
-  request: GetEmissionFactorsRequest
+  request: GetEmissionFactorsRequest,
 ): Promise<GetEmissionFactorsResponse> {
-  const region = request.region || 'BR';
+  const region = request.region || "BR";
   let version = request.version;
 
   if (!version) {
-    version = (await deps.emissionFactorRepository.getLatestVersion(region)) || '2026-01';
+    version =
+      (await deps.emissionFactorRepository.getLatestVersion(region)) ||
+      "2026-01";
   }
 
   let factors;
@@ -41,10 +43,13 @@ export async function getEmissionFactors(
     factors = await deps.emissionFactorRepository.findByCategory(
       request.category as FootprintCategory,
       version,
-      region
+      region,
     );
   } else {
-    factors = await deps.emissionFactorRepository.findByVersionAndRegion(version, region);
+    factors = await deps.emissionFactorRepository.findByVersionAndRegion(
+      version,
+      region,
+    );
   }
 
   return {
@@ -56,7 +61,7 @@ export async function getEmissionFactors(
       factor_unit: f.factor_unit,
       source: f.source,
       region: f.region,
-      version: f.version
-    }))
+      version: f.version,
+    })),
   };
 }

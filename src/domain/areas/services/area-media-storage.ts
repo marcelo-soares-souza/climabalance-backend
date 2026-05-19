@@ -8,5 +8,7 @@ export interface AreaMediaStorage {
   read(storagePath: string): Promise<Uint8Array>;
   delete(storagePath: string): Promise<void>;
   exists(storagePath: string): Promise<boolean>;
-  generateThumbnail(storagePath: string): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }>;
+  generateThumbnail(
+    storagePath: string,
+  ): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }>;
 }

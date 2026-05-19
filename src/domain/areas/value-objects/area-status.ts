@@ -6,38 +6,38 @@
  *           (or rejected/suspended at any point)
  */
 export type AreaStatusValue =
-  | 'draft'
-  | 'pending_audit'
-  | 'approved'
-  | 'active'
-  | 'rejected'
-  | 'suspended';
+  | "draft"
+  | "pending_audit"
+  | "approved"
+  | "active"
+  | "rejected"
+  | "suspended";
 
 export class AreaStatus {
   private constructor(readonly value: AreaStatusValue) {}
 
-  static DRAFT = new AreaStatus('draft');
-  static PENDING_AUDIT = new AreaStatus('pending_audit');
-  static APPROVED = new AreaStatus('approved');
-  static ACTIVE = new AreaStatus('active');
-  static REJECTED = new AreaStatus('rejected');
-  static SUSPENDED = new AreaStatus('suspended');
+  static DRAFT = new AreaStatus("draft");
+  static PENDING_AUDIT = new AreaStatus("pending_audit");
+  static APPROVED = new AreaStatus("approved");
+  static ACTIVE = new AreaStatus("active");
+  static REJECTED = new AreaStatus("rejected");
+  static SUSPENDED = new AreaStatus("suspended");
 
   static fromString(value: string): AreaStatus {
     const normalized = value.toLowerCase() as AreaStatusValue;
 
     switch (normalized) {
-      case 'draft':
+      case "draft":
         return AreaStatus.DRAFT;
-      case 'pending_audit':
+      case "pending_audit":
         return AreaStatus.PENDING_AUDIT;
-      case 'approved':
+      case "approved":
         return AreaStatus.APPROVED;
-      case 'active':
+      case "active":
         return AreaStatus.ACTIVE;
-      case 'rejected':
+      case "rejected":
         return AreaStatus.REJECTED;
-      case 'suspended':
+      case "suspended":
         return AreaStatus.SUSPENDED;
       default:
         throw new Error(`Invalid area status: ${value}`);
@@ -46,43 +46,43 @@ export class AreaStatus {
 
   canTransitionTo(newStatus: AreaStatus): boolean {
     const transitions: Record<AreaStatusValue, AreaStatusValue[]> = {
-      draft: ['pending_audit'],
-      pending_audit: ['approved', 'rejected'],
-      approved: ['active', 'rejected'],
-      active: ['suspended'],
+      draft: ["pending_audit"],
+      pending_audit: ["approved", "rejected"],
+      approved: ["active", "rejected"],
+      active: ["suspended"],
       rejected: [], // Terminal state
-      suspended: ['active'], // Can be reactivated
+      suspended: ["active"], // Can be reactivated
     };
 
     return transitions[this.value].includes(newStatus.value);
   }
 
   isDraft(): boolean {
-    return this.value === 'draft';
+    return this.value === "draft";
   }
 
   isPendingAudit(): boolean {
-    return this.value === 'pending_audit';
+    return this.value === "pending_audit";
   }
 
   isApproved(): boolean {
-    return this.value === 'approved';
+    return this.value === "approved";
   }
 
   isActive(): boolean {
-    return this.value === 'active';
+    return this.value === "active";
   }
 
   isRejected(): boolean {
-    return this.value === 'rejected';
+    return this.value === "rejected";
   }
 
   isSuspended(): boolean {
-    return this.value === 'suspended';
+    return this.value === "suspended";
   }
 
   canBeEdited(): boolean {
-    return this.value === 'draft' || this.value === 'active';
+    return this.value === "draft" || this.value === "active";
   }
 
   canBeEditedFor(isAdmin: boolean): boolean {
@@ -93,7 +93,7 @@ export class AreaStatus {
   }
 
   canBeDeleted(): boolean {
-    return this.value === 'draft';
+    return this.value === "draft";
   }
 
   canBeDeletedFor(isAdmin: boolean): boolean {
@@ -104,7 +104,7 @@ export class AreaStatus {
   }
 
   canBeSubmittedForAudit(): boolean {
-    return this.value === 'draft';
+    return this.value === "draft";
   }
 
   equals(other: AreaStatus): boolean {

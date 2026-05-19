@@ -1,8 +1,8 @@
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { RefreshTokenRepository } from '../../domain/user/refresh-token-repository';
-import type { PasswordHasher } from '../../infrastructure/crypto/password';
-import type { Clock } from '../../domain/services/clock';
-import { InvalidCredentialsError } from '../../domain/errors';
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { RefreshTokenRepository } from "../../domain/user/refresh-token-repository";
+import type { PasswordHasher } from "../../infrastructure/crypto/password";
+import type { Clock } from "../../domain/services/clock";
+import { InvalidCredentialsError } from "../../domain/errors";
 
 export type ChangePasswordInput = {
   userId: string;
@@ -17,14 +17,17 @@ export async function changePassword(
     refreshTokens: RefreshTokenRepository;
     passwordHasher: PasswordHasher;
     clock: Clock;
-  }
+  },
 ): Promise<void> {
   const user = await deps.users.findById(input.userId);
   if (!user || !user.passwordHash) {
     throw new InvalidCredentialsError();
   }
 
-  const isValid = await deps.passwordHasher.verify(input.oldPassword, user.passwordHash);
+  const isValid = await deps.passwordHasher.verify(
+    input.oldPassword,
+    user.passwordHash,
+  );
   if (!isValid) {
     throw new InvalidCredentialsError();
   }

@@ -1,14 +1,14 @@
 import type {
   CompensationHistoryItem,
   CompensationHistoryRepository,
-} from '../../domain/compensations/repositories/compensation-history-repository';
-import { ForbiddenError } from '../../domain/errors';
+} from "../../domain/compensations/repositories/compensation-history-repository";
+import { ForbiddenError } from "../../domain/errors";
 
 export type ListCompensationsInput = {
   supporterUserId: string;
   actorUserId?: string;
   actorRoles?: string[];
-  status?: CompensationHistoryItem['status'];
+  status?: CompensationHistoryItem["status"];
   limit?: number;
   offset?: number;
 };
@@ -17,13 +17,13 @@ export async function listCompensations(
   deps: {
     historyRepository: CompensationHistoryRepository;
   },
-  input: ListCompensationsInput
+  input: ListCompensationsInput,
 ): Promise<CompensationHistoryItem[]> {
   if (input.actorUserId && input.actorRoles) {
-    const isAdmin = input.actorRoles.includes('administrator');
+    const isAdmin = input.actorRoles.includes("administrator");
     const isSelf = input.actorUserId === input.supporterUserId;
     if (!isAdmin && !isSelf) {
-      throw new ForbiddenError('auth.forbidden');
+      throw new ForbiddenError("auth.forbidden");
     }
   }
 

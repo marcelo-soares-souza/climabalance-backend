@@ -22,7 +22,10 @@ export interface EmissionFactor {
 /**
  * Check if emission factor is currently valid
  */
-export function isEmissionFactorValid(factor: EmissionFactor, date: Date = new Date()): boolean {
+export function isEmissionFactorValid(
+  factor: EmissionFactor,
+  date: Date = new Date(),
+): boolean {
   if (factor.deleted_at) {
     return false;
   }
@@ -41,7 +44,9 @@ export function isEmissionFactorValid(factor: EmissionFactor, date: Date = new D
 /**
  * Parse metadata JSON if present
  */
-export function getEmissionFactorMetadata(factor: EmissionFactor): Record<string, any> | null {
+export function getEmissionFactorMetadata(
+  factor: EmissionFactor,
+): Record<string, any> | null {
   if (!factor.metadata_json) {
     return null;
   }

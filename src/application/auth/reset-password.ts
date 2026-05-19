@@ -1,13 +1,13 @@
-import type { PasswordResetRepository } from '../../domain/user/password-reset-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { PasswordHasher } from '../../infrastructure/crypto/password';
-import type { HashService } from '../../domain/services/hash-service';
-import type { Clock } from '../../domain/services/clock';
+import type { PasswordResetRepository } from "../../domain/user/password-reset-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { PasswordHasher } from "../../infrastructure/crypto/password";
+import type { HashService } from "../../domain/services/hash-service";
+import type { Clock } from "../../domain/services/clock";
 import {
   InvalidTokenError,
   TokenAlreadyUsedError,
-  TokenExpiredError
-} from '../../domain/errors';
+  TokenExpiredError,
+} from "../../domain/errors";
 
 export type ResetPasswordInput = {
   token: string;
@@ -22,12 +22,12 @@ export async function resetPassword(
     passwordHasher: PasswordHasher;
     hashService: HashService;
     clock: Clock;
-  }
+  },
 ): Promise<{ userId: string }> {
   const tokenHash = await deps.hashService.sha256(input.token);
   const record = await deps.passwordResets.findByTokenHash(tokenHash);
   if (!record || record.deletedAt) {
-    throw new InvalidTokenError('password reset token not found');
+    throw new InvalidTokenError("password reset token not found");
   }
   if (record.usedAt) {
     throw new TokenAlreadyUsedError(record.usedAt);
@@ -38,7 +38,7 @@ export async function resetPassword(
 
   const user = await deps.users.findById(record.userId);
   if (!user || user.deletedAt) {
-    throw new InvalidTokenError('user not found for token');
+    throw new InvalidTokenError("user not found for token");
   }
 
   const passwordHash = await deps.passwordHasher.hash(input.password);

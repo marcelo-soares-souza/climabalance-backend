@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const simulateCardPaymentSchema = z.object({
   compensation_id: z.string().min(1).max(64),
@@ -11,17 +11,19 @@ export const simulateCardPaymentSchema = z.object({
 });
 
 export const paymentWebhookSchema = z.object({
-  provider: z.enum(['card_simulator', 'stripe']),
+  provider: z.enum(["card_simulator", "stripe"]),
   event: z.string().min(1),
-  data: z.object({
-    provider_reference: z.string().min(8).max(140).optional(),
-    object: z
-      .object({
-        id: z.string().optional(),
-        status: z.string().optional(),
-      })
-      .optional(),
-  }).optional(),
+  data: z
+    .object({
+      provider_reference: z.string().min(8).max(140).optional(),
+      object: z
+        .object({
+          id: z.string().optional(),
+          status: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
 });
 
 export const reconcilePaymentsSchema = z.object({

@@ -1,6 +1,6 @@
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { ConsentRepository } from '../../domain/user/consent-repository';
-import { UserNotFoundError } from '../../domain/errors';
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { ConsentRepository } from "../../domain/user/consent-repository";
+import { UserNotFoundError } from "../../domain/errors";
 
 export type UserDataExport = {
   user: {
@@ -42,7 +42,7 @@ export async function exportUserData(
           limit: number;
           offset: number;
         },
-        client?: any
+        client?: any,
       ): Promise<any[]>;
     };
     compensationCertificateRepository: {
@@ -55,11 +55,16 @@ export async function exportUserData(
     calculationRepository: {
       findByUserId(
         userId: string,
-        filters?: { status?: string; profile_type?: string; limit?: number; offset?: number }
+        filters?: {
+          status?: string;
+          profile_type?: string;
+          limit?: number;
+          offset?: number;
+        },
       ): Promise<any[]>;
       sumFinalizedTCO2eByUser(userId: string): Promise<number>;
     };
-  }
+  },
 ): Promise<UserDataExport> {
   const user = await deps.users.findById(userId);
   if (!user || user.deletedAt) {
@@ -69,7 +74,9 @@ export async function exportUserData(
   const profile = await deps.users.getProfile(userId);
   const roles = await deps.users.getRoles(userId);
   const consents = await deps.consents.getConsentsByUser(userId);
-  void deps.compensationHistoryRepository.getPaidContributionSummaryBySupporter(userId);
+  void deps.compensationHistoryRepository.getPaidContributionSummaryBySupporter(
+    userId,
+  );
   void deps.calculationRepository.sumFinalizedTCO2eByUser(userId);
 
   const [compensations, certificates, footprints] = await Promise.all([

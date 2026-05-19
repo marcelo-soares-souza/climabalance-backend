@@ -1,9 +1,9 @@
-import type { PaymentGatewayAdapter } from './payment-gateway';
+import type { PaymentGatewayAdapter } from "./payment-gateway";
 import {
   mapGatewayOutcomeToPaymentStatus,
   resolveCompensationStatusFromPayment,
-} from './payment-status';
-import type { PaymentStore } from './payment-store';
+} from "./payment-status";
+import type { PaymentStore } from "./payment-store";
 
 /**
  * Input payload received from webhook transport layer.
@@ -21,8 +21,8 @@ export type ProcessPaymentWebhookResult = {
   processed: boolean;
   paymentId?: string;
   compensationId?: string;
-  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
-  compensationStatus?: 'pending' | 'paid' | 'canceled' | 'refunded';
+  paymentStatus?: "pending" | "paid" | "failed" | "refunded";
+  compensationStatus?: "pending" | "paid" | "canceled" | "refunded";
 };
 
 /**
@@ -46,7 +46,7 @@ export async function processPaymentWebhook(
       }): Promise<void>;
     };
   },
-  input: ProcessPaymentWebhookInput
+  input: ProcessPaymentWebhookInput,
 ): Promise<ProcessPaymentWebhookResult> {
   if (input.provider !== deps.paymentGateway.provider) {
     return { processed: false };
@@ -63,12 +63,15 @@ export async function processPaymentWebhook(
     if (!payment) {
       await deps.auditLog.log({
         actorUserId: input.actorUserId,
-        action: 'payment.webhook_payment_not_found',
-        entityType: 'payment',
+        action: "payment.webhook_payment_not_found",
+        entityType: "payment",
         entityId: input.providerReference,
-        metadata: { provider: input.provider, provider_reference: input.providerReference },
+        metadata: {
+          provider: input.provider,
+          provider_reference: input.providerReference,
+        },
         success: false,
-        errorCode: 'PAYMENT_NOT_FOUND',
+        errorCode: "PAYMENT_NOT_FOUND",
       });
       return { processed: false } as ProcessPaymentWebhookResult;
     }
@@ -77,14 +80,16 @@ export async function processPaymentWebhook(
       providerReference: payment.providerReference,
     });
 
-    const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(gatewayStatus.outcome);
+    const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(
+      gatewayStatus.outcome,
+    );
 
     if (latestPaymentStatus !== payment.paymentStatus) {
       await tx.updatePaymentStatus({
         paymentId: payment.id,
         status: latestPaymentStatus,
         updatedAt: now,
-        paidAt: latestPaymentStatus === 'paid' ? now : undefined,
+        paidAt: latestPaymentStatus === "paid" ? now : undefined,
       });
     }
 
@@ -94,9 +99,9 @@ export async function processPaymentWebhook(
     });
 
     if (
-      (nextCompensationStatus === 'pending' ||
-        nextCompensationStatus === 'paid' ||
-        nextCompensationStatus === 'canceled') &&
+      (nextCompensationStatus === "pending" ||
+        nextCompensationStatus === "paid" ||
+        nextCompensationStatus === "canceled") &&
       payment.compensationStatus !== nextCompensationStatus
     ) {
       await tx.updateCompensationStatus({
@@ -112,9 +117,9 @@ export async function processPaymentWebhook(
       compensationId: payment.compensationId,
       paymentStatus: latestPaymentStatus,
       compensationStatus:
-        nextCompensationStatus === 'paid' ||
-        nextCompensationStatus === 'pending' ||
-        nextCompensationStatus === 'canceled'
+        nextCompensationStatus === "paid" ||
+        nextCompensationStatus === "pending" ||
+        nextCompensationStatus === "canceled"
           ? nextCompensationStatus
           : payment.compensationStatus,
     } satisfies ProcessPaymentWebhookResult;
@@ -123,8 +128,8 @@ export async function processPaymentWebhook(
   if (result.processed && result.paymentId) {
     await deps.auditLog.log({
       actorUserId: input.actorUserId,
-      action: 'payment.webhook_processed',
-      entityType: 'payment',
+      action: "payment.webhook_processed",
+      entityType: "payment",
       entityId: result.paymentId,
       metadata: {
         provider: input.provider,

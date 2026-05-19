@@ -1,7 +1,7 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import type { CompensationCertificateStorage } from '../../domain/compensations/services/certificate-storage';
-import { env } from '../../shared/utils/env';
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+import type { CompensationCertificateStorage } from "../../domain/compensations/services/certificate-storage";
+import { env } from "../../shared/utils/env";
 
 export class LocalCertificateStorage implements CompensationCertificateStorage {
   constructor(private readonly basePath: string = env.certificateStoragePath) {}

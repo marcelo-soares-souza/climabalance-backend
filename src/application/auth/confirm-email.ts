@@ -1,12 +1,12 @@
-import type { EmailConfirmationRepository } from '../../domain/user/email-confirmation-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import type { HashService } from '../../domain/services/hash-service';
-import type { Clock } from '../../domain/services/clock';
+import type { EmailConfirmationRepository } from "../../domain/user/email-confirmation-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import type { HashService } from "../../domain/services/hash-service";
+import type { Clock } from "../../domain/services/clock";
 import {
   InvalidTokenError,
   TokenAlreadyUsedError,
-  TokenExpiredError
-} from '../../domain/errors';
+  TokenExpiredError,
+} from "../../domain/errors";
 
 export async function confirmEmail(
   token: string,
@@ -15,12 +15,12 @@ export async function confirmEmail(
     users: UserRepository;
     hashService: HashService;
     clock: Clock;
-  }
+  },
 ): Promise<{ userId: string }> {
   const tokenHash = await deps.hashService.sha256(token);
   const record = await deps.confirmations.findByTokenHash(tokenHash);
   if (!record || record.deletedAt) {
-    throw new InvalidTokenError('confirmation token not found');
+    throw new InvalidTokenError("confirmation token not found");
   }
   if (record.confirmedAt) {
     throw new TokenAlreadyUsedError(record.confirmedAt);
@@ -35,7 +35,7 @@ export async function confirmEmail(
   await deps.users.update({
     id: record.userId,
     emailConfirmedAt: confirmedAt,
-    status: 'active'
+    status: "active",
   });
 
   return { userId: record.userId };

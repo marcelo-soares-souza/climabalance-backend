@@ -1,8 +1,8 @@
-import { AreaRepository } from '../../domain/areas/repositories/area-repository';
-import { AreaCriteriaRepository } from '../../domain/areas/repositories/area-criteria-repository';
-import type { UserRepository } from '../../domain/user/user-repository';
-import { ForbiddenError, NotFoundError } from '../../domain/errors';
-import { maskEmail } from '../../shared/utils/mask-sensitive';
+import { AreaRepository } from "../../domain/areas/repositories/area-repository";
+import { AreaCriteriaRepository } from "../../domain/areas/repositories/area-criteria-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
+import { ForbiddenError, NotFoundError } from "../../domain/errors";
+import { maskEmail } from "../../shared/utils/mask-sensitive";
 
 export interface GetAreaResponse {
   id: string;
@@ -48,26 +48,27 @@ export interface GetAreaResponse {
 export interface GetAreaDeps {
   areaRepository: AreaRepository;
   areaCriteriaRepository: AreaCriteriaRepository;
-  userRepository?: Pick<UserRepository, 'findById' | 'getProfile'>;
+  userRepository?: Pick<UserRepository, "findById" | "getProfile">;
 }
 
 export async function getArea(
   deps: GetAreaDeps,
   areaId: string,
   userId?: string,
-  roles?: string[]
+  roles?: string[],
 ): Promise<GetAreaResponse> {
   const area = await deps.areaRepository.findById(areaId);
 
   if (!area) {
-    throw new NotFoundError('area.not_found');
+    throw new NotFoundError("area.not_found");
   }
 
   // Authorization check (owner, or public if active)
   if (!area.isActive()) {
-    const isPrivileged = roles?.includes('administrator') || roles?.includes('analyst');
+    const isPrivileged =
+      roles?.includes("administrator") || roles?.includes("analyst");
     if (!isPrivileged && (!userId || area.ownerUserId !== userId)) {
-      throw new ForbiddenError('area.not_owner');
+      throw new ForbiddenError("area.not_owner");
     }
   }
 

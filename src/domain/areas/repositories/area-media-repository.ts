@@ -1,4 +1,4 @@
-export type AreaMediaType = 'photo' | 'video';
+export type AreaMediaType = "photo" | "video";
 
 export type AreaMedia = {
   id: string;
@@ -23,5 +23,10 @@ export interface AreaMediaRepository {
   listByAreaId(areaId: string, client?: any): Promise<AreaMedia[]>;
   listByAreaIds(areaIds: string[], client?: any): Promise<AreaMedia[]>;
   softDelete(id: string, deletedAt: Date, client?: any): Promise<void>;
-  updateThumbnail(id: string, thumbnailStoragePath: string, thumbnailGeneratedAt: Date, client?: any): Promise<void>;
+  updateThumbnail(
+    id: string,
+    thumbnailStoragePath: string,
+    thumbnailGeneratedAt: Date,
+    client?: any,
+  ): Promise<void>;
 }

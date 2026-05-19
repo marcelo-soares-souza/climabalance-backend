@@ -1,15 +1,13 @@
-import type { Pool, PoolClient } from 'pg';
+import type { Pool, PoolClient } from "pg";
 import type {
   CertificateFileRecord,
   CompensationCertificateListItem,
   CompensationCertificateLookup,
   CompensationCertificateRecord,
   CompensationCertificateRepository,
-} from '../../../domain/compensations/repositories/compensation-certificate-repository';
+} from "../../../domain/compensations/repositories/compensation-certificate-repository";
 
-export class PostgresCompensationCertificateRepository
-  implements CompensationCertificateRepository
-{
+export class PostgresCompensationCertificateRepository implements CompensationCertificateRepository {
   constructor(private readonly pool: Pool | PoolClient) {}
 
   async createFile(record: CertificateFileRecord): Promise<void> {
@@ -41,11 +39,13 @@ export class PostgresCompensationCertificateRepository
         record.createdAt,
         record.updatedAt,
         record.deletedAt ?? null,
-      ]
+      ],
     );
   }
 
-  async createCertificate(record: CompensationCertificateRecord): Promise<void> {
+  async createCertificate(
+    record: CompensationCertificateRecord,
+  ): Promise<void> {
     await this.pool.query(
       `INSERT INTO certificates (
         id,
@@ -76,12 +76,12 @@ export class PostgresCompensationCertificateRepository
         record.createdAt,
         record.updatedAt,
         record.deletedAt ?? null,
-      ]
+      ],
     );
   }
 
   async findByCompensationId(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateLookup | null> {
     const result = await this.pool.query(
       `SELECT
@@ -109,7 +109,7 @@ export class PostgresCompensationCertificateRepository
         AND c.deleted_at IS NULL
       ORDER BY c.created_at DESC
       LIMIT 1`,
-      [compensationId]
+      [compensationId],
     );
 
     if (result.rows.length === 0) {
@@ -119,7 +119,7 @@ export class PostgresCompensationCertificateRepository
   }
 
   async findByCertificateNumber(
-    certificateNumber: string
+    certificateNumber: string,
   ): Promise<CompensationCertificateLookup | null> {
     const result = await this.pool.query(
       `SELECT
@@ -146,7 +146,7 @@ export class PostgresCompensationCertificateRepository
       WHERE c.certificate_number = $1
         AND c.deleted_at IS NULL
       LIMIT 1`,
-      [certificateNumber]
+      [certificateNumber],
     );
 
     if (result.rows.length === 0) {
@@ -155,7 +155,9 @@ export class PostgresCompensationCertificateRepository
     return mapLookupRow(result.rows[0] as Record<string, unknown>);
   }
 
-  async findById(certificateId: string): Promise<CompensationCertificateLookup | null> {
+  async findById(
+    certificateId: string,
+  ): Promise<CompensationCertificateLookup | null> {
     const result = await this.pool.query(
       `SELECT
         c.id,
@@ -181,7 +183,7 @@ export class PostgresCompensationCertificateRepository
       WHERE c.id = $1
         AND c.deleted_at IS NULL
       LIMIT 1`,
-      [certificateId]
+      [certificateId],
     );
 
     if (result.rows.length === 0) {
@@ -192,7 +194,7 @@ export class PostgresCompensationCertificateRepository
 
   async listBySupporterUserId(params: {
     supporterUserId: string;
-    status?: 'issued' | 'revoked';
+    status?: "issued" | "revoked";
     limit: number;
     offset: number;
   }): Promise<CompensationCertificateListItem[]> {
@@ -229,16 +231,18 @@ export class PostgresCompensationCertificateRepository
       ORDER BY c.issued_at DESC NULLS LAST, c.created_at DESC
       LIMIT $3
       OFFSET $4`,
-      [params.supporterUserId, statusFilter, limit, offset]
+      [params.supporterUserId, statusFilter, limit, offset],
     );
 
     return result.rows.map((row) =>
-      mapListItemRow(row as Record<string, unknown>)
+      mapListItemRow(row as Record<string, unknown>),
     );
   }
 }
 
-function mapLookupRow(row: Record<string, unknown>): CompensationCertificateLookup {
+function mapLookupRow(
+  row: Record<string, unknown>,
+): CompensationCertificateLookup {
   return {
     id: String(row.id),
     compensationId: String(row.compensation_id),
@@ -247,9 +251,10 @@ function mapLookupRow(row: Record<string, unknown>): CompensationCertificateLook
     issuedAt: row.issued_at ? new Date(String(row.issued_at)) : null,
     authenticityHash:
       row.authenticity_hash == null ? null : String(row.authenticity_hash),
-    validationUrl: row.validation_url == null ? null : String(row.validation_url),
+    validationUrl:
+      row.validation_url == null ? null : String(row.validation_url),
     qrCodeData: row.qr_code_data == null ? null : String(row.qr_code_data),
-    status: String(row.status) as CompensationCertificateLookup['status'],
+    status: String(row.status) as CompensationCertificateLookup["status"],
     supporterUserId: String(row.supporter_user_id),
     fileName: String(row.file_name),
     mimeType: String(row.mime_type),
@@ -258,17 +263,18 @@ function mapLookupRow(row: Record<string, unknown>): CompensationCertificateLook
 }
 
 function mapListItemRow(
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
 ): CompensationCertificateListItem {
   return {
     id: String(row.id),
     compensationId: String(row.compensation_id),
     certificateNumber: String(row.certificate_number),
     issuedAt: row.issued_at ? new Date(String(row.issued_at)) : null,
-    status: String(row.status) as CompensationCertificateListItem['status'],
+    status: String(row.status) as CompensationCertificateListItem["status"],
     authenticityHash:
       row.authenticity_hash == null ? null : String(row.authenticity_hash),
-    validationUrl: row.validation_url == null ? null : String(row.validation_url),
+    validationUrl:
+      row.validation_url == null ? null : String(row.validation_url),
     qrCodeData: row.qr_code_data == null ? null : String(row.qr_code_data),
     fileName: String(row.file_name),
     mimeType: String(row.mime_type),

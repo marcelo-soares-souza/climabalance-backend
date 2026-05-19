@@ -1,7 +1,7 @@
-import type { AuditLogRepository } from '../../domain/audit/audit-log-repository';
-import type { HttpContext } from './router';
+import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { HttpContext } from "./router";
 
-type AuditLogger = Pick<AuditLogRepository, 'log'>;
+type AuditLogger = Pick<AuditLogRepository, "log">;
 
 /**
  * Wraps an audit logger so all entries inherit the current HTTP context.
@@ -9,7 +9,7 @@ type AuditLogger = Pick<AuditLogRepository, 'log'>;
  */
 export function withAuditLogContext(
   auditLog: AuditLogger,
-  ctx: HttpContext
+  ctx: HttpContext,
 ): AuditLogger {
   return {
     log(entry) {

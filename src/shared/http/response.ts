@@ -1,23 +1,26 @@
-import { getLogger, type LogContext } from '../utils/logger';
-import { summarizeBodyForLog } from './log-summary';
+import { getLogger, type LogContext } from "../utils/logger";
+import { summarizeBodyForLog } from "./log-summary";
 
 export type ApiError = {
   message_key: string;
   details?: unknown;
 };
 
-type ResponseHeaders = Headers | Record<string, string> | Array<[string, string]>;
+type ResponseHeaders =
+  | Headers
+  | Record<string, string>
+  | Array<[string, string]>;
 
 function buildJsonResponseWithHeaders(
   status: number,
   body: unknown,
-  extraHeaders?: ResponseHeaders
+  extraHeaders?: ResponseHeaders,
 ): Response {
   const headers = new Headers(extraHeaders);
-  headers.set('content-type', 'application/json');
+  headers.set("content-type", "application/json");
   return new Response(JSON.stringify(body), {
     status,
-    headers
+    headers,
   });
 }
 
@@ -25,12 +28,12 @@ export function jsonResponse(
   status: number,
   body: unknown,
   context?: LogContext,
-  extraHeaders?: ResponseHeaders
+  extraHeaders?: ResponseHeaders,
 ): Response {
   if (context) {
-    getLogger(context).debug('response.body_summary', {
+    getLogger(context).debug("response.body_summary", {
       status,
-      body_summary: summarizeBodyForLog(body)
+      body_summary: summarizeBodyForLog(body),
     });
   }
   return buildJsonResponseWithHeaders(status, body, extraHeaders);
@@ -43,12 +46,11 @@ export function jsonResponse(
  * via the `filename*` parameter with UTF-8 percent-encoding.
  */
 export function contentDispositionHeader(
-  disposition: 'inline' | 'attachment',
+  disposition: "inline" | "attachment",
   fileName: string,
 ): string {
-  const safe = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '_');
-  const encoded = encodeURIComponent(fileName)
-    .replace(/%20/g, ' ');
+  const safe = fileName.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
+  const encoded = encodeURIComponent(fileName).replace(/%20/g, " ");
   return `${disposition}; filename="${safe}"; filename*=UTF-8''${encoded}`;
 }
 
@@ -57,7 +59,7 @@ export function errorResponse(
   messageKey: string,
   details?: unknown,
   context?: LogContext,
-  extraHeaders?: ResponseHeaders
+  extraHeaders?: ResponseHeaders,
 ): Response {
   const error: ApiError = { message_key: messageKey };
   if (details !== undefined) {
@@ -66,11 +68,11 @@ export function errorResponse(
   const payload = { error };
   if (context) {
     const logger = getLogger(context);
-    const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
-    logger[level]('response.error', {
+    const level = status >= 500 ? "error" : status >= 400 ? "warn" : "info";
+    logger[level]("response.error", {
       status,
       message_key: messageKey,
-      details_summary: summarizeBodyForLog(details)
+      details_summary: summarizeBodyForLog(details),
     });
   }
   return buildJsonResponseWithHeaders(status, payload, extraHeaders);

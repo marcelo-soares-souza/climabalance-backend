@@ -1,23 +1,40 @@
-import type { AuditLogEntry, AuditLogFilters, AuditLogRepository, AuditLogSeverity } from '../../../domain/audit/audit-log-repository';
-import type { AlertNotifier } from '../../alerts/alert-notifier';
-import { shouldAlert } from '../../alerts/alert-notifier';
-import { env } from '../../../shared/utils/env';
-import type { DbClient } from './db-client';
+import type {
+  AuditLogEntry,
+  AuditLogFilters,
+  AuditLogRepository,
+  AuditLogSeverity,
+} from "../../../domain/audit/audit-log-repository";
+import type { AlertNotifier } from "../../alerts/alert-notifier";
+import { shouldAlert } from "../../alerts/alert-notifier";
+import { env } from "../../../shared/utils/env";
+import type { DbClient } from "./db-client";
 
 const encoder = new TextEncoder();
 
-async function computeEntryHash(id: string, action: string, entityType: string, entityId: string | null | undefined, createdAt: Date, previousEntryHash: string | null | undefined): Promise<string> {
-  const data = `${id}${action}${entityType}${entityId ?? ''}${createdAt.toISOString()}${previousEntryHash ?? ''}`;
-  const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
+async function computeEntryHash(
+  id: string,
+  action: string,
+  entityType: string,
+  entityId: string | null | undefined,
+  createdAt: Date,
+  previousEntryHash: string | null | undefined,
+): Promise<string> {
+  const data = `${id}${action}${entityType}${entityId ?? ""}${createdAt.toISOString()}${previousEntryHash ?? ""}`;
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(data),
+  );
   const hashArray = new Uint8Array(hashBuffer);
-  return Array.from(hashArray).map((b) => b.toString(16).padStart(2, '0')).join('');
+  return Array.from(hashArray)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 async function getLastEntryHash(db: DbClient): Promise<string> {
   const result = await db.query(
-    'SELECT previous_entry_hash, id, action, entity_type, entity_id, created_at FROM audit_log WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1'
+    "SELECT previous_entry_hash, id, action, entity_type, entity_id, created_at FROM audit_log WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1",
   );
-  if (result.rows.length === 0) return '0'.repeat(64);
+  if (result.rows.length === 0) return "0".repeat(64);
   const row = result.rows[0];
   return computeEntryHash(
     row.id as string,
@@ -25,7 +42,7 @@ async function getLastEntryHash(db: DbClient): Promise<string> {
     row.entity_type as string,
     row.entity_id as string | null,
     new Date(row.created_at as string),
-    row.previous_entry_hash as string | null
+    row.previous_entry_hash as string | null,
   );
 }
 
@@ -33,24 +50,38 @@ async function getLastEntryHash(db: DbClient): Promise<string> {
  * Sanitize sensitive fields from state objects before storing in audit log.
  * Prevents leaking passwords, tokens, API keys, etc.
  */
-function sanitizeState(state: Record<string, any> | null | undefined): Record<string, any> | null {
-  if (!state || typeof state !== 'object') return null;
+function sanitizeState(
+  state: Record<string, any> | null | undefined,
+): Record<string, any> | null {
+  if (!state || typeof state !== "object") return null;
 
   const sensitiveFields = [
-    'password', 'passwd', 'pwd',
-    'token', 'access_token', 'refresh_token', 'api_key', 'apiKey',
-    'secret', 'private_key', 'privateKey',
-    'cvv', 'card_number', 'cardNumber',
-    'ssn', 'cpf', 'cnpj',
+    "password",
+    "passwd",
+    "pwd",
+    "token",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "apiKey",
+    "secret",
+    "private_key",
+    "privateKey",
+    "cvv",
+    "card_number",
+    "cardNumber",
+    "ssn",
+    "cpf",
+    "cnpj",
   ];
 
   const sanitized: Record<string, any> = {};
 
   for (const [key, value] of Object.entries(state)) {
     const lowerKey = key.toLowerCase();
-    if (sensitiveFields.some(sensitive => lowerKey.includes(sensitive))) {
-      sanitized[key] = '[REDACTED]';
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (sensitiveFields.some((sensitive) => lowerKey.includes(sensitive))) {
+      sanitized[key] = "[REDACTED]";
+    } else if (value && typeof value === "object" && !Array.isArray(value)) {
       sanitized[key] = sanitizeState(value as Record<string, any>);
     } else {
       sanitized[key] = value;
@@ -108,11 +139,13 @@ function mapAuditLog(row: Record<string, unknown>): AuditLogEntry {
 
 function isUuidLike(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
+    value,
   );
 }
 
-function normalizeActorUserId(actorUserId: string | null | undefined): string | null {
+function normalizeActorUserId(
+  actorUserId: string | null | undefined,
+): string | null {
   if (!actorUserId) return null;
   return isUuidLike(actorUserId) ? actorUserId : null;
 }
@@ -163,10 +196,13 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
     if (entry.ctx) {
       const headers = entry.ctx.request?.headers;
       autoContext = {
-        clientIp: entry.ctx.clientIp ?? headers?.get('x-real-ip') ?? headers?.get('x-forwarded-for')?.split(',')[0],
-        userAgent: headers?.get('user-agent'),
+        clientIp:
+          entry.ctx.clientIp ??
+          headers?.get("x-real-ip") ??
+          headers?.get("x-forwarded-for")?.split(",")[0],
+        userAgent: headers?.get("user-agent"),
         requestId: entry.ctx.requestId,
-        referer: headers?.get('referer') ?? headers?.get('referrer'),
+        referer: headers?.get("referer") ?? headers?.get("referrer"),
       };
     }
 
@@ -208,7 +244,10 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
 
     await this.create(logEntry);
 
-    if (this.alertNotifier && shouldAlert(logEntry, env.alertSeverityThreshold)) {
+    if (
+      this.alertNotifier &&
+      shouldAlert(logEntry, env.alertSeverityThreshold)
+    ) {
       this.alertNotifier.notify(logEntry).catch(() => {});
     }
   }
@@ -219,7 +258,8 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
     const sanitizedNewState = sanitizeState(entry.newState);
 
     // Compute hash chain: get the hash of the last entry
-    const lastHash = entry.previousEntryHash ?? await getLastEntryHash(this.db);
+    const lastHash =
+      entry.previousEntryHash ?? (await getLastEntryHash(this.db));
 
     await this.db.query(
       `INSERT INTO audit_log (
@@ -266,7 +306,7 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
         entry.city ?? null,
         entry.timezone ?? null,
         // Criticality
-        entry.severity ?? 'info',
+        entry.severity ?? "info",
         entry.category ?? null,
         entry.isSensitive ?? false,
         // State tracking (sanitized)
@@ -279,17 +319,22 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
         // Hash chain
         lastHash,
         // Timestamps
-        entry.createdAt
-      ]
+        entry.createdAt,
+      ],
     );
   }
 
-  async verifyChain(): Promise<{ valid: boolean; totalEntries: number; verifiedEntries: number; firstBrokenEntry?: string }> {
+  async verifyChain(): Promise<{
+    valid: boolean;
+    totalEntries: number;
+    verifiedEntries: number;
+    firstBrokenEntry?: string;
+  }> {
     const result = await this.db.query(
       `SELECT id, action, entity_type, entity_id, created_at, previous_entry_hash
        FROM audit_log
        WHERE deleted_at IS NULL
-       ORDER BY created_at ASC, id ASC`
+       ORDER BY created_at ASC, id ASC`,
     );
 
     const rows = result.rows as Array<{
@@ -302,11 +347,11 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
     }>;
 
     let verifiedEntries = 0;
-    let expectedHash = '0'.repeat(64);
+    let expectedHash = "0".repeat(64);
 
     for (const row of rows) {
       if (row.previous_entry_hash === null) {
-        expectedHash = '0'.repeat(64);
+        expectedHash = "0".repeat(64);
         continue;
       }
 
@@ -325,7 +370,7 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
         row.entity_type,
         row.entity_id,
         new Date(row.created_at),
-        row.previous_entry_hash
+        row.previous_entry_hash,
       );
       verifiedEntries++;
     }
@@ -333,10 +378,17 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
     return { valid: true, totalEntries: rows.length, verifiedEntries };
   }
 
-  async archive(retentionDays: number, archiveDays: number): Promise<{ archived: number; deleted: number }> {
+  async archive(
+    retentionDays: number,
+    archiveDays: number,
+  ): Promise<{ archived: number; deleted: number }> {
     const now = new Date();
-    const archiveThreshold = new Date(now.getTime() - archiveDays * 24 * 60 * 60 * 1000);
-    const deleteThreshold = new Date(now.getTime() - retentionDays * 24 * 60 * 60 * 1000);
+    const archiveThreshold = new Date(
+      now.getTime() - archiveDays * 24 * 60 * 60 * 1000,
+    );
+    const deleteThreshold = new Date(
+      now.getTime() - retentionDays * 24 * 60 * 60 * 1000,
+    );
 
     const { rows: toArchive } = await this.db.query(
       `INSERT INTO audit_log_archive (
@@ -361,7 +413,7 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
       FROM audit_log
       WHERE deleted_at IS NULL AND created_at < $1
       RETURNING id`,
-      [archiveThreshold]
+      [archiveThreshold],
     );
 
     const archivedCount = toArchive.length;
@@ -369,20 +421,22 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
     if (archivedCount > 0) {
       await this.db.query(
         `DELETE FROM audit_log WHERE id = ANY($1::varchar[])`,
-        [toArchive.map((r: any) => r.id)]
+        [toArchive.map((r: any) => r.id)],
       );
     }
 
     const { rows: toDelete } = await this.db.query(
       `DELETE FROM audit_log_archive WHERE created_at < $1 RETURNING id`,
-      [deleteThreshold]
+      [deleteThreshold],
     );
 
     return { archived: archivedCount, deleted: toDelete.length };
   }
 
-  async listWithTotal(filters: AuditLogFilters): Promise<{ entries: AuditLogEntry[]; total: number }> {
-    const conditions: string[] = ['al.deleted_at IS NULL'];
+  async listWithTotal(
+    filters: AuditLogFilters,
+  ): Promise<{ entries: AuditLogEntry[]; total: number }> {
+    const conditions: string[] = ["al.deleted_at IS NULL"];
     const values: unknown[] = [];
     let index = 1;
 
@@ -391,7 +445,9 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
       values.push(filters.actorUserId);
     }
     if (filters.actorEmail) {
-      conditions.push(`(al.actor_email ILIKE $${index} OR u.email ILIKE $${index})`);
+      conditions.push(
+        `(al.actor_email ILIKE $${index} OR u.email ILIKE $${index})`,
+      );
       values.push(`%${filters.actorEmail}%`);
       index++;
     }
@@ -428,11 +484,11 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
       values.push(filters.createdAtTo);
     }
 
-    const whereClause = conditions.join(' AND ');
+    const whereClause = conditions.join(" AND ");
 
     const countResult = await this.db.query(
       `SELECT COUNT(*) as total FROM audit_log al LEFT JOIN users u ON u.id = al.actor_user_id WHERE ${whereClause}`,
-      values
+      values,
     );
     const total = Number(countResult.rows[0]?.total ?? 0);
 
@@ -447,14 +503,14 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
        WHERE ${whereClause}
        ORDER BY al.updated_at DESC, al.created_at DESC
        LIMIT $${index++} OFFSET $${index++}`,
-      values
+      values,
     );
 
     return { entries: result.rows.map(mapAuditLog), total };
   }
 
   async list(filters: AuditLogFilters): Promise<AuditLogEntry[]> {
-    const conditions: string[] = ['al.deleted_at IS NULL'];
+    const conditions: string[] = ["al.deleted_at IS NULL"];
     const values: unknown[] = [];
     let index = 1;
 
@@ -463,7 +519,9 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
       values.push(filters.actorUserId);
     }
     if (filters.actorEmail) {
-      conditions.push(`(al.actor_email ILIKE $${index} OR u.email ILIKE $${index})`);
+      conditions.push(
+        `(al.actor_email ILIKE $${index} OR u.email ILIKE $${index})`,
+      );
       values.push(`%${filters.actorEmail}%`);
       index++;
     }
@@ -510,10 +568,10 @@ export class PostgresAuditLogRepository implements AuditLogRepository {
         COALESCE(al.actor_email, u.email) as actor_email
        FROM audit_log al
        LEFT JOIN users u ON u.id = al.actor_user_id
-       WHERE ${conditions.join(' AND ')}
+       WHERE ${conditions.join(" AND ")}
        ORDER BY al.updated_at DESC, al.created_at DESC
        LIMIT $${index++} OFFSET $${index++}`,
-      values
+      values,
     );
     return result.rows.map(mapAuditLog);
   }
