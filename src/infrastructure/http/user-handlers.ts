@@ -1,6 +1,8 @@
 import type { UserRepository } from "../../domain/user/user-repository";
+import type { RefreshTokenRepository } from "../../domain/user/refresh-token-repository";
 import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
 import type { PasswordHasher } from "../crypto/password";
+import type { Clock } from "../../domain/services/clock";
 import type { HttpContext } from "../../shared/http/router";
 import { parseJson } from "../../shared/http/request";
 import { errorResponse, jsonResponse } from "../../shared/http/response";
@@ -35,6 +37,8 @@ export type UserHandlersDeps = {
   auditLog: Pick<AuditLogRepository, "log">;
   passwordHasher: PasswordHasher;
   profileAvatarStorage: LocalProfileAvatarStorage;
+  refreshTokens: RefreshTokenRepository;
+  clock: Clock;
   calculationRepository: {
     sumFinalizedTCO2eByUser(userId: string): Promise<number>;
   };
@@ -256,6 +260,126 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               avatar_path: profile.avatarPath,
             },
           },
+          logContext,
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    listSessions: async (ctx: HttpContext, userIdOrSlug: string) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const userId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!userId) {
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
+        }
+        if (!canViewSensitiveUserData(ctx.auth, userId)) {
+          return errorResponse(403, "auth.forbidden", undefined, logContext);
+        }
+        const tokens = await deps.refreshTokens.findActiveByUserId(userId);
+        const data = tokens.map((t) => ({
+          id: t.id,
+          createdAt: t.createdAt.toISOString(),
+          expiresAt: t.expiresAt.toISOString(),
+          userAgent: t.userAgent || null,
+          hasFingerprint: !!t.fingerprintHash,
+        }));
+        log.info("user.sessions.list", { user_id: userId, count: data.length });
+        return jsonResponse(200, { data }, logContext);
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    revokeSession: async (
+      ctx: HttpContext,
+      userIdOrSlug: string,
+      sessionId: string,
+    ) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const userId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!userId) {
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
+        }
+        if (!canViewSensitiveUserData(ctx.auth, userId)) {
+          return errorResponse(403, "auth.forbidden", undefined, logContext);
+        }
+        const tokens = await deps.refreshTokens.findActiveByUserId(userId);
+        const token = tokens.find((t) => t.id === sessionId);
+        if (!token) {
+          return errorResponse(
+            404,
+            "auth.session_not_found",
+            undefined,
+            logContext,
+          );
+        }
+        await deps.refreshTokens.revoke(sessionId, deps.clock.now());
+        await deps.auditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: "user.logout",
+          entityType: "session",
+          entityId: sessionId,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: "info",
+          category: ["security"],
+        });
+        log.info("user.session.revoked", { user_id: userId, session_id: sessionId });
+        return jsonResponse(
+          200,
+          { message_key: "auth.session_revoked" },
+          logContext,
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    revokeAllSessions: async (ctx: HttpContext, userIdOrSlug: string) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      try {
+        const userId = await resolveUserId(userIdOrSlug, deps.users);
+        if (!userId) {
+          return jsonResponse(
+            404,
+            { message_key: "user.not_found" },
+            logContext,
+          );
+        }
+        if (!canViewSensitiveUserData(ctx.auth, userId)) {
+          return errorResponse(403, "auth.forbidden", undefined, logContext);
+        }
+        await deps.refreshTokens.revokeAllByUserId(userId, deps.clock.now());
+        await deps.auditLog.log({
+          actorUserId: ctx.auth?.userId ?? userId,
+          action: "user.logout",
+          entityType: "user",
+          entityId: userId,
+          ctx,
+          success: true,
+          httpStatus: 200,
+          severity: "warning",
+          category: ["security"],
+        });
+        log.info("user.sessions.revoked_all", { user_id: userId });
+        return jsonResponse(
+          200,
+          { message_key: "auth.all_sessions_revoked" },
           logContext,
         );
       } catch (error) {

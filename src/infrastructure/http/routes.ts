@@ -253,6 +253,26 @@ export function buildRouter(
     ),
   );
   addRoute(
+    "GET",
+    "/api/v1/users/:id/sessions",
+    "protected",
+    withAuth((ctx) => userHandlers.listSessions(ctx, ctx.params.id)),
+  );
+  addRoute(
+    "DELETE",
+    "/api/v1/users/:id/sessions/:sessionId",
+    "protected",
+    withAuth((ctx) =>
+      userHandlers.revokeSession(ctx, ctx.params.id, ctx.params.sessionId),
+    ),
+  );
+  addRoute(
+    "DELETE",
+    "/api/v1/users/:id/sessions",
+    "protected",
+    withAuth((ctx) => userHandlers.revokeAllSessions(ctx, ctx.params.id)),
+  );
+  addRoute(
     "PATCH",
     "/api/v1/users/:id",
     "protected",
