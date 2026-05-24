@@ -4,6 +4,10 @@ import { logger, serializeError } from "../../../shared/utils/logger";
 
 export const pgPool = new Pool({
   connectionString: env.databaseUrl,
+  ssl: env.databaseSsl ? { rejectUnauthorized: false } : undefined,
+  max: env.databasePoolMax,
+  idleTimeoutMillis: env.databaseIdleTimeoutMs,
+  connectionTimeoutMillis: env.databaseConnectionTimeoutMs,
 });
 
 pgPool.on("error", (error) => {

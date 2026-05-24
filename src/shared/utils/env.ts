@@ -6,6 +6,10 @@ export type Env = {
   buildVersion: string;
   buildTimestampMs: number;
   databaseUrl: string;
+  databaseSsl: boolean;
+  databasePoolMax: number;
+  databaseIdleTimeoutMs: number;
+  databaseConnectionTimeoutMs: number;
   jwtSecret: string;
   csrfSecret: string;
   jwtIssuer: string;
@@ -33,6 +37,8 @@ export type Env = {
   certificateStoragePath: string;
   satelliteImageStoragePath: string;
   profileAvatarStoragePath: string;
+  objectStorageDriver: "local";
+  allowLocalObjectStorage: boolean;
   satelliteBboxSizeKm: number;
   satelliteMaxCloud: number;
   satelliteDaysBack: number;
@@ -47,6 +53,11 @@ export type Env = {
   alertEmailTo?: string;
   alertWebhookUrl?: string;
   alertSeverityThreshold: string;
+  requireValkey: boolean;
+  enableApiDocs: boolean;
+  apiDocsAuthMode: "none" | "admin" | "basic";
+  apiDocsBasicUsername?: string;
+  apiDocsBasicPassword?: string;
 };
 
 const defaultBuildTimestampMs = Date.now();
@@ -109,6 +120,22 @@ function sameSiteEnv(
   throw new Error(`Invalid SameSite env: ${name}`);
 }
 
+function enumEnv<T extends string>(
+  name: string,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  const value = process.env[name];
+  if (!value) return fallback;
+  const normalized = value.trim().toLowerCase() as T;
+  if (allowed.includes(normalized)) {
+    return normalized;
+  }
+  throw new Error(
+    `Invalid env ${name}: expected one of ${allowed.join(", ")}`,
+  );
+}
+
 export const env: Env = {
   get appEnv() {
     return requiredEnv("APP_ENV");
@@ -130,6 +157,21 @@ export const env: Env = {
   },
   get databaseUrl() {
     return requiredEnv("DATABASE_URL");
+  },
+  get databaseSsl() {
+    return booleanEnv(
+      "DATABASE_SSL",
+      env.appEnv === "production" || env.appEnv === "staging",
+    );
+  },
+  get databasePoolMax() {
+    return numberEnv("DATABASE_POOL_MAX", 10);
+  },
+  get databaseIdleTimeoutMs() {
+    return numberEnv("DATABASE_IDLE_TIMEOUT_MS", 30_000);
+  },
+  get databaseConnectionTimeoutMs() {
+    return numberEnv("DATABASE_CONNECTION_TIMEOUT_MS", 10_000);
   },
   get jwtSecret() {
     return requiredEnv("JWT_SECRET");
@@ -223,6 +265,19 @@ export const env: Env = {
       process.env.PROFILE_AVATAR_STORAGE_PATH ?? "./storage/profile-avatars"
     );
   },
+  get objectStorageDriver(): "local" {
+    const value = process.env.OBJECT_STORAGE_DRIVER ?? "local";
+    if (value !== "local") {
+      throw new Error(`Unsupported OBJECT_STORAGE_DRIVER: ${value}`);
+    }
+    return "local";
+  },
+  get allowLocalObjectStorage() {
+    return booleanEnv(
+      "ALLOW_LOCAL_OBJECT_STORAGE",
+      env.appEnv === "local" || env.appEnv === "test",
+    );
+  },
   get satelliteBboxSizeKm() {
     return numberEnv("SATELLITE_BBOX_SIZE_KM", 4);
   },
@@ -263,6 +318,28 @@ export const env: Env = {
   },
   get alertSeverityThreshold() {
     return process.env.ALERT_SEVERITY_THRESHOLD ?? "critical";
+  },
+  get requireValkey() {
+    return booleanEnv(
+      "REQUIRE_VALKEY",
+      env.appEnv === "production" || env.appEnv === "staging",
+    );
+  },
+  get enableApiDocs() {
+    return booleanEnv("ENABLE_API_DOCS", env.appEnv === "local");
+  },
+  get apiDocsAuthMode() {
+    return enumEnv(
+      "API_DOCS_AUTH_MODE",
+      ["none", "admin", "basic"] as const,
+      env.appEnv === "local" ? "none" : "admin",
+    );
+  },
+  get apiDocsBasicUsername() {
+    return optionalEnv("API_DOCS_BASIC_USERNAME");
+  },
+  get apiDocsBasicPassword() {
+    return optionalEnv("API_DOCS_BASIC_PASSWORD");
   },
   get trustedProxyIps() {
     return (process.env.TRUSTED_PROXY_IPS ?? "")

@@ -259,9 +259,9 @@ const routes: ApiRouteDoc[] = [
     method: "get",
     path: "/api/v1/users/:id",
     summary: "Get user",
-    description: "Returns user by id (self or administrator).",
+    description:
+      "Returns public user summary, with additional sensitive fields only for self or administrator.",
     tags: ["Users"],
-    secured: true,
     successStatus: "200",
     successResponse: "OkData",
     includeNotFound: true,
@@ -270,9 +270,9 @@ const routes: ApiRouteDoc[] = [
     method: "get",
     path: "/api/v1/users/:id/profile",
     summary: "Get user profile",
-    description: "Returns normalized profile fields for user.",
+    description:
+      "Returns public profile fields for user, with sensitive fields only for self or administrator.",
     tags: ["Users"],
-    secured: true,
     successStatus: "200",
     successResponse: "OkData",
     includeNotFound: true,
@@ -284,7 +284,6 @@ const routes: ApiRouteDoc[] = [
     description:
       "Returns gross emissions, estimated paid tree-purchase offset, and net tracked balance for user.",
     tags: ["Users"],
-    secured: true,
     successStatus: "200",
     successResponse: "OkData",
     includeNotFound: true,
@@ -296,7 +295,6 @@ const routes: ApiRouteDoc[] = [
     description:
       "Lists tree-planting contribution history by user id (self/admin).",
     tags: ["Contributions"],
-    secured: true,
     queryParameters: [
       {
         name: "status",
@@ -317,7 +315,6 @@ const routes: ApiRouteDoc[] = [
     summary: "List user compensations",
     description: "Lists compensation history by user id (self/admin).",
     tags: ["Compensations"],
-    secured: true,
     queryParameters: [
       {
         name: "status",
@@ -338,7 +335,6 @@ const routes: ApiRouteDoc[] = [
     summary: "List user certificates",
     description: "Lists certificates by user id (self/admin).",
     tags: ["Certificates"],
-    secured: true,
     queryParameters: [
       {
         name: "status",
@@ -349,6 +345,39 @@ const routes: ApiRouteDoc[] = [
     ],
     successStatus: "200",
     successResponse: "OkList",
+  },
+  {
+    method: "get",
+    path: "/api/v1/users/:id/sessions",
+    summary: "List user sessions",
+    description: "Lists active refresh-token sessions for self or administrator.",
+    tags: ["Users"],
+    secured: true,
+    successStatus: "200",
+    successResponse: "OkList",
+    includeNotFound: true,
+  },
+  {
+    method: "delete",
+    path: "/api/v1/users/:id/sessions/:sessionId",
+    summary: "Revoke user session",
+    description: "Revokes a specific active session for self or administrator.",
+    tags: ["Users"],
+    secured: true,
+    successStatus: "200",
+    successResponse: "OkData",
+    includeNotFound: true,
+  },
+  {
+    method: "delete",
+    path: "/api/v1/users/:id/sessions",
+    summary: "Revoke all user sessions",
+    description: "Revokes all active sessions for self or administrator.",
+    tags: ["Users"],
+    secured: true,
+    successStatus: "200",
+    successResponse: "OkData",
+    includeNotFound: true,
   },
   {
     method: "patch",

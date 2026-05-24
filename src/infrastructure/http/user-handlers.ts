@@ -240,14 +240,26 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               ),
               birth_date: includeSensitive ? profile.birthDate : undefined,
               birth_date_masked: maskBirthDate(profile.birthDate),
-              phone: profile.phone,
+              phone: includeSensitive ? profile.phone : undefined,
               country_code: profile.countryCode,
-              address_line1: profile.addressLine1,
-              address_line2: profile.addressLine2,
-              address_city: profile.addressCity,
-              address_state: profile.addressState,
-              address_postal_code: profile.addressPostalCode,
-              address_country: profile.addressCountry,
+              address_line1: includeSensitive
+                ? profile.addressLine1
+                : undefined,
+              address_line2: includeSensitive
+                ? profile.addressLine2
+                : undefined,
+              address_city: includeSensitive
+                ? profile.addressCity
+                : undefined,
+              address_state: includeSensitive
+                ? profile.addressState
+                : undefined,
+              address_postal_code: includeSensitive
+                ? profile.addressPostalCode
+                : undefined,
+              address_country: includeSensitive
+                ? profile.addressCountry
+                : undefined,
               about: profile.about,
               website_url: profile.websiteUrl,
               instagram_url: profile.instagramUrl,

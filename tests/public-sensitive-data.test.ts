@@ -141,6 +141,14 @@ describe('public sensitive data masking', () => {
     expect(payload.data.document_number_masked).toBe('***8901');
     expect(payload.data.birth_date).toBeUndefined();
     expect(payload.data.birth_date_masked).toBe('****-**-**');
+    expect(payload.data.phone).toBeUndefined();
+    expect(payload.data.address_line1).toBeUndefined();
+    expect(payload.data.address_line2).toBeUndefined();
+    expect(payload.data.address_city).toBeUndefined();
+    expect(payload.data.address_state).toBeUndefined();
+    expect(payload.data.address_postal_code).toBeUndefined();
+    expect(payload.data.address_country).toBeUndefined();
+    expect(payload.data.country_code).toBe('BR');
   });
 
   test('self user profile still returns real document', async () => {
@@ -176,6 +184,12 @@ describe('public sensitive data masking', () => {
     expect(payload.data.document_number_masked).toBe('***8901');
     expect(payload.data.birth_date).toBe('1990-01-01');
     expect(payload.data.birth_date_masked).toBe('****-**-**');
+    expect(payload.data.phone).toBe('5511999999999');
+    expect(payload.data.address_line1).toBe('Street 1');
+    expect(payload.data.address_city).toBe('Sao Paulo');
+    expect(payload.data.address_state).toBe('SP');
+    expect(payload.data.address_postal_code).toBe('01000-000');
+    expect(payload.data.address_country).toBe('BR');
   });
 
   test('self update rejects sensitive fields', async () => {

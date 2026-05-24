@@ -23,7 +23,12 @@ import {
 import type { StatsHandlersDeps } from "./stats-handlers";
 import type { StripeConnectHandlersDeps } from "./stripe-connect-handlers";
 import { openApiJsonHandler, swaggerUiHandler } from "./openapi";
-import { withAuth, withCookieCsrf, withOptionalAuth } from "./auth";
+import {
+  withApiDocsAccess,
+  withAuth,
+  withCookieCsrf,
+  withOptionalAuth,
+} from "./auth";
 import type { AuthHandlersDeps } from "./auth-handlers";
 import type { AuditHandlersDeps } from "./audit-handlers";
 import type { UserHandlersDeps } from "./user-handlers";
@@ -122,12 +127,20 @@ export function buildRouter(
     );
   };
 
-  // API docs routes (disabled in production to avoid exposure)
-  if (env.appEnv !== "production") {
-    addRoute("GET", "/api/v1/openapi.json", "public", (ctx) =>
-      openApiJsonHandler(ctx),
+  // API docs routes (opt-in outside local to avoid accidental exposure)
+  if (env.enableApiDocs) {
+    addRoute(
+      "GET",
+      "/api/v1/openapi.json",
+      "public",
+      withApiDocsAccess((ctx) => openApiJsonHandler(ctx)),
     );
-    addRoute("GET", "/api/v1/docs", "public", (ctx) => swaggerUiHandler(ctx));
+    addRoute(
+      "GET",
+      "/api/v1/docs",
+      "public",
+      withApiDocsAccess((ctx) => swaggerUiHandler(ctx)),
+    );
   }
 
   // Auth routes

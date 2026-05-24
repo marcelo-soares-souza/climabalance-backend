@@ -74,19 +74,6 @@ Local storage (default):
 - `AREA_MEDIA_STORAGE_PATH` (optional, default `./storage/area-media`)
 - `CERTIFICATE_STORAGE_PATH` (optional, default `./storage/certificates`)
 
-S3-compatible storage:
-
-- `OBJECT_STORAGE_DRIVER=s3`
-- `S3_ENDPOINT`
-- `S3_BUCKET`
-- `S3_ACCESS_KEY_ID`
-- `S3_SECRET_ACCESS_KEY`
-- `S3_REGION` (default `us-east-1`)
-- `S3_FORCE_PATH_STYLE` (`true` by default)
-- `S3_SESSION_TOKEN` (optional)
-- `S3_AREA_MEDIA_PREFIX` (optional, default `area-media`)
-- `S3_CERTIFICATE_PREFIX` (optional, default `certificates`)
-
 ## MVP docs
 
 - Endpoints: `docs/MVP_ENDPOINTS.md`

@@ -4,7 +4,7 @@ import { OPENAPI_ROUTE_SIGNATURES } from '../src/infrastructure/http/openapi';
 
 function extractRuntimeRouteSignatures(source: string): string[] {
   const signatures: string[] = [];
-  const regex = /addRoute\(\s*'([A-Z]+)'\s*,\s*'([^']+)'/g;
+  const regex = /addRoute\(\s*["']([A-Z]+)["']\s*,\s*["']([^"']+)["']/g;
 
   for (const match of source.matchAll(regex)) {
     const method = match[1];

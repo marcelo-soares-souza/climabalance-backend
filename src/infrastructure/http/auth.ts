@@ -47,6 +47,43 @@ function isValidAuthPayload(payload: JwtPayload): boolean {
   return true;
 }
 
+function unauthorizedBasicAuthResponse(ctx: HttpContext): Response {
+  return errorResponse(
+    401,
+    "auth.required",
+    undefined,
+    buildLogContext(ctx),
+    {
+      "www-authenticate": 'Basic realm="ClimaBalance API Docs"',
+    },
+  );
+}
+
+function isValidBasicAuthHeader(
+  header: string | null,
+  username: string,
+  password: string,
+): boolean {
+  if (!header?.startsWith("Basic ")) return false;
+  const encoded = header.slice("Basic ".length).trim();
+  if (!encoded) return false;
+
+  let decoded = "";
+  try {
+    decoded = Buffer.from(encoded, "base64").toString("utf-8");
+  } catch {
+    return false;
+  }
+
+  const separatorIndex = decoded.indexOf(":");
+  if (separatorIndex === -1) return false;
+
+  return (
+    decoded.slice(0, separatorIndex) === username &&
+    decoded.slice(separatorIndex + 1) === password
+  );
+}
+
 export function withAuth(
   handler: Handler,
   options?: { roles?: string[] },
@@ -131,6 +168,34 @@ export function withOptionalAuth(handler: Handler): Handler {
     }
 
     ctx.auth = { userId: payload.sub, roles: payload.roles };
+    return handler(ctx);
+  };
+}
+
+export function withApiDocsAccess(handler: Handler): Handler {
+  if (!env.enableApiDocs || env.apiDocsAuthMode === "none") {
+    return handler;
+  }
+
+  if (env.apiDocsAuthMode === "admin") {
+    return withAuth(handler, { roles: ["administrator"] });
+  }
+
+  return async (ctx: HttpContext) => {
+    const username = env.apiDocsBasicUsername;
+    const password = env.apiDocsBasicPassword;
+
+    if (!username || !password) {
+      throw new Error(
+        "API_DOCS_BASIC_USERNAME and API_DOCS_BASIC_PASSWORD are required when API_DOCS_AUTH_MODE=basic",
+      );
+    }
+
+    const authorization = ctx.request.headers.get("authorization");
+    if (!isValidBasicAuthHeader(authorization, username, password)) {
+      return unauthorizedBasicAuthResponse(ctx);
+    }
+
     return handler(ctx);
   };
 }

@@ -7,11 +7,14 @@ import { logger } from "./shared/utils/logger";
 const REQUEST_TIMEOUT_MS = 30_000;
 const WEBHOOK_TIMEOUT_MS = 60_000;
 
-// Verify TLS/HTTPS configuration in production
+// Verify TLS/HTTPS configuration in non-local public environments
 function verifyTlsConfig(): void {
-  if (env.appEnv === "production" && !env.appUrl.startsWith("https://")) {
+  if (
+    (env.appEnv === "production" || env.appEnv === "staging") &&
+    !env.appUrl.startsWith("https://")
+  ) {
     throw new Error(
-      "TLS required in production: APP_URL must start with https://",
+      "TLS required in staging/production: APP_URL must start with https://",
     );
   }
 }

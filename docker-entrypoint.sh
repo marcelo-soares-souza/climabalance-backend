@@ -50,5 +50,9 @@ until bun run db:create; do
   sleep "${SLEEP_SECONDS}"
 done
 
-bun run migrate
+if [ "${RUN_MIGRATIONS_ON_STARTUP:-0}" = "1" ]; then
+  bun run migrate
+else
+  echo "Skipping automatic migrations on startup (RUN_MIGRATIONS_ON_STARTUP!=1)"
+fi
 exec bun run start

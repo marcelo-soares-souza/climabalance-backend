@@ -20,7 +20,14 @@ valkey.on("close", () => logger.warn("valkey.closed"));
 export async function connectValkey(): Promise<void> {
   try {
     await valkey.connect();
-  } catch {
+  } catch (error) {
+    if (env.requireValkey) {
+      logger.error("valkey.connect_failed", {
+        msg: "valkey is required in this environment",
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
     logger.warn("valkey.connect_failed", { msg: "running without valkey" });
   }
 }

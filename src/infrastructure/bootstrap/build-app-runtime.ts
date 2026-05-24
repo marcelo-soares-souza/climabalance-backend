@@ -55,6 +55,16 @@ function createObjectStorage(): {
   satelliteImageStorage: SatelliteImageStorage;
   logMeta: Record<string, unknown>;
 } {
+  if (
+    env.objectStorageDriver === "local" &&
+    !env.allowLocalObjectStorage &&
+    (env.appEnv === "production" || env.appEnv === "staging")
+  ) {
+    throw new Error(
+      "Local object storage is disabled in production/staging. Configure durable object storage or explicitly allow local storage.",
+    );
+  }
+
   return {
     areaMediaStorage: new LocalAreaMediaStorage(env.areaMediaStoragePath),
     compensationCertificateStorage: new LocalCertificateStorage(
@@ -113,6 +123,14 @@ export function validateStripeConfiguration(useStripeGateway: boolean): void {
 }
 
 export function buildAppRuntime() {
+  if (env.enableApiDocs && env.apiDocsAuthMode === "basic") {
+    if (!env.apiDocsBasicUsername || !env.apiDocsBasicPassword) {
+      throw new Error(
+        "API docs basic auth requires API_DOCS_BASIC_USERNAME and API_DOCS_BASIC_PASSWORD",
+      );
+    }
+  }
+
   const config = new EnvironmentConfig();
   const tokenGenerator = new CryptoTokenGenerator();
   const jwtService = new HS256JwtService();
