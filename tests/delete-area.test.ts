@@ -1,11 +1,14 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
-import { deleteArea } from '../src/application/areas/delete-area';
-import { Area } from '../src/domain/areas/entities/area';
-import { AreaStatus } from '../src/domain/areas/value-objects/area-status';
-import { Location } from '../src/domain/areas/value-objects/location';
-import type { AreaRepository } from '../src/domain/areas/repositories/area-repository';
-import type { AreaMedia, AreaMediaRepository } from '../src/domain/areas/repositories/area-media-repository';
-import type { AreaMediaStorage } from '../src/domain/areas/services/area-media-storage';
+import { beforeEach, describe, expect, test } from "bun:test";
+import { deleteArea } from "../src/application/areas/delete-area";
+import { Area } from "../src/domain/areas/entities/area";
+import { AreaStatus } from "../src/domain/areas/value-objects/area-status";
+import { Location } from "../src/domain/areas/value-objects/location";
+import type { AreaRepository } from "../src/domain/areas/repositories/area-repository";
+import type {
+  AreaMedia,
+  AreaMediaRepository,
+} from "../src/domain/areas/repositories/area-media-repository";
+import type { AreaMediaStorage } from "../src/domain/areas/services/area-media-storage";
 
 class MemoryAreaRepository implements AreaRepository {
   private areas = new Map<string, Area>();
@@ -59,7 +62,11 @@ class MemoryAreaRepository implements AreaRepository {
     return this.areas.size;
   }
 
-  async getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }> {
+  async getGlobalStats(): Promise<{
+    totalAreas: number;
+    totalTreesPlanted: number;
+    totalCO2Captured: number;
+  }> {
     return { totalAreas: 0, totalTreesPlanted: 0, totalCO2Captured: 0 };
   }
 }
@@ -82,7 +89,9 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
   }
 
   async listByAreaId(areaId: string): Promise<AreaMedia[]> {
-    return [...this.items.values()].filter((item) => item.areaId === areaId && !item.deletedAt);
+    return [...this.items.values()].filter(
+      (item) => item.areaId === areaId && !item.deletedAt,
+    );
   }
 
   async softDelete(id: string, deletedAt: Date): Promise<void> {
@@ -91,7 +100,11 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
     this.items.set(id, { ...media, deletedAt, updatedAt: deletedAt });
   }
 
-  async updateThumbnail(_id: string, _thumbnailStoragePath: string, _thumbnailGeneratedAt: Date): Promise<void> {}
+  async updateThumbnail(
+    _id: string,
+    _thumbnailStoragePath: string,
+    _thumbnailGeneratedAt: Date,
+  ): Promise<void> {}
 }
 
 class MemoryAreaMediaStorage implements AreaMediaStorage {
@@ -103,7 +116,7 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
     mimeType: string;
     bytes: Uint8Array;
   }): Promise<{ storagePath: string }> {
-    return { storagePath: '' };
+    return { storagePath: "" };
   }
 
   async read(): Promise<Uint8Array> {
@@ -118,12 +131,15 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
     return false;
   }
 
-  async generateThumbnail(): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
-    return { thumbnailStoragePath: '', bytes: new Uint8Array(0) };
+  async generateThumbnail(): Promise<{
+    thumbnailStoragePath: string;
+    bytes: Uint8Array;
+  }> {
+    return { thumbnailStoragePath: "", bytes: new Uint8Array(0) };
   }
 }
 
-describe('deleteArea', () => {
+describe("deleteArea", () => {
   let areaRepository: MemoryAreaRepository;
   let areaMediaRepository: MemoryAreaMediaRepository;
   let areaMediaStorage: MemoryAreaMediaStorage;
@@ -135,92 +151,96 @@ describe('deleteArea', () => {
 
     areaRepository.add(
       new Area({
-        id: 'area-1',
-        ownerUserId: 'owner-1',
-        name: 'Area 1',
+        id: "area-1",
+        ownerUserId: "owner-1",
+        name: "Area 1",
         location: new Location(-15.7939, -47.8828),
         status: AreaStatus.ACTIVE,
-        createdAt: new Date('2026-02-10T10:00:00Z'),
-        updatedAt: new Date('2026-02-10T10:00:00Z'),
-      })
+        createdAt: new Date("2026-02-10T10:00:00Z"),
+        updatedAt: new Date("2026-02-10T10:00:00Z"),
+      }),
     );
 
     areaMediaRepository.seed({
-      id: 'media-1',
-      areaId: 'area-1',
-      uploadedByUserId: 'owner-1',
-      mediaType: 'photo',
-      description: 'photo',
-      mimeType: 'image/jpeg',
-      originalFileName: 'photo.jpg',
-      storagePath: '/tmp/photo.jpg',
+      id: "media-1",
+      areaId: "area-1",
+      uploadedByUserId: "owner-1",
+      mediaType: "photo",
+      description: "photo",
+      mimeType: "image/jpeg",
+      originalFileName: "photo.jpg",
+      storagePath: "/tmp/photo.jpg",
       fileSizeBytes: 100,
-      thumbnailStoragePath: '/tmp/photo_thumb.webp',
-      thumbnailGeneratedAt: new Date('2026-02-10T10:00:00Z'),
-      createdAt: new Date('2026-02-10T10:00:00Z'),
-      updatedAt: new Date('2026-02-10T10:00:00Z'),
+      thumbnailStoragePath: "/tmp/photo_thumb.webp",
+      thumbnailGeneratedAt: new Date("2026-02-10T10:00:00Z"),
+      createdAt: new Date("2026-02-10T10:00:00Z"),
+      updatedAt: new Date("2026-02-10T10:00:00Z"),
       deletedAt: null,
     });
 
     areaMediaRepository.seed({
-      id: 'media-2',
-      areaId: 'area-1',
-      uploadedByUserId: 'owner-1',
-      mediaType: 'video',
-      description: 'video',
-      mimeType: 'video/mp4',
-      originalFileName: 'video.mp4',
-      storagePath: '/tmp/video.mp4',
+      id: "media-2",
+      areaId: "area-1",
+      uploadedByUserId: "owner-1",
+      mediaType: "video",
+      description: "video",
+      mimeType: "video/mp4",
+      originalFileName: "video.mp4",
+      storagePath: "/tmp/video.mp4",
       fileSizeBytes: 200,
       thumbnailStoragePath: null,
       thumbnailGeneratedAt: null,
-      createdAt: new Date('2026-02-10T10:00:00Z'),
-      updatedAt: new Date('2026-02-10T10:00:00Z'),
+      createdAt: new Date("2026-02-10T10:00:00Z"),
+      updatedAt: new Date("2026-02-10T10:00:00Z"),
       deletedAt: null,
     });
   });
 
-  test('owner can soft-delete area in active status and cascades media soft-delete', async () => {
+  test("owner can soft-delete area in active status and cascades media soft-delete", async () => {
     await deleteArea(
       {
         areaRepository,
         areaMediaRepository,
         areaMediaStorage,
-        clock: { now: () => new Date('2026-02-14T10:00:00Z') },
+        clock: { now: () => new Date("2026-02-14T10:00:00Z") },
       },
       {
-        areaId: 'area-1',
-        userId: 'owner-1',
-      }
+        areaId: "area-1",
+        userId: "owner-1",
+      },
     );
 
-    const area = await areaRepository.findById('area-1');
+    const area = await areaRepository.findById("area-1");
     expect(area).toBeNull();
 
-    const media = await areaMediaRepository.listByAreaId('area-1');
+    const media = await areaMediaRepository.listByAreaId("area-1");
     expect(media.length).toBe(0);
-    expect(areaMediaStorage.deletedPaths).toEqual(['/tmp/photo.jpg', '/tmp/photo_thumb.webp', '/tmp/video.mp4']);
+    expect(areaMediaStorage.deletedPaths).toEqual([
+      "/tmp/photo.jpg",
+      "/tmp/photo_thumb.webp",
+      "/tmp/video.mp4",
+    ]);
   });
 
-  test('non-owner without admin cannot delete area', async () => {
+  test("non-owner without admin cannot delete area", async () => {
     await expect(
       deleteArea(
         {
           areaRepository,
           areaMediaRepository,
           areaMediaStorage,
-          clock: { now: () => new Date('2026-02-14T10:00:00Z') },
+          clock: { now: () => new Date("2026-02-14T10:00:00Z") },
         },
         {
-          areaId: 'area-1',
-          userId: 'other-user',
-        }
-      )
-    ).rejects.toThrow('User cannot delete this area');
+          areaId: "area-1",
+          userId: "other-user",
+        },
+      ),
+    ).rejects.toThrow("User cannot delete this area");
 
-    const area = await areaRepository.findById('area-1');
+    const area = await areaRepository.findById("area-1");
     expect(area).not.toBeNull();
-    const media = await areaMediaRepository.listByAreaId('area-1');
+    const media = await areaMediaRepository.listByAreaId("area-1");
     expect(media.length).toBe(2);
   });
 });

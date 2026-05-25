@@ -48,15 +48,9 @@ function isValidAuthPayload(payload: JwtPayload): boolean {
 }
 
 function unauthorizedBasicAuthResponse(ctx: HttpContext): Response {
-  return errorResponse(
-    401,
-    "auth.required",
-    undefined,
-    buildLogContext(ctx),
-    {
-      "www-authenticate": 'Basic realm="ClimaBalance API Docs"',
-    },
-  );
+  return errorResponse(401, "auth.required", undefined, buildLogContext(ctx), {
+    "www-authenticate": 'Basic realm="ClimaBalance API Docs"',
+  });
 }
 
 function isValidBasicAuthHeader(

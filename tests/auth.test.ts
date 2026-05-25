@@ -1,34 +1,53 @@
-import { expect, test } from 'bun:test';
+import { expect, test } from "bun:test";
 
-process.env.APP_ENV = 'test';
-process.env.APP_PORT = '3000';
-process.env.APP_URL = 'http://localhost:3000';
-process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/test';
-process.env.JWT_SECRET = 'test-secret';
-process.env.JWT_ISSUER = 'test-issuer';
-process.env.JWT_AUDIENCE = 'test-aud';
-process.env.JWT_TTL_SECONDS = '900';
-process.env.PASSWORD_PEPPER = 'test-pepper';
-process.env.EMAIL_FROM = 'no-reply@example.com';
-process.env.EMAIL_CONFIRM_TTL_MINUTES = '60';
+process.env.APP_ENV = "test";
+process.env.APP_PORT = "3000";
+process.env.APP_URL = "http://localhost:3000";
+process.env.DATABASE_URL = "postgres://user:pass@localhost:5432/test";
+process.env.JWT_SECRET = "test-secret";
+process.env.JWT_ISSUER = "test-issuer";
+process.env.JWT_AUDIENCE = "test-aud";
+process.env.JWT_TTL_SECONDS = "900";
+process.env.PASSWORD_PEPPER = "test-pepper";
+process.env.EMAIL_FROM = "no-reply@example.com";
+process.env.EMAIL_CONFIRM_TTL_MINUTES = "60";
 
-const { registerUser } = await import('../src/application/auth/register-user');
-const { authenticateUser } = await import('../src/application/auth/authenticate-user');
-const { confirmEmail } = await import('../src/application/auth/confirm-email');
+const { registerUser } = await import("../src/application/auth/register-user");
+const { authenticateUser } =
+  await import("../src/application/auth/authenticate-user");
+const { confirmEmail } = await import("../src/application/auth/confirm-email");
 
-import type { User } from '../src/domain/user/user';
-import type { UserProfile } from '../src/domain/user/user';
-import type { UserRepository, UserFilters, PublicDirectoryItem } from '../src/domain/user/user-repository';
-import type { EmailConfirmation, EmailConfirmationRepository } from '../src/domain/user/email-confirmation-repository';
-import type { EmailSender, EmailMessage } from '../src/infrastructure/email/email-sender';
-import type { PasswordHasher } from '../src/infrastructure/crypto/password';
+import type { User } from "../src/domain/user/user";
+import type { UserProfile } from "../src/domain/user/user";
+import type {
+  UserRepository,
+  UserFilters,
+  PublicDirectoryItem,
+} from "../src/domain/user/user-repository";
+import type {
+  EmailConfirmation,
+  EmailConfirmationRepository,
+} from "../src/domain/user/email-confirmation-repository";
+import type {
+  EmailSender,
+  EmailMessage,
+} from "../src/infrastructure/email/email-sender";
+import type { PasswordHasher } from "../src/infrastructure/crypto/password";
 
 class MemoryUserRepository implements UserRepository {
   users: User[] = [];
   roles = new Map<string, string[]>();
   profiles = new Map<string, UserProfile>();
 
-  async create(input: { id: string; email: string; passwordHash: string; slug: string; status: User['status']; locale: string; emailConfirmedAt?: Date | null; }): Promise<User> {
+  async create(input: {
+    id: string;
+    email: string;
+    passwordHash: string;
+    slug: string;
+    status: User["status"];
+    locale: string;
+    emailConfirmedAt?: Date | null;
+  }): Promise<User> {
     const now = new Date();
     const user: User = {
       id: input.id,
@@ -40,20 +59,30 @@ class MemoryUserRepository implements UserRepository {
       emailConfirmedAt: input.emailConfirmedAt ?? null,
       createdAt: now,
       updatedAt: now,
-      deletedAt: null
+      deletedAt: null,
     };
     this.users.push(user);
     return user;
   }
 
-  async update(input: { id: string; email?: string; passwordHash?: string; status?: User['status']; locale?: string; emailConfirmedAt?: Date | null; deletedAt?: Date | null; }): Promise<User | null> {
+  async update(input: {
+    id: string;
+    email?: string;
+    passwordHash?: string;
+    status?: User["status"];
+    locale?: string;
+    emailConfirmedAt?: Date | null;
+    deletedAt?: Date | null;
+  }): Promise<User | null> {
     const user = this.users.find((u) => u.id === input.id) ?? null;
     if (!user) return null;
     if (input.email !== undefined) user.email = input.email;
-    if (input.passwordHash !== undefined) user.passwordHash = input.passwordHash;
+    if (input.passwordHash !== undefined)
+      user.passwordHash = input.passwordHash;
     if (input.status !== undefined) user.status = input.status;
     if (input.locale !== undefined) user.locale = input.locale;
-    if (input.emailConfirmedAt !== undefined) user.emailConfirmedAt = input.emailConfirmedAt;
+    if (input.emailConfirmedAt !== undefined)
+      user.emailConfirmedAt = input.emailConfirmedAt;
     if (input.deletedAt !== undefined) user.deletedAt = input.deletedAt;
     user.updatedAt = new Date();
     return user;
@@ -83,7 +112,10 @@ class MemoryUserRepository implements UserRepository {
     return user;
   }
 
-  async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> {
+  async upsertProfile(
+    userId: string,
+    profile: Partial<UserProfile>,
+  ): Promise<UserProfile> {
     const existing = this.profiles.get(userId);
     const now = new Date();
     if (!existing) {
@@ -114,7 +146,7 @@ class MemoryUserRepository implements UserRepository {
         avatarPath: profile.avatarPath,
         createdAt: now,
         updatedAt: now,
-        deletedAt: null
+        deletedAt: null,
       };
       this.profiles.set(userId, created);
       return created;
@@ -123,7 +155,7 @@ class MemoryUserRepository implements UserRepository {
     const updated: UserProfile = {
       ...existing,
       ...profile,
-      updatedAt: now
+      updatedAt: now,
     };
     this.profiles.set(userId, updated);
     return updated;
@@ -137,8 +169,7 @@ class MemoryUserRepository implements UserRepository {
     return this.roles.get(userId) ?? [];
   }
 
-  async cascadeSoftDelete(_userId: string): Promise<void> {
-  }
+  async cascadeSoftDelete(_userId: string): Promise<void> {}
 
   async assignRole(userId: string, roleKey: string): Promise<void> {
     const list = this.roles.get(userId) ?? [];
@@ -153,7 +184,10 @@ class MemoryUserRepository implements UserRepository {
     user.updatedAt = lastLoginAt;
   }
 
-  async listPublicDirectory(_limit: number, _offset: number): Promise<PublicDirectoryItem[]> {
+  async listPublicDirectory(
+    _limit: number,
+    _offset: number,
+  ): Promise<PublicDirectoryItem[]> {
     return [];
   }
 }
@@ -167,10 +201,17 @@ class MemoryEmailConfirmationRepository implements EmailConfirmationRepository {
   }
 
   async findByTokenHash(tokenHash: string): Promise<EmailConfirmation | null> {
-    return this.confirmations.find((c) => c.tokenHash === tokenHash && !c.deletedAt) ?? null;
+    return (
+      this.confirmations.find(
+        (c) => c.tokenHash === tokenHash && !c.deletedAt,
+      ) ?? null
+    );
   }
 
-  async markConfirmed(id: string, confirmedAt: Date): Promise<EmailConfirmation | null> {
+  async markConfirmed(
+    id: string,
+    confirmedAt: Date,
+  ): Promise<EmailConfirmation | null> {
     const record = this.confirmations.find((c) => c.id === id) ?? null;
     if (!record) return null;
     record.confirmedAt = confirmedAt;
@@ -192,59 +233,77 @@ const fakePasswordHasher: PasswordHasher = {
   },
   async verify(password: string, passwordHash: string): Promise<boolean> {
     return passwordHash === `hash:${password}`;
-  }
+  },
 };
 
 // Mock services
 const mockTokenGenerator = {
-  generate: () => 'mock-token-abc123'
+  generate: () => "mock-token-abc123",
 };
 
 const mockJwtService = {
   async sign(payload: object, _secret: string): Promise<string> {
-    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-    const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const signature = 'mock-signature';
+    const header = Buffer.from(
+      JSON.stringify({ alg: "HS256", typ: "JWT" }),
+    ).toString("base64url");
+    const payloadStr = Buffer.from(JSON.stringify(payload)).toString(
+      "base64url",
+    );
+    const signature = "mock-signature";
     return `${header}.${payloadStr}.${signature}`;
   },
   async verify(_token: string, _secret: string): Promise<object> {
-    return { sub: 'test-user', roles: ['individual'] };
-  }
+    return { sub: "test-user", roles: ["individual"] };
+  },
 };
 
 const mockHashService = {
   async sha256(input: string): Promise<string> {
-    return Buffer.from(input).toString('hex');
-  }
+    return Buffer.from(input).toString("hex");
+  },
 };
 
 let idCounter = 0;
 const mockIdGenerator = {
-  generate: () => `test-id-${++idCounter}`
+  generate: () => `test-id-${++idCounter}`,
 };
 
-const mockTime = new Date('2024-01-01T00:00:00Z');
+const mockTime = new Date("2024-01-01T00:00:00Z");
 const mockClock = {
-  now: () => mockTime
+  now: () => mockTime,
 };
 
 const mockConfig = {
-  jwtSecret: 'test-secret',
-  jwtIssuer: 'test-issuer',
-  jwtAudience: 'test-audience',
+  jwtSecret: "test-secret",
+  jwtIssuer: "test-issuer",
+  jwtAudience: "test-audience",
   jwtTtlSeconds: 900,
   emailConfirmTtlMinutes: 60,
   passwordResetTtlMinutes: 60,
   refreshTokenTtlDays: 7,
-  frontendUrl: 'http://localhost:3000'
+  frontendUrl: "http://localhost:3000",
 };
 
 class MemoryRefreshTokenRepository {
   tokens: any[] = [];
-  async create(input: any) { this.tokens.push(input); return input; }
-  async findByTokenHash(hash: string) { return this.tokens.find((t) => t.tokenHash === hash && !t.deletedAt) ?? null; }
-  async revoke(id: string, revokedAt: Date) { const t = this.tokens.find((t) => t.id === id); if (t) t.revokedAt = revokedAt; }
-  async revokeAllByUserId(userId: string, revokedAt: Date) { this.tokens.filter((t) => t.userId === userId && !t.revokedAt).forEach((t) => t.revokedAt = revokedAt); }
+  async create(input: any) {
+    this.tokens.push(input);
+    return input;
+  }
+  async findByTokenHash(hash: string) {
+    return (
+      this.tokens.find((t) => t.tokenHash === hash && !t.deletedAt) ?? null
+    );
+  }
+  async revoke(id: string, revokedAt: Date) {
+    const t = this.tokens.find((t) => t.id === id);
+    if (t) t.revokedAt = revokedAt;
+  }
+  async revokeAllByUserId(userId: string, revokedAt: Date) {
+    this.tokens
+      .filter((t) => t.userId === userId && !t.revokedAt)
+      .forEach((t) => (t.revokedAt = revokedAt));
+  }
 }
 
 // In-memory consent repository for tests
@@ -257,33 +316,46 @@ class MemoryConsentRepository {
   async getConsentsByUser(userId: string) {
     return this.records.filter((r) => r.userId === userId);
   }
-  async getConsent() { return null; }
-  async createSubjectRequest(input: any) { return input; }
-  async getSubjectRequestsByUser() { return []; }
-  async updateSubjectRequestStatus() { return null; }
+  async getConsent() {
+    return null;
+  }
+  async createSubjectRequest(input: any) {
+    return input;
+  }
+  async getSubjectRequestsByUser() {
+    return [];
+  }
+  async updateSubjectRequestStatus() {
+    return null;
+  }
 }
 
 // Factory function to create a mock UnitOfWork for tests
-function createMockUnitOfWork(repos: { users: any; confirmations: any; consents?: any }) {
+function createMockUnitOfWork(repos: {
+  users: any;
+  confirmations: any;
+  consents?: any;
+}) {
   return {
     async execute<T>(work: (tx: any) => Promise<T>): Promise<T> {
       const mockTransaction = {
         getUserRepository: () => repos.users,
-        getConsentRepository: () => repos.consents ?? new MemoryConsentRepository(),
+        getConsentRepository: () =>
+          repos.consents ?? new MemoryConsentRepository(),
         getEmailConfirmationRepository: () => repos.confirmations,
         getPasswordResetRepository: () => ({}),
         getAuditLogRepository: () => ({}),
         getFootprintCalculationRepository: () => ({}),
         getFootprintInputRepository: () => ({}),
         getFootprintBreakdownRepository: () => ({}),
-        getCompensationProjectionRepository: () => ({})
+        getCompensationProjectionRepository: () => ({}),
       };
       return work(mockTransaction);
-    }
+    },
   };
 }
 
-test('register, confirm email, and authenticate user', async () => {
+test("register, confirm email, and authenticate user", async () => {
   const users = new MemoryUserRepository();
   const confirmations = new MemoryEmailConfirmationRepository();
   const emailSender = new MemoryEmailSender();
@@ -293,10 +365,10 @@ test('register, confirm email, and authenticate user', async () => {
 
   const result = await registerUser(
     {
-      email: 'user@example.com',
-      password: 'secret123',
-      locale: 'pt-BR',
-      roleKey: 'individual',
+      email: "user@example.com",
+      password: "secret123",
+      locale: "pt-BR",
+      roleKey: "individual",
       acceptedPrivacy: true,
       acceptedTerms: true,
     },
@@ -311,33 +383,33 @@ test('register, confirm email, and authenticate user', async () => {
       hashService: mockHashService,
       idGenerator: mockIdGenerator,
       clock: mockClock,
-      config: mockConfig
-    }
+      config: mockConfig,
+    },
   );
 
-  expect(result.email).toBe('user@example.com');
-  expect(result.status).toBe('pending');
+  expect(result.email).toBe("user@example.com");
+  expect(result.status).toBe("pending");
   expect(emailSender.messages.length).toBe(1);
 
   const message = emailSender.messages[0];
   const tokenMatch = message.text.match(/token=([A-Za-z0-9_-]+)/);
   expect(tokenMatch).not.toBeNull();
-  const token = tokenMatch?.[1] ?? '';
+  const token = tokenMatch?.[1] ?? "";
 
   await confirmEmail(token, {
     confirmations,
     users,
     hashService: mockHashService,
-    clock: mockClock
+    clock: mockClock,
   });
 
-  const user = await users.findByEmail('user@example.com');
+  const user = await users.findByEmail("user@example.com");
   expect(user?.emailConfirmedAt).not.toBeNull();
-  expect(user?.status).toBe('active');
+  expect(user?.status).toBe("active");
 
   const refreshTokens = new MemoryRefreshTokenRepository();
   const authResult = await authenticateUser(
-    { email: 'user@example.com', password: 'secret123' },
+    { email: "user@example.com", password: "secret123" },
     {
       users,
       refreshTokens,
@@ -347,12 +419,12 @@ test('register, confirm email, and authenticate user', async () => {
       tokenGenerator: mockTokenGenerator,
       idGenerator: mockIdGenerator,
       clock: mockClock,
-      config: mockConfig
-    }
+      config: mockConfig,
+    },
   );
 
-  expect(authResult.tokenType).toBe('Bearer');
-  expect(authResult.accessToken.split('.').length).toBe(3);
+  expect(authResult.tokenType).toBe("Bearer");
+  expect(authResult.accessToken.split(".").length).toBe(3);
   expect(authResult.expiresIn).toBe(900);
   expect(authResult.refreshToken).toBeDefined();
   expect(authResult.refreshExpiresIn).toBe(7 * 86400);

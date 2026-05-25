@@ -1,16 +1,16 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
   createCompensationAtomic,
   type CompensationAtomicStore,
   type CompensationAtomicTransaction,
   type CompensationAreaSnapshot,
   type CompensationCreateRecord,
-} from '../src/application/compensations/create-compensation-atomic';
+} from "../src/application/compensations/create-compensation-atomic";
 
 class InMemoryCompensationStore implements CompensationAtomicStore {
   area: CompensationAreaSnapshot = {
-    id: 'area-1',
-    status: 'active',
+    id: "area-1",
+    status: "active",
     maxPurchasableTrees: 1000,
   };
   compensations: CompensationCreateRecord[] = [];
@@ -18,7 +18,7 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
   paidTreeCountByArea: Map<string, number> = new Map();
 
   async runInTransaction<T>(
-    work: (tx: CompensationAtomicTransaction) => Promise<T>
+    work: (tx: CompensationAtomicTransaction) => Promise<T>,
   ): Promise<T> {
     let release: (() => void) | undefined;
     const waitForTurn = this.lock;
@@ -51,7 +51,7 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
   }
 }
 
-describe('createCompensationAtomic', () => {
+describe("createCompensationAtomic", () => {
   let store: InMemoryCompensationStore;
   let sequence = 0;
 
@@ -60,7 +60,7 @@ describe('createCompensationAtomic', () => {
     sequence = 0;
   });
 
-  test('creates pending tree contribution with snapshot fields', async () => {
+  test("creates pending tree contribution with snapshot fields", async () => {
     const result = await createCompensationAtomic(
       {
         store,
@@ -68,7 +68,7 @@ describe('createCompensationAtomic', () => {
           generate: () => `comp-${++sequence}`,
         },
         clock: {
-          now: () => new Date('2026-02-07T15:00:00Z'),
+          now: () => new Date("2026-02-07T15:00:00Z"),
         },
         auditLog: {
           async log() {},
@@ -76,23 +76,23 @@ describe('createCompensationAtomic', () => {
         defaultMaxPurchasableTrees: 100,
       },
       {
-        supporterUserId: 'supporter-1',
-        areaId: 'area-1',
-        calculationId: 'calc-1',
-        compensationMode: 'tree_purchase',
+        supporterUserId: "supporter-1",
+        areaId: "area-1",
+        calculationId: "calc-1",
+        compensationMode: "tree_purchase",
         horizonYears: 20,
         treesRequested: 100,
         pricePerTree: 2.5,
         estimatedTotalTCO2e: 2.5,
         totalTCO2e: 2.5,
         totalAmount: 250,
-        currency: 'BRL',
+        currency: "BRL",
         treesCount: 100,
-      }
+      },
     );
 
-    expect(result.compensationId).toBe('comp-1');
-    expect(result.compensationMode).toBe('tree_purchase');
+    expect(result.compensationId).toBe("comp-1");
+    expect(result.compensationMode).toBe("tree_purchase");
     expect(store.compensations.length).toBe(1);
     expect(store.compensations[0].totalCO2Kg).toBe(2500);
     expect(store.compensations[0].estimatedTotalTCO2e).toBe(2.5);
@@ -100,14 +100,14 @@ describe('createCompensationAtomic', () => {
     expect(store.compensations[0].treesRequested).toBe(100);
   });
 
-  test('allows concurrent contribution creation without area stock mutation', async () => {
+  test("allows concurrent contribution creation without area stock mutation", async () => {
     const deps = {
       store,
       idGenerator: {
         generate: () => `comp-${++sequence}`,
       },
       clock: {
-        now: () => new Date('2026-02-07T15:00:00Z'),
+        now: () => new Date("2026-02-07T15:00:00Z"),
       },
       auditLog: {
         async log() {},
@@ -117,41 +117,43 @@ describe('createCompensationAtomic', () => {
 
     const [first, second] = await Promise.allSettled([
       createCompensationAtomic(deps, {
-        supporterUserId: 'supporter-1',
-        areaId: 'area-1',
-        compensationMode: 'tree_purchase',
+        supporterUserId: "supporter-1",
+        areaId: "area-1",
+        compensationMode: "tree_purchase",
         horizonYears: 20,
         treesRequested: 150,
         pricePerTree: 2.67,
         estimatedTotalTCO2e: 4,
         totalTCO2e: 4,
         totalAmount: 400,
-        currency: 'BRL',
+        currency: "BRL",
         treesCount: 150,
       }),
       createCompensationAtomic(deps, {
-        supporterUserId: 'supporter-2',
-        areaId: 'area-1',
-        compensationMode: 'tree_purchase',
+        supporterUserId: "supporter-2",
+        areaId: "area-1",
+        compensationMode: "tree_purchase",
         horizonYears: 20,
         treesRequested: 150,
         pricePerTree: 2.67,
         estimatedTotalTCO2e: 4,
         totalTCO2e: 4,
         totalAmount: 400,
-        currency: 'BRL',
+        currency: "BRL",
         treesCount: 150,
       }),
     ]);
 
     const fulfilled = [first, second].filter(
-      (entry) => entry.status === 'fulfilled'
+      (entry) => entry.status === "fulfilled",
     );
 
     expect(fulfilled.length).toBe(2);
     expect(store.compensations.length).toBe(2);
-    expect(store.compensations.every((item) => item.compensationMode === 'tree_purchase')).toBe(
-      true
-    );
+    expect(
+      store.compensations.every(
+        (item) => item.compensationMode === "tree_purchase",
+      ),
+    ).toBe(true);
   });
 });

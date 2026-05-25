@@ -248,9 +248,7 @@ export function createUserHandlers(deps: UserHandlersDeps) {
               address_line2: includeSensitive
                 ? profile.addressLine2
                 : undefined,
-              address_city: includeSensitive
-                ? profile.addressCity
-                : undefined,
+              address_city: includeSensitive ? profile.addressCity : undefined,
               address_state: includeSensitive
                 ? profile.addressState
                 : undefined,
@@ -350,7 +348,10 @@ export function createUserHandlers(deps: UserHandlersDeps) {
           severity: "info",
           category: ["security"],
         });
-        log.info("user.session.revoked", { user_id: userId, session_id: sessionId });
+        log.info("user.session.revoked", {
+          user_id: userId,
+          session_id: sessionId,
+        });
         return jsonResponse(
           200,
           { message_key: "auth.session_revoked" },

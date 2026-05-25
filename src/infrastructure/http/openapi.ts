@@ -350,7 +350,8 @@ const routes: ApiRouteDoc[] = [
     method: "get",
     path: "/api/v1/users/:id/sessions",
     summary: "List user sessions",
-    description: "Lists active refresh-token sessions for self or administrator.",
+    description:
+      "Lists active refresh-token sessions for self or administrator.",
     tags: ["Users"],
     secured: true,
     successStatus: "200",

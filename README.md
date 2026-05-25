@@ -28,6 +28,7 @@ bun run migrate
 bun run seed:roles
 bun run seed:admin
 bun run seed:map
+bun run seed:e2e
 ```
 
 ## Run

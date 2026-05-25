@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test';
-import { createPaymentHandlers } from '../src/infrastructure/http/payment-handlers';
-import type { HttpContext } from '../src/shared/http/router';
+import { describe, expect, test } from "bun:test";
+import { createPaymentHandlers } from "../src/infrastructure/http/payment-handlers";
+import type { HttpContext } from "../src/shared/http/router";
 import type {
   CompensationCertificateSnapshot,
   LockedPaymentRecord,
@@ -10,33 +10,39 @@ import type {
   PaymentStore,
   PaymentTransaction,
   PendingPaymentRecord,
-} from '../src/application/payments/payment-store';
+} from "../src/application/payments/payment-store";
 import type {
   CreatePaymentChargeInput,
   PaymentGatewayAdapter,
   PaymentGatewayOutcome,
   PaymentGatewayChargeResult,
   PaymentGatewayStatusResult,
-} from '../src/application/payments/payment-gateway';
+} from "../src/application/payments/payment-gateway";
 import type {
   CompensationCertificateLookup,
   CompensationCertificateRecord,
   CertificateFileRecord,
   CompensationCertificateListItem,
-} from '../src/domain/compensations/repositories/compensation-certificate-repository';
+} from "../src/domain/compensations/repositories/compensation-certificate-repository";
 
 class InMemoryPaymentStore implements PaymentStore {
-  private readonly compensations = new Map<string, PaymentCompensationSnapshot>();
-  private readonly payments = new Map<string, {
-    id: string;
-    compensationId: string;
-    provider: string;
-    providerReference: string;
-    amount: number;
-    currency: string;
-    status: PaymentStatus;
-    paidAt?: Date;
-  }>();
+  private readonly compensations = new Map<
+    string,
+    PaymentCompensationSnapshot
+  >();
+  private readonly payments = new Map<
+    string,
+    {
+      id: string;
+      compensationId: string;
+      provider: string;
+      providerReference: string;
+      amount: number;
+      currency: string;
+      status: PaymentStatus;
+      paidAt?: Date;
+    }
+  >();
 
   constructor(items: PaymentCompensationSnapshot[]) {
     for (const item of items) {
@@ -53,7 +59,7 @@ class InMemoryPaymentStore implements PaymentStore {
   }
 
   async runInTransaction<T>(
-    work: (tx: PaymentTransaction) => Promise<T>
+    work: (tx: PaymentTransaction) => Promise<T>,
   ): Promise<T> {
     const tx: PaymentTransaction = {
       lockCompensation: async (compensationId: string) => {
@@ -92,7 +98,7 @@ class InMemoryPaymentStore implements PaymentStore {
         const payment = [...this.payments.values()].find(
           (candidate) =>
             candidate.provider === input.provider &&
-            candidate.providerReference === input.providerReference
+            candidate.providerReference === input.providerReference,
         );
 
         if (!payment) {
@@ -107,11 +113,11 @@ class InMemoryPaymentStore implements PaymentStore {
         return mapLockedPayment(payment, compensation);
       },
       lockPaymentByStripePaymentIntentId: async (
-        stripePaymentIntentId: string
+        stripePaymentIntentId: string,
       ) => {
         const payment = [...this.payments.values()].find(
           (candidate) =>
-            (candidate as any).stripePaymentIntentId === stripePaymentIntentId
+            (candidate as any).stripePaymentIntentId === stripePaymentIntentId,
         );
         if (!payment) return null;
         const compensation = this.compensations.get(payment.compensationId);
@@ -136,7 +142,7 @@ class InMemoryPaymentStore implements PaymentStore {
       },
       updateCompensationStatus: async (input: {
         compensationId: string;
-        status: 'pending' | 'paid' | 'canceled';
+        status: "pending" | "paid" | "canceled";
       }) => {
         const current = this.compensations.get(input.compensationId);
         if (!current) {
@@ -155,7 +161,7 @@ class InMemoryPaymentStore implements PaymentStore {
 
   async listPendingPayments(limit: number): Promise<PendingPaymentRecord[]> {
     const pending = [...this.payments.values()]
-      .filter((payment) => payment.status === 'pending')
+      .filter((payment) => payment.status === "pending")
       .slice(0, limit);
 
     return pending
@@ -173,7 +179,7 @@ class InMemoryPaymentStore implements PaymentStore {
           providerReference: payment.providerReference,
           amount: payment.amount,
           currency: payment.currency,
-          paymentStatus: 'pending' as const,
+          paymentStatus: "pending" as const,
           compensationStatus: compensation.status,
         };
       })
@@ -181,7 +187,7 @@ class InMemoryPaymentStore implements PaymentStore {
   }
 
   async getCompensationForCertificate(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateSnapshot | null> {
     const item = this.compensations.get(compensationId);
     if (!item) {
@@ -191,9 +197,9 @@ class InMemoryPaymentStore implements PaymentStore {
     return {
       id: item.id,
       supporterUserId: item.supporterUserId,
-      areaId: 'area-1',
-      calculationId: 'calc-1',
-      compensationMode: 'tco2e',
+      areaId: "area-1",
+      calculationId: "calc-1",
+      compensationMode: "tco2e",
       horizonYears: null,
       treesRequested: null,
       pricePerTree: null,
@@ -218,7 +224,7 @@ function mapLockedPayment(
     status: PaymentStatus;
     paidAt?: Date;
   },
-  compensation: PaymentCompensationSnapshot
+  compensation: PaymentCompensationSnapshot,
 ): LockedPaymentRecord {
   return {
     id: payment.id,
@@ -235,11 +241,11 @@ function mapLockedPayment(
 }
 
 class FakeGateway implements PaymentGatewayAdapter {
-  readonly provider = 'card_simulator';
+  readonly provider = "card_simulator";
   private readonly statusByReference = new Map<string, PaymentGatewayOutcome>();
 
   async createCharge(
-    input: CreatePaymentChargeInput
+    input: CreatePaymentChargeInput,
   ): Promise<PaymentGatewayChargeResult> {
     const outcome = resolveOutcome(input.cardNumber);
     const providerReference = `sim_${outcome}_${input.cardNumber.slice(-4)}_${Date.now()}`;
@@ -249,20 +255,21 @@ class FakeGateway implements PaymentGatewayAdapter {
       provider: this.provider,
       providerReference,
       outcome,
-      processedAt: new Date('2026-02-07T20:00:00Z'),
+      processedAt: new Date("2026-02-07T20:00:00Z"),
     };
   }
 
   async getChargeStatus(input: {
     providerReference: string;
   }): Promise<PaymentGatewayStatusResult> {
-    const outcome = this.statusByReference.get(input.providerReference) ?? 'timeout';
+    const outcome =
+      this.statusByReference.get(input.providerReference) ?? "timeout";
 
     return {
       provider: this.provider,
       providerReference: input.providerReference,
       outcome,
-      processedAt: new Date('2026-02-07T21:00:00Z'),
+      processedAt: new Date("2026-02-07T21:00:00Z"),
     };
   }
 
@@ -283,15 +290,17 @@ class InMemoryCertificateRepository {
     this.files.push(record);
   }
 
-  async createCertificate(record: CompensationCertificateRecord): Promise<void> {
+  async createCertificate(
+    record: CompensationCertificateRecord,
+  ): Promise<void> {
     this.certificates.push(record);
   }
 
   async findByCompensationId(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateLookup | null> {
     const certificate = this.certificates.find(
-      (item) => item.compensationId === compensationId
+      (item) => item.compensationId === compensationId,
     );
     if (!certificate) {
       return null;
@@ -346,7 +355,7 @@ class InMemoryCertificateStorage {
 
 class InMemoryCertificatePdfGenerator {
   async generate(): Promise<Uint8Array> {
-    return new TextEncoder().encode('%PDF-1.4\n%%EOF\n');
+    return new TextEncoder().encode("%PDF-1.4\n%%EOF\n");
   }
 }
 
@@ -354,7 +363,7 @@ function createHandlers(
   store: InMemoryPaymentStore,
   gateway: FakeGateway,
   paymentId: string,
-  now: string
+  now: string,
 ) {
   return createPaymentHandlers({
     paymentStore: store,
@@ -378,18 +387,18 @@ function createHandlers(
 
 function resolveOutcome(cardNumber: string): PaymentGatewayOutcome {
   switch (cardNumber) {
-    case '4111111111111111':
-      return 'authorized';
-    case '4000000000000002':
-      return 'declined';
-    case '4000000000000101':
-      return 'in_review';
-    case '4000000000009995':
-      return 'timeout';
-    case '4000000000009987':
-      return 'canceled';
+    case "4111111111111111":
+      return "authorized";
+    case "4000000000000002":
+      return "declined";
+    case "4000000000000101":
+      return "in_review";
+    case "4000000000009995":
+      return "timeout";
+    case "4000000000009987":
+      return "canceled";
     default:
-      return 'authorized';
+      return "authorized";
   }
 }
 
@@ -401,19 +410,19 @@ function buildPostContext(params: {
 }): HttpContext {
   return {
     request: new Request(`http://localhost${params.url}`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'content-type': 'application/json',
+        "content-type": "application/json",
       },
       body: JSON.stringify(params.body),
     }),
     params: {},
     query: new URL(`http://localhost${params.url}`).searchParams,
-    requestId: 'req-1',
-    clientIp: '127.0.0.1',
+    requestId: "req-1",
+    clientIp: "127.0.0.1",
     auth: {
       userId: params.userId,
-      roles: params.roles ?? ['individual'],
+      roles: params.roles ?? ["individual"],
     },
   };
 }
@@ -426,203 +435,203 @@ function buildGetContext(params: {
 }): HttpContext {
   return {
     request: new Request(`http://localhost${params.path}`, {
-      method: 'GET',
+      method: "GET",
       headers: {
-        accept: 'application/json',
+        accept: "application/json",
       },
     }),
     params: params.routeParams,
     query: new URL(`http://localhost${params.path}`).searchParams,
-    requestId: 'req-1',
-    clientIp: '127.0.0.1',
+    requestId: "req-1",
+    clientIp: "127.0.0.1",
     auth: {
       userId: params.userId,
-      roles: params.roles ?? ['individual'],
+      roles: params.roles ?? ["individual"],
     },
   };
 }
 
-describe('POST /api/v1/payments/simulate', () => {
-  test('authorizes payment and marks compensation as paid', async () => {
+describe("POST /api/v1/payments/simulate", () => {
+  test("authorizes payment and marks compensation as paid", async () => {
     const store = new InMemoryPaymentStore([
       {
-        id: 'comp-1',
-        supporterUserId: 'supporter-1',
+        id: "comp-1",
+        supporterUserId: "supporter-1",
         totalAmount: 120,
-        currency: 'BRL',
-        areaId: 'area-1',
-        status: 'pending',
+        currency: "BRL",
+        areaId: "area-1",
+        status: "pending",
       },
     ]);
 
     const handlers = createHandlers(
       store,
       new FakeGateway(),
-      'pay-1',
-      '2026-02-07T20:00:00Z'
+      "pay-1",
+      "2026-02-07T20:00:00Z",
     );
 
     const response = await handlers.simulate(
       buildPostContext({
-        userId: 'supporter-1',
-        url: '/api/v1/payments/simulate',
+        userId: "supporter-1",
+        url: "/api/v1/payments/simulate",
         body: {
-          compensation_id: 'comp-1',
-          card_number: '4111 1111 1111 1111',
-          cardholder_name: 'Test User',
+          compensation_id: "comp-1",
+          card_number: "4111 1111 1111 1111",
+          cardholder_name: "Test User",
           expiration_month: 12,
           expiration_year: 2030,
-          cvv: '123',
+          cvv: "123",
           installments: 1,
         },
-      })
+      }),
     );
 
     expect(response.status).toBe(201);
     const payload = await response.json();
-    expect(payload.data.payment_id).toBe('pay-1');
-    expect(payload.data.simulation_status).toBe('authorized');
-    expect(payload.data.payment_status).toBe('paid');
-    expect(payload.data.compensation_status).toBe('paid');
+    expect(payload.data.payment_id).toBe("pay-1");
+    expect(payload.data.simulation_status).toBe("authorized");
+    expect(payload.data.payment_status).toBe("paid");
+    expect(payload.data.compensation_status).toBe("paid");
     expect(payload.data.certificate).not.toBeNull();
-    expect(store.getPayment('pay-1')).toBeDefined();
-    expect(store.getCompensation('comp-1')?.status).toBe('paid');
+    expect(store.getPayment("pay-1")).toBeDefined();
+    expect(store.getCompensation("comp-1")?.status).toBe("paid");
   });
 
-  test('declines payment and keeps compensation pending', async () => {
+  test("declines payment and keeps compensation pending", async () => {
     const store = new InMemoryPaymentStore([
       {
-        id: 'comp-2',
-        supporterUserId: 'supporter-1',
+        id: "comp-2",
+        supporterUserId: "supporter-1",
         totalAmount: 200,
-        currency: 'BRL',
-        areaId: 'area-1',
-        status: 'pending',
+        currency: "BRL",
+        areaId: "area-1",
+        status: "pending",
       },
     ]);
 
     const handlers = createHandlers(
       store,
       new FakeGateway(),
-      'pay-2',
-      '2026-02-07T20:05:00Z'
+      "pay-2",
+      "2026-02-07T20:05:00Z",
     );
 
     const response = await handlers.simulate(
       buildPostContext({
-        userId: 'supporter-1',
-        url: '/api/v1/payments/simulate',
+        userId: "supporter-1",
+        url: "/api/v1/payments/simulate",
         body: {
-          compensation_id: 'comp-2',
-          card_number: '4000 0000 0000 0002',
-          cardholder_name: 'Test User',
+          compensation_id: "comp-2",
+          card_number: "4000 0000 0000 0002",
+          cardholder_name: "Test User",
           expiration_month: 11,
           expiration_year: 2030,
-          cvv: '321',
+          cvv: "321",
           installments: 2,
         },
-      })
+      }),
     );
 
     expect(response.status).toBe(201);
     const payload = await response.json();
-    expect(payload.data.simulation_status).toBe('declined');
-    expect(payload.data.payment_status).toBe('failed');
-    expect(payload.data.compensation_status).toBe('canceled');
-    expect(store.getCompensation('comp-2')?.status).toBe('canceled');
+    expect(payload.data.simulation_status).toBe("declined");
+    expect(payload.data.payment_status).toBe("failed");
+    expect(payload.data.compensation_status).toBe("canceled");
+    expect(store.getCompensation("comp-2")?.status).toBe("canceled");
   });
 
-  test('rejects payment simulation for non-owner user', async () => {
+  test("rejects payment simulation for non-owner user", async () => {
     const store = new InMemoryPaymentStore([
       {
-        id: 'comp-3',
-        supporterUserId: 'supporter-1',
+        id: "comp-3",
+        supporterUserId: "supporter-1",
         totalAmount: 200,
-        currency: 'BRL',
-        areaId: 'area-1',
-        status: 'pending',
+        currency: "BRL",
+        areaId: "area-1",
+        status: "pending",
       },
     ]);
 
     const handlerWithOtherUser = createHandlers(
       store,
       new FakeGateway(),
-      'pay-3',
-      '2026-02-07T20:10:00Z'
+      "pay-3",
+      "2026-02-07T20:10:00Z",
     );
 
     const response = await handlerWithOtherUser.simulate(
       buildPostContext({
-        userId: 'other-user',
-        url: '/api/v1/payments/simulate',
+        userId: "other-user",
+        url: "/api/v1/payments/simulate",
         body: {
-          compensation_id: 'comp-3',
-          card_number: '4111111111111111',
-          cardholder_name: 'Other User',
+          compensation_id: "comp-3",
+          card_number: "4111111111111111",
+          cardholder_name: "Other User",
           expiration_month: 10,
           expiration_year: 2030,
-          cvv: '123',
+          cvv: "123",
           installments: 1,
         },
-      })
+      }),
     );
 
     expect(response.status).toBe(403);
     const payload = await response.json();
-    expect(payload.error.message_key).toBe('auth.forbidden');
+    expect(payload.error.message_key).toBe("auth.forbidden");
   });
 
-  test('validates invalid card payload', async () => {
+  test("validates invalid card payload", async () => {
     const store = new InMemoryPaymentStore([
       {
-        id: 'comp-4',
-        supporterUserId: 'supporter-1',
+        id: "comp-4",
+        supporterUserId: "supporter-1",
         totalAmount: 200,
-        currency: 'BRL',
-        areaId: 'area-1',
-        status: 'pending',
+        currency: "BRL",
+        areaId: "area-1",
+        status: "pending",
       },
     ]);
 
     const handlers = createHandlers(
       store,
       new FakeGateway(),
-      'pay-4',
-      '2026-02-07T20:12:00Z'
+      "pay-4",
+      "2026-02-07T20:12:00Z",
     );
 
     const response = await handlers.simulate(
       buildPostContext({
-        userId: 'supporter-1',
-        url: '/api/v1/payments/simulate',
+        userId: "supporter-1",
+        url: "/api/v1/payments/simulate",
         body: {
-          compensation_id: 'comp-4',
-          card_number: '1234',
-          cardholder_name: 'Test',
+          compensation_id: "comp-4",
+          card_number: "1234",
+          cardholder_name: "Test",
           expiration_month: 10,
           expiration_year: 2030,
-          cvv: '12',
+          cvv: "12",
           installments: 0,
         },
-      })
+      }),
     );
 
     expect(response.status).toBe(400);
     const payload = await response.json();
-    expect(payload.error.message_key).toBe('request.validation_failed');
+    expect(payload.error.message_key).toBe("request.validation_failed");
   });
 });
 
-describe('GET /api/v1/payments/:id/status', () => {
-  test('queries adapter and syncs status from pending to paid', async () => {
+describe("GET /api/v1/payments/:id/status", () => {
+  test("queries adapter and syncs status from pending to paid", async () => {
     const store = new InMemoryPaymentStore([
       {
-        id: 'comp-5',
-        supporterUserId: 'supporter-1',
+        id: "comp-5",
+        supporterUserId: "supporter-1",
         totalAmount: 300,
-        currency: 'BRL',
-        areaId: 'area-1',
-        status: 'pending',
+        currency: "BRL",
+        areaId: "area-1",
+        status: "pending",
       },
     ]);
 
@@ -630,46 +639,46 @@ describe('GET /api/v1/payments/:id/status', () => {
     const handlers = createHandlers(
       store,
       gateway,
-      'pay-5',
-      '2026-02-07T20:20:00Z'
+      "pay-5",
+      "2026-02-07T20:20:00Z",
     );
 
     const simulateResponse = await handlers.simulate(
       buildPostContext({
-        userId: 'supporter-1',
-        url: '/api/v1/payments/simulate',
+        userId: "supporter-1",
+        url: "/api/v1/payments/simulate",
         body: {
-          compensation_id: 'comp-5',
-          card_number: '4000000000009995',
-          cardholder_name: 'Retry User',
+          compensation_id: "comp-5",
+          card_number: "4000000000009995",
+          cardholder_name: "Retry User",
           expiration_month: 10,
           expiration_year: 2030,
-          cvv: '123',
+          cvv: "123",
           installments: 1,
         },
-      })
+      }),
     );
 
     expect(simulateResponse.status).toBe(201);
     const simulatedPayload = await simulateResponse.json();
-    expect(simulatedPayload.data.payment_status).toBe('pending');
+    expect(simulatedPayload.data.payment_status).toBe("pending");
 
-    gateway.setOutcome(simulatedPayload.data.provider_reference, 'authorized');
+    gateway.setOutcome(simulatedPayload.data.provider_reference, "authorized");
 
     const statusResponse = await handlers.status(
       buildGetContext({
-        userId: 'supporter-1',
+        userId: "supporter-1",
         path: `/api/v1/payments/${simulatedPayload.data.payment_id}/status`,
         routeParams: { id: simulatedPayload.data.payment_id as string },
       }),
-      simulatedPayload.data.payment_id as string
+      simulatedPayload.data.payment_id as string,
     );
 
     expect(statusResponse.status).toBe(200);
     const statusPayload = await statusResponse.json();
-    expect(statusPayload.data.payment_status).toBe('paid');
-    expect(statusPayload.data.compensation_status).toBe('paid');
+    expect(statusPayload.data.payment_status).toBe("paid");
+    expect(statusPayload.data.compensation_status).toBe("paid");
     // Local DB is only updated by webhook, not by status polling
-    expect(store.getCompensation('comp-5')?.status).toBe('pending');
+    expect(store.getCompensation("comp-5")?.status).toBe("pending");
   });
 });

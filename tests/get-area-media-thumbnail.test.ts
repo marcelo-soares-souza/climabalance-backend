@@ -1,15 +1,15 @@
-import { beforeEach, describe, expect, test } from 'bun:test';
-import { Area } from '../src/domain/areas/entities/area';
-import { Location } from '../src/domain/areas/value-objects/location';
-import { AreaStatus } from '../src/domain/areas/value-objects/area-status';
-import { getAreaMediaThumbnail } from '../src/application/areas/get-area-media-thumbnail';
-import { NotFoundError } from '../src/domain/errors';
+import { beforeEach, describe, expect, test } from "bun:test";
+import { Area } from "../src/domain/areas/entities/area";
+import { Location } from "../src/domain/areas/value-objects/location";
+import { AreaStatus } from "../src/domain/areas/value-objects/area-status";
+import { getAreaMediaThumbnail } from "../src/application/areas/get-area-media-thumbnail";
+import { NotFoundError } from "../src/domain/errors";
 import type {
   AreaMedia,
-  AreaMediaRepository
-} from '../src/domain/areas/repositories/area-media-repository';
-import type { AreaRepository } from '../src/domain/areas/repositories/area-repository';
-import type { AreaMediaStorage } from '../src/domain/areas/services/area-media-storage';
+  AreaMediaRepository,
+} from "../src/domain/areas/repositories/area-media-repository";
+import type { AreaRepository } from "../src/domain/areas/repositories/area-repository";
+import type { AreaMediaStorage } from "../src/domain/areas/services/area-media-storage";
 
 class MemoryAreaRepository implements AreaRepository {
   private areas = new Map<string, Area>();
@@ -56,14 +56,22 @@ class MemoryAreaRepository implements AreaRepository {
     return this.areas.size;
   }
 
-  async getGlobalStats(): Promise<{ totalAreas: number; totalTreesPlanted: number; totalCO2Captured: number }> {
+  async getGlobalStats(): Promise<{
+    totalAreas: number;
+    totalTreesPlanted: number;
+    totalCO2Captured: number;
+  }> {
     return { totalAreas: 0, totalTreesPlanted: 0, totalCO2Captured: 0 };
   }
 }
 
 class MemoryAreaMediaRepository implements AreaMediaRepository {
   private items = new Map<string, AreaMedia>();
-  lastUpdateThumbnail: { id: string; thumbnailStoragePath: string; thumbnailGeneratedAt: Date } | null = null;
+  lastUpdateThumbnail: {
+    id: string;
+    thumbnailStoragePath: string;
+    thumbnailGeneratedAt: Date;
+  } | null = null;
 
   async create(media: AreaMedia): Promise<void> {
     this.items.set(media.id, media);
@@ -79,13 +87,13 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
 
   async listByAreaId(areaId: string): Promise<AreaMedia[]> {
     return [...this.items.values()].filter(
-      (item) => item.areaId === areaId && !item.deletedAt
+      (item) => item.areaId === areaId && !item.deletedAt,
     );
   }
 
   async listByAreaIds(areaIds: string[]): Promise<AreaMedia[]> {
     return [...this.items.values()].filter(
-      (item) => areaIds.includes(item.areaId) && !item.deletedAt
+      (item) => areaIds.includes(item.areaId) && !item.deletedAt,
     );
   }
 
@@ -101,8 +109,16 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
     });
   }
 
-  async updateThumbnail(id: string, thumbnailStoragePath: string, thumbnailGeneratedAt: Date): Promise<void> {
-    this.lastUpdateThumbnail = { id, thumbnailStoragePath, thumbnailGeneratedAt };
+  async updateThumbnail(
+    id: string,
+    thumbnailStoragePath: string,
+    thumbnailGeneratedAt: Date,
+  ): Promise<void> {
+    this.lastUpdateThumbnail = {
+      id,
+      thumbnailStoragePath,
+      thumbnailGeneratedAt,
+    };
     const item = this.items.get(id);
     if (item) {
       this.items.set(id, {
@@ -117,7 +133,10 @@ class MemoryAreaMediaRepository implements AreaMediaRepository {
 
 class MemoryAreaMediaStorage implements AreaMediaStorage {
   private files = new Map<string, Uint8Array>();
-  private generatedThumbnails = new Map<string, { thumbnailStoragePath: string; bytes: Uint8Array }>();
+  private generatedThumbnails = new Map<
+    string,
+    { thumbnailStoragePath: string; bytes: Uint8Array }
+  >();
   public shouldExist = true;
 
   seedFile(path: string, bytes: Uint8Array): void {
@@ -138,7 +157,7 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
   async read(storagePath: string): Promise<Uint8Array> {
     const data = this.files.get(storagePath);
     if (!data) {
-      throw new Error('not found');
+      throw new Error("not found");
     }
     return data;
   }
@@ -151,7 +170,9 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
     return this.shouldExist && this.files.has(storagePath);
   }
 
-  async generateThumbnail(storagePath: string): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
+  async generateThumbnail(
+    storagePath: string,
+  ): Promise<{ thumbnailStoragePath: string; bytes: Uint8Array }> {
     const cached = this.generatedThumbnails.get(storagePath);
     if (cached) return cached;
 
@@ -164,9 +185,9 @@ class MemoryAreaMediaStorage implements AreaMediaStorage {
   }
 }
 
-const now = new Date('2026-02-07T00:00:00Z');
+const now = new Date("2026-02-07T00:00:00Z");
 
-describe('getAreaMediaThumbnail', () => {
+describe("getAreaMediaThumbnail", () => {
   let areaRepository: MemoryAreaRepository;
   let areaMediaRepository: MemoryAreaMediaRepository;
   let areaMediaStorage: MemoryAreaMediaStorage;
@@ -178,26 +199,26 @@ describe('getAreaMediaThumbnail', () => {
 
     areaRepository.add(
       new Area({
-        id: 'area-1',
-        ownerUserId: 'owner-1',
-        name: 'Area 1',
+        id: "area-1",
+        ownerUserId: "owner-1",
+        name: "Area 1",
         location: new Location(-15, -47),
         status: AreaStatus.ACTIVE,
         createdAt: now,
         updatedAt: now,
-      })
+      }),
     );
   });
 
-  test('generates thumbnail on first request and returns webp', async () => {
+  test("generates thumbnail on first request and returns webp", async () => {
     const media: AreaMedia = {
-      id: 'media-1',
-      areaId: 'area-1',
-      uploadedByUserId: 'owner-1',
-      mediaType: 'photo',
-      mimeType: 'image/jpeg',
-      originalFileName: 'test.jpg',
-      storagePath: 'memory://owner-1/media-1',
+      id: "media-1",
+      areaId: "area-1",
+      uploadedByUserId: "owner-1",
+      mediaType: "photo",
+      mimeType: "image/jpeg",
+      originalFileName: "test.jpg",
+      storagePath: "memory://owner-1/media-1",
       fileSizeBytes: 1000,
       thumbnailStoragePath: null,
       thumbnailGeneratedAt: null,
@@ -206,9 +227,9 @@ describe('getAreaMediaThumbnail', () => {
       deletedAt: null,
     };
     areaMediaStorage.save({
-      mediaId: 'media-1',
-      uploadedByUserId: 'owner-1',
-      mimeType: 'image/jpeg',
+      mediaId: "media-1",
+      uploadedByUserId: "owner-1",
+      mimeType: "image/jpeg",
       bytes: new Uint8Array([255, 216, 255, 224]),
     });
     await areaMediaRepository.create(media);
@@ -220,27 +241,29 @@ describe('getAreaMediaThumbnail', () => {
         areaMediaStorage,
         clock: { now: () => now },
       },
-      { mediaId: 'media-1' }
+      { mediaId: "media-1" },
     );
 
-    expect(result.mimeType).toBe('image/webp');
-    expect(result.mediaId).toBe('media-1');
+    expect(result.mimeType).toBe("image/webp");
+    expect(result.mediaId).toBe("media-1");
     expect(result.bytes.length).toBeGreaterThan(0);
     expect(areaMediaRepository.lastUpdateThumbnail).not.toBeNull();
-    expect(areaMediaRepository.lastUpdateThumbnail!.thumbnailStoragePath).toContain('_thumb.webp');
+    expect(
+      areaMediaRepository.lastUpdateThumbnail!.thumbnailStoragePath,
+    ).toContain("_thumb.webp");
   });
 
-  test('returns cached thumbnail on subsequent requests', async () => {
+  test("returns cached thumbnail on subsequent requests", async () => {
     const media: AreaMedia = {
-      id: 'media-1',
-      areaId: 'area-1',
-      uploadedByUserId: 'owner-1',
-      mediaType: 'photo',
-      mimeType: 'image/jpeg',
-      originalFileName: 'test.jpg',
-      storagePath: 'memory://owner-1/media-1',
+      id: "media-1",
+      areaId: "area-1",
+      uploadedByUserId: "owner-1",
+      mediaType: "photo",
+      mimeType: "image/jpeg",
+      originalFileName: "test.jpg",
+      storagePath: "memory://owner-1/media-1",
       fileSizeBytes: 1000,
-      thumbnailStoragePath: 'memory://owner-1/media-1_thumb',
+      thumbnailStoragePath: "memory://owner-1/media-1_thumb",
       thumbnailGeneratedAt: now,
       createdAt: now,
       updatedAt: now,
@@ -248,14 +271,14 @@ describe('getAreaMediaThumbnail', () => {
     };
 
     await areaMediaStorage.save({
-      mediaId: 'media-1',
-      uploadedByUserId: 'owner-1',
-      mimeType: 'image/jpeg',
+      mediaId: "media-1",
+      uploadedByUserId: "owner-1",
+      mimeType: "image/jpeg",
       bytes: new Uint8Array([255, 216, 255, 224]),
     });
 
     const thumbBytes = new Uint8Array([5, 6, 7, 8]);
-    areaMediaStorage.seedFile('memory://owner-1/media-1_thumb', thumbBytes);
+    areaMediaStorage.seedFile("memory://owner-1/media-1_thumb", thumbBytes);
 
     await areaMediaRepository.create(media);
 
@@ -268,33 +291,33 @@ describe('getAreaMediaThumbnail', () => {
         areaMediaStorage,
         clock: { now: () => now },
       },
-      { mediaId: 'media-1' }
+      { mediaId: "media-1" },
     );
 
-    expect(result.mimeType).toBe('image/webp');
+    expect(result.mimeType).toBe("image/webp");
     expect(areaMediaRepository.lastUpdateThumbnail).toBeNull();
   });
 
-  test('regenerates thumbnail when stored thumbnail file is missing', async () => {
+  test("regenerates thumbnail when stored thumbnail file is missing", async () => {
     const media: AreaMedia = {
-      id: 'media-1',
-      areaId: 'area-1',
-      uploadedByUserId: 'owner-1',
-      mediaType: 'photo',
-      mimeType: 'image/jpeg',
-      originalFileName: 'test.jpg',
-      storagePath: 'memory://owner-1/media-1',
+      id: "media-1",
+      areaId: "area-1",
+      uploadedByUserId: "owner-1",
+      mediaType: "photo",
+      mimeType: "image/jpeg",
+      originalFileName: "test.jpg",
+      storagePath: "memory://owner-1/media-1",
       fileSizeBytes: 1000,
-      thumbnailStoragePath: 'memory://owner-1/media-1_thumb.webp',
+      thumbnailStoragePath: "memory://owner-1/media-1_thumb.webp",
       thumbnailGeneratedAt: now,
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
     };
     await areaMediaStorage.save({
-      mediaId: 'media-1',
-      uploadedByUserId: 'owner-1',
-      mimeType: 'image/jpeg',
+      mediaId: "media-1",
+      uploadedByUserId: "owner-1",
+      mimeType: "image/jpeg",
       bytes: new Uint8Array([255, 216, 255, 224]),
     });
     await areaMediaRepository.create(media);
@@ -308,22 +331,22 @@ describe('getAreaMediaThumbnail', () => {
         areaMediaStorage,
         clock: { now: () => now },
       },
-      { mediaId: 'media-1' }
+      { mediaId: "media-1" },
     );
 
-    expect(result.mimeType).toBe('image/webp');
+    expect(result.mimeType).toBe("image/webp");
     expect(areaMediaRepository.lastUpdateThumbnail).not.toBeNull();
   });
 
-  test('throws NotFoundError for video media type', async () => {
+  test("throws NotFoundError for video media type", async () => {
     const media: AreaMedia = {
-      id: 'media-video',
-      areaId: 'area-1',
-      uploadedByUserId: 'owner-1',
-      mediaType: 'video',
-      mimeType: 'video/mp4',
-      originalFileName: 'walkthrough.mp4',
-      storagePath: 'memory://owner-1/media-video',
+      id: "media-video",
+      areaId: "area-1",
+      uploadedByUserId: "owner-1",
+      mediaType: "video",
+      mimeType: "video/mp4",
+      originalFileName: "walkthrough.mp4",
+      storagePath: "memory://owner-1/media-video",
       fileSizeBytes: 5000,
       thumbnailStoragePath: null,
       thumbnailGeneratedAt: null,
@@ -341,12 +364,12 @@ describe('getAreaMediaThumbnail', () => {
           areaMediaStorage,
           clock: { now: () => now },
         },
-        { mediaId: 'media-video' }
-      )
+        { mediaId: "media-video" },
+      ),
     ).rejects.toThrow(NotFoundError);
   });
 
-  test('throws NotFoundError for non-existent media', async () => {
+  test("throws NotFoundError for non-existent media", async () => {
     expect(
       getAreaMediaThumbnail(
         {
@@ -355,8 +378,8 @@ describe('getAreaMediaThumbnail', () => {
           areaMediaStorage,
           clock: { now: () => now },
         },
-        { mediaId: 'nonexistent' }
-      )
+        { mediaId: "nonexistent" },
+      ),
     ).rejects.toThrow(NotFoundError);
   });
 });

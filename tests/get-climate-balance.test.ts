@@ -1,18 +1,18 @@
-import { describe, expect, test } from 'bun:test';
-import { getClimateBalance } from '../src/application/users/get-climate-balance';
+import { describe, expect, test } from "bun:test";
+import { getClimateBalance } from "../src/application/users/get-climate-balance";
 
-describe('getClimateBalance', () => {
-  test('aggregates finalized footprint emissions and paid tree contributions', async () => {
-    const result = await getClimateBalance('user-1', {
+describe("getClimateBalance", () => {
+  test("aggregates finalized footprint emissions and paid tree contributions", async () => {
+    const result = await getClimateBalance("user-1", {
       calculationRepository: {
         async sumFinalizedTCO2eByUser(userId: string) {
-          expect(userId).toBe('user-1');
+          expect(userId).toBe("user-1");
           return 12.5;
         },
       },
       compensationHistoryRepository: {
         async getPaidContributionSummaryBySupporter(userId: string) {
-          expect(userId).toBe('user-1');
+          expect(userId).toBe("user-1");
           return {
             estimatedOffsetTCO2e: 3.25,
             totalTreesPurchased: 80,

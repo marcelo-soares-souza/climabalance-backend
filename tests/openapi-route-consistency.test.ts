@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { OPENAPI_ROUTE_SIGNATURES } from '../src/infrastructure/http/openapi';
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { OPENAPI_ROUTE_SIGNATURES } from "../src/infrastructure/http/openapi";
 
 function extractRuntimeRouteSignatures(source: string): string[] {
   const signatures: string[] = [];
@@ -17,11 +17,11 @@ function extractRuntimeRouteSignatures(source: string): string[] {
   return signatures;
 }
 
-describe('OpenAPI route catalog', () => {
-  test('covers all runtime routes registered in buildRouter', () => {
+describe("OpenAPI route catalog", () => {
+  test("covers all runtime routes registered in buildRouter", () => {
     const routesSource = readFileSync(
-      new URL('../src/infrastructure/http/routes.ts', import.meta.url),
-      'utf-8'
+      new URL("../src/infrastructure/http/routes.ts", import.meta.url),
+      "utf-8",
     );
 
     const runtimeRoutes = extractRuntimeRouteSignatures(routesSource).sort();

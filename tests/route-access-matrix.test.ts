@@ -39,9 +39,8 @@ describe("Route access matrix", () => {
     );
 
     const runtimeRoutes = extractRuntimeRouteSignatures(routesSource).sort();
-    const documentedRoutes = extractDocumentedRouteSignatures(
-      matrixSource,
-    ).sort();
+    const documentedRoutes =
+      extractDocumentedRouteSignatures(matrixSource).sort();
 
     expect(documentedRoutes).toEqual(runtimeRoutes);
   });

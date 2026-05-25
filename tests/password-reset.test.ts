@@ -1,34 +1,54 @@
-import { expect, test } from 'bun:test';
+import { expect, test } from "bun:test";
 
-process.env.APP_ENV = 'test';
-process.env.APP_PORT = '3000';
-process.env.APP_URL = 'http://localhost:3000';
-process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/test';
-process.env.JWT_SECRET = 'test-secret';
-process.env.JWT_ISSUER = 'test-issuer';
-process.env.JWT_AUDIENCE = 'test-aud';
-process.env.JWT_TTL_SECONDS = '900';
-process.env.PASSWORD_PEPPER = 'test-pepper';
-process.env.EMAIL_FROM = 'no-reply@example.com';
-process.env.EMAIL_CONFIRM_TTL_MINUTES = '60';
-process.env.PASSWORD_RESET_TTL_MINUTES = '60';
+process.env.APP_ENV = "test";
+process.env.APP_PORT = "3000";
+process.env.APP_URL = "http://localhost:3000";
+process.env.DATABASE_URL = "postgres://user:pass@localhost:5432/test";
+process.env.JWT_SECRET = "test-secret";
+process.env.JWT_ISSUER = "test-issuer";
+process.env.JWT_AUDIENCE = "test-aud";
+process.env.JWT_TTL_SECONDS = "900";
+process.env.PASSWORD_PEPPER = "test-pepper";
+process.env.EMAIL_FROM = "no-reply@example.com";
+process.env.EMAIL_CONFIRM_TTL_MINUTES = "60";
+process.env.PASSWORD_RESET_TTL_MINUTES = "60";
 
-const { requestPasswordReset } = await import('../src/application/auth/request-password-reset');
-const { resetPassword } = await import('../src/application/auth/reset-password');
+const { requestPasswordReset } =
+  await import("../src/application/auth/request-password-reset");
+const { resetPassword } =
+  await import("../src/application/auth/reset-password");
 
-import type { User } from '../src/domain/user/user';
-import type { UserProfile } from '../src/domain/user/user';
-import type { UserFilters, UserRepository, PublicDirectoryItem } from '../src/domain/user/user-repository';
-import type { PasswordResetToken, PasswordResetRepository } from '../src/domain/user/password-reset-repository';
-import type { EmailSender, EmailMessage } from '../src/infrastructure/email/email-sender';
-import type { PasswordHasher } from '../src/infrastructure/crypto/password';
+import type { User } from "../src/domain/user/user";
+import type { UserProfile } from "../src/domain/user/user";
+import type {
+  UserFilters,
+  UserRepository,
+  PublicDirectoryItem,
+} from "../src/domain/user/user-repository";
+import type {
+  PasswordResetToken,
+  PasswordResetRepository,
+} from "../src/domain/user/password-reset-repository";
+import type {
+  EmailSender,
+  EmailMessage,
+} from "../src/infrastructure/email/email-sender";
+import type { PasswordHasher } from "../src/infrastructure/crypto/password";
 
 class MemoryUserRepository implements UserRepository {
   users: User[] = [];
   roles = new Map<string, string[]>();
   profiles = new Map<string, UserProfile>();
 
-  async create(input: { id: string; email: string; passwordHash: string; slug: string; status: User['status']; locale: string; emailConfirmedAt?: Date | null; }): Promise<User> {
+  async create(input: {
+    id: string;
+    email: string;
+    passwordHash: string;
+    slug: string;
+    status: User["status"];
+    locale: string;
+    emailConfirmedAt?: Date | null;
+  }): Promise<User> {
     const now = new Date();
     const user: User = {
       id: input.id,
@@ -40,21 +60,32 @@ class MemoryUserRepository implements UserRepository {
       emailConfirmedAt: input.emailConfirmedAt ?? null,
       createdAt: now,
       updatedAt: now,
-      deletedAt: null
+      deletedAt: null,
     };
     this.users.push(user);
     return user;
   }
 
-  async update(input: { id: string; email?: string; passwordHash?: string; slug?: string; status?: User['status']; locale?: string; emailConfirmedAt?: Date | null; deletedAt?: Date | null; }): Promise<User | null> {
+  async update(input: {
+    id: string;
+    email?: string;
+    passwordHash?: string;
+    slug?: string;
+    status?: User["status"];
+    locale?: string;
+    emailConfirmedAt?: Date | null;
+    deletedAt?: Date | null;
+  }): Promise<User | null> {
     const user = this.users.find((u) => u.id === input.id) ?? null;
     if (!user) return null;
     if (input.email !== undefined) user.email = input.email;
-    if (input.passwordHash !== undefined) user.passwordHash = input.passwordHash;
+    if (input.passwordHash !== undefined)
+      user.passwordHash = input.passwordHash;
     if (input.slug !== undefined) user.slug = input.slug;
     if (input.status !== undefined) user.status = input.status;
     if (input.locale !== undefined) user.locale = input.locale;
-    if (input.emailConfirmedAt !== undefined) user.emailConfirmedAt = input.emailConfirmedAt;
+    if (input.emailConfirmedAt !== undefined)
+      user.emailConfirmedAt = input.emailConfirmedAt;
     if (input.deletedAt !== undefined) user.deletedAt = input.deletedAt;
     user.updatedAt = new Date();
     return user;
@@ -86,11 +117,17 @@ class MemoryUserRepository implements UserRepository {
 
   async cascadeSoftDelete(_userId: string): Promise<void> {}
 
-  async listPublicDirectory(_limit: number, _offset: number): Promise<PublicDirectoryItem[]> {
+  async listPublicDirectory(
+    _limit: number,
+    _offset: number,
+  ): Promise<PublicDirectoryItem[]> {
     return [];
   }
 
-  async upsertProfile(userId: string, profile: Partial<UserProfile>): Promise<UserProfile> {
+  async upsertProfile(
+    userId: string,
+    profile: Partial<UserProfile>,
+  ): Promise<UserProfile> {
     const existing = this.profiles.get(userId);
     const now = new Date();
     if (!existing) {
@@ -121,7 +158,7 @@ class MemoryUserRepository implements UserRepository {
         avatarPath: profile.avatarPath,
         createdAt: now,
         updatedAt: now,
-        deletedAt: null
+        deletedAt: null,
       };
       this.profiles.set(userId, created);
       return created;
@@ -130,7 +167,7 @@ class MemoryUserRepository implements UserRepository {
     const updated: UserProfile = {
       ...existing,
       ...profile,
-      updatedAt: now
+      updatedAt: now,
     };
     this.profiles.set(userId, updated);
     return updated;
@@ -160,7 +197,11 @@ class MemoryPasswordResetRepository implements PasswordResetRepository {
   }
 
   async findByTokenHash(tokenHash: string): Promise<PasswordResetToken | null> {
-    return this.tokens.find((token) => token.tokenHash === tokenHash && !token.deletedAt) ?? null;
+    return (
+      this.tokens.find(
+        (token) => token.tokenHash === tokenHash && !token.deletedAt,
+      ) ?? null
+    );
   }
 
   async markUsed(id: string, usedAt: Date): Promise<PasswordResetToken | null> {
@@ -185,40 +226,44 @@ const fakePasswordHasher: PasswordHasher = {
   },
   async verify(password: string, passwordHash: string): Promise<boolean> {
     return passwordHash === `hash:${password}`;
-  }
+  },
 };
 
-test('request and reset password flow', async () => {
+test("request and reset password flow", async () => {
   const users = new MemoryUserRepository();
   const passwordResets = new MemoryPasswordResetRepository();
   const emailSender = new MemoryEmailSender();
 
   await users.create({
-    id: 'user-1',
-    email: 'user@example.com',
-    passwordHash: 'hash:old',
-    status: 'active',
-    locale: 'pt-BR',
-    emailConfirmedAt: new Date()
+    id: "user-1",
+    email: "user@example.com",
+    passwordHash: "hash:old",
+    status: "active",
+    locale: "pt-BR",
+    emailConfirmedAt: new Date(),
   });
 
-  const mockTokenGenerator = { generate: () => 'mock-token' };
-  const mockHashService = { async sha256(input: string) { return Buffer.from(input).toString('hex'); } };
+  const mockTokenGenerator = { generate: () => "mock-token" };
+  const mockHashService = {
+    async sha256(input: string) {
+      return Buffer.from(input).toString("hex");
+    },
+  };
   let idCounter = 0;
   const mockIdGenerator = { generate: () => `test-id-${++idCounter}` };
   const mockClock = { now: () => new Date() };
   const mockConfig = {
-    jwtSecret: 'test',
-    jwtIssuer: 'test',
-    jwtAudience: 'test',
+    jwtSecret: "test",
+    jwtIssuer: "test",
+    jwtAudience: "test",
     jwtTtlSeconds: 900,
     emailConfirmTtlMinutes: 60,
     passwordResetTtlMinutes: 60,
-    frontendUrl: 'http://localhost:3000'
+    frontendUrl: "http://localhost:3000",
   };
 
   const requestResult = await requestPasswordReset(
-    { email: 'user@example.com' },
+    { email: "user@example.com" },
     {
       users,
       passwordResets,
@@ -227,8 +272,8 @@ test('request and reset password flow', async () => {
       hashService: mockHashService,
       idGenerator: mockIdGenerator,
       clock: mockClock,
-      config: mockConfig
-    }
+      config: mockConfig,
+    },
   );
 
   expect(requestResult.delivered).toBe(true);
@@ -237,32 +282,32 @@ test('request and reset password flow', async () => {
   const message = emailSender.messages[0];
   const tokenMatch = message.text.match(/token=([A-Za-z0-9_-]+)/);
   expect(tokenMatch).not.toBeNull();
-  const token = tokenMatch?.[1] ?? '';
+  const token = tokenMatch?.[1] ?? "";
 
   await resetPassword(
-    { token, password: 'new-password' },
+    { token, password: "new-password" },
     {
       passwordResets,
       users,
       passwordHasher: fakePasswordHasher,
       hashService: mockHashService,
-      clock: mockClock
-    }
+      clock: mockClock,
+    },
   );
 
-  const user = await users.findByEmail('user@example.com');
-  expect(user?.passwordHash).toBe('hash:new-password');
+  const user = await users.findByEmail("user@example.com");
+  expect(user?.passwordHash).toBe("hash:new-password");
 
   await expect(
     resetPassword(
-      { token, password: 'other-password' },
+      { token, password: "other-password" },
       {
         passwordResets,
         users,
         passwordHasher: fakePasswordHasher,
         hashService: mockHashService,
-        clock: mockClock
-      }
-    )
-  ).rejects.toThrow('Token already used');
+        clock: mockClock,
+      },
+    ),
+  ).rejects.toThrow("Token already used");
 });

@@ -1,8 +1,8 @@
-import { describe, expect, test } from 'bun:test';
-import { createHmac } from 'node:crypto';
-import { createPaymentHandlers } from '../src/infrastructure/http/payment-handlers';
-import { resetStripeClient } from '../src/infrastructure/payments/stripe-client';
-import type { HttpContext } from '../src/shared/http/router';
+import { describe, expect, test } from "bun:test";
+import { createHmac } from "node:crypto";
+import { createPaymentHandlers } from "../src/infrastructure/http/payment-handlers";
+import { resetStripeClient } from "../src/infrastructure/payments/stripe-client";
+import type { HttpContext } from "../src/shared/http/router";
 import type {
   CompensationCertificateSnapshot,
   LockedPaymentRecord,
@@ -12,33 +12,39 @@ import type {
   PaymentStore,
   PaymentTransaction,
   PendingPaymentRecord,
-} from '../src/application/payments/payment-store';
+} from "../src/application/payments/payment-store";
 import type {
   CreatePaymentChargeInput,
   PaymentGatewayAdapter,
   PaymentGatewayOutcome,
   PaymentGatewayChargeResult,
   PaymentGatewayStatusResult,
-} from '../src/application/payments/payment-gateway';
+} from "../src/application/payments/payment-gateway";
 import type {
   CertificateFileRecord,
   CompensationCertificateListItem,
   CompensationCertificateLookup,
   CompensationCertificateRecord,
-} from '../src/domain/compensations/repositories/compensation-certificate-repository';
+} from "../src/domain/compensations/repositories/compensation-certificate-repository";
 
 class InMemoryPaymentStore implements PaymentStore {
-  private readonly compensations = new Map<string, PaymentCompensationSnapshot>();
-  private readonly payments = new Map<string, {
-    id: string;
-    compensationId: string;
-    provider: string;
-    providerReference: string;
-    amount: number;
-    currency: string;
-    status: PaymentStatus;
-    paidAt?: Date;
-  }>();
+  private readonly compensations = new Map<
+    string,
+    PaymentCompensationSnapshot
+  >();
+  private readonly payments = new Map<
+    string,
+    {
+      id: string;
+      compensationId: string;
+      provider: string;
+      providerReference: string;
+      amount: number;
+      currency: string;
+      status: PaymentStatus;
+      paidAt?: Date;
+    }
+  >();
 
   addCompensation(item: PaymentCompensationSnapshot): void {
     this.compensations.set(item.id, { ...item });
@@ -64,7 +70,9 @@ class InMemoryPaymentStore implements PaymentStore {
     return this.payments.get(id);
   }
 
-  async runInTransaction<T>(work: (tx: PaymentTransaction) => Promise<T>): Promise<T> {
+  async runInTransaction<T>(
+    work: (tx: PaymentTransaction) => Promise<T>,
+  ): Promise<T> {
     const tx: PaymentTransaction = {
       lockCompensation: async (compensationId: string) => {
         const current = this.compensations.get(compensationId);
@@ -103,7 +111,7 @@ class InMemoryPaymentStore implements PaymentStore {
         const payment = [...this.payments.values()].find(
           (candidate) =>
             candidate.provider === input.provider &&
-            candidate.providerReference === input.providerReference
+            candidate.providerReference === input.providerReference,
         );
 
         if (!payment) {
@@ -118,11 +126,11 @@ class InMemoryPaymentStore implements PaymentStore {
         return this.mapLockedPayment(payment, compensation);
       },
       lockPaymentByStripePaymentIntentId: async (
-        stripePaymentIntentId: string
+        stripePaymentIntentId: string,
       ) => {
         const payment = [...this.payments.values()].find(
           (candidate) =>
-            (candidate as any).stripePaymentIntentId === stripePaymentIntentId
+            (candidate as any).stripePaymentIntentId === stripePaymentIntentId,
         );
         if (!payment) return null;
         const compensation = this.compensations.get(payment.compensationId);
@@ -147,7 +155,7 @@ class InMemoryPaymentStore implements PaymentStore {
       },
       updateCompensationStatus: async (input: {
         compensationId: string;
-        status: 'pending' | 'paid' | 'canceled';
+        status: "pending" | "paid" | "canceled";
       }) => {
         const current = this.compensations.get(input.compensationId);
         if (!current) {
@@ -166,7 +174,7 @@ class InMemoryPaymentStore implements PaymentStore {
 
   async listPendingPayments(limit: number): Promise<PendingPaymentRecord[]> {
     return [...this.payments.values()]
-      .filter((payment) => payment.status === 'pending')
+      .filter((payment) => payment.status === "pending")
       .slice(0, limit)
       .map((payment) => {
         const compensation = this.compensations.get(payment.compensationId)!;
@@ -178,14 +186,14 @@ class InMemoryPaymentStore implements PaymentStore {
           providerReference: payment.providerReference,
           amount: payment.amount,
           currency: payment.currency,
-          paymentStatus: 'pending' as const,
+          paymentStatus: "pending" as const,
           compensationStatus: compensation.status,
         };
       });
   }
 
   async getCompensationForCertificate(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateSnapshot | null> {
     const item = this.compensations.get(compensationId);
     if (!item) {
@@ -195,9 +203,9 @@ class InMemoryPaymentStore implements PaymentStore {
     return {
       id: item.id,
       supporterUserId: item.supporterUserId,
-      areaId: 'area-1',
-      calculationId: 'calc-1',
-      compensationMode: 'tco2e',
+      areaId: "area-1",
+      calculationId: "calc-1",
+      compensationMode: "tco2e",
       horizonYears: null,
       treesRequested: null,
       pricePerTree: null,
@@ -221,7 +229,7 @@ class InMemoryPaymentStore implements PaymentStore {
       status: PaymentStatus;
       paidAt?: Date;
     },
-    compensation: PaymentCompensationSnapshot
+    compensation: PaymentCompensationSnapshot,
   ): LockedPaymentRecord {
     return {
       id: payment.id,
@@ -239,16 +247,16 @@ class InMemoryPaymentStore implements PaymentStore {
 }
 
 class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
-  readonly provider = 'stripe';
+  readonly provider = "stripe";
 
   async createCharge(
-    _input: CreatePaymentChargeInput
+    _input: CreatePaymentChargeInput,
   ): Promise<PaymentGatewayChargeResult> {
     return {
       provider: this.provider,
-      providerReference: 'pi_stub',
-      outcome: 'authorized',
-      processedAt: new Date('2026-02-07T20:00:00Z'),
+      providerReference: "pi_stub",
+      outcome: "authorized",
+      processedAt: new Date("2026-02-07T20:00:00Z"),
     };
   }
 
@@ -258,8 +266,8 @@ class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
     return {
       provider: this.provider,
       providerReference: input.providerReference,
-      outcome: 'authorized',
-      processedAt: new Date('2026-02-07T21:00:00Z'),
+      outcome: "authorized",
+      processedAt: new Date("2026-02-07T21:00:00Z"),
     };
   }
 
@@ -270,15 +278,18 @@ class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
     return Promise.resolve(Boolean(input.payload && input.signature));
   }
 
-  async parseWebhookEvent(_rawPayload: string, _signature: string): Promise<{
+  async parseWebhookEvent(
+    _rawPayload: string,
+    _signature: string,
+  ): Promise<{
     eventId: string;
     type: string;
     paymentIntentId: string | null;
     outcome: PaymentGatewayOutcome | null;
   }> {
     return Promise.resolve({
-      eventId: 'evt_account_updated_1',
-      type: 'account.updated',
+      eventId: "evt_account_updated_1",
+      type: "account.updated",
       paymentIntentId: null,
       outcome: null,
     });
@@ -286,23 +297,23 @@ class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
 }
 
 class MutableGateway implements PaymentGatewayAdapter {
-  readonly provider = 'card_simulator';
+  readonly provider = "card_simulator";
 
   constructor(private readonly secret: string) {}
 
   private readonly statuses = new Map<string, PaymentGatewayOutcome>();
 
   async createCharge(
-    input: CreatePaymentChargeInput
+    input: CreatePaymentChargeInput,
   ): Promise<PaymentGatewayChargeResult> {
     const providerReference = `sim_authorized_${input.cardNumber.slice(-4)}_${Date.now()}`;
-    this.statuses.set(providerReference, 'authorized');
+    this.statuses.set(providerReference, "authorized");
 
     return {
       provider: this.provider,
       providerReference,
-      outcome: 'authorized',
-      processedAt: new Date('2026-02-07T20:00:00Z'),
+      outcome: "authorized",
+      processedAt: new Date("2026-02-07T20:00:00Z"),
     };
   }
 
@@ -312,8 +323,8 @@ class MutableGateway implements PaymentGatewayAdapter {
     return {
       provider: this.provider,
       providerReference: input.providerReference,
-      outcome: this.statuses.get(input.providerReference) ?? 'timeout',
-      processedAt: new Date('2026-02-07T21:00:00Z'),
+      outcome: this.statuses.get(input.providerReference) ?? "timeout",
+      processedAt: new Date("2026-02-07T21:00:00Z"),
     };
   }
 
@@ -325,13 +336,13 @@ class MutableGateway implements PaymentGatewayAdapter {
       return Promise.resolve(false);
     }
 
-    const received = input.signature.startsWith('sha256=')
-      ? input.signature.slice('sha256='.length)
+    const received = input.signature.startsWith("sha256=")
+      ? input.signature.slice("sha256=".length)
       : input.signature;
 
-    const expected = createHmac('sha256', this.secret)
-      .update(input.payload, 'utf-8')
-      .digest('hex');
+    const expected = createHmac("sha256", this.secret)
+      .update(input.payload, "utf-8")
+      .digest("hex");
 
     return Promise.resolve(received === expected);
   }
@@ -349,15 +360,17 @@ class InMemoryCertificateRepository {
     this.files.push(record);
   }
 
-  async createCertificate(record: CompensationCertificateRecord): Promise<void> {
+  async createCertificate(
+    record: CompensationCertificateRecord,
+  ): Promise<void> {
     this.certificates.push(record);
   }
 
   async findByCompensationId(
-    compensationId: string
+    compensationId: string,
   ): Promise<CompensationCertificateLookup | null> {
     const certificate = this.certificates.find(
-      (item) => item.compensationId === compensationId
+      (item) => item.compensationId === compensationId,
     );
     if (!certificate) {
       return null;
@@ -412,7 +425,7 @@ class InMemoryCertificateStorage {
 
 class InMemoryCertificatePdfGenerator {
   async generate(): Promise<Uint8Array> {
-    return new TextEncoder().encode('%PDF-1.4\n%%EOF\n');
+    return new TextEncoder().encode("%PDF-1.4\n%%EOF\n");
   }
 }
 
@@ -420,7 +433,7 @@ function createHandlers(
   store: InMemoryPaymentStore,
   gateway: MutableGateway,
   paymentId: string,
-  now: string
+  now: string,
 ) {
   return createPaymentHandlers({
     paymentStore: store,
@@ -448,191 +461,195 @@ function buildWebhookContext(params: {
   stripeSignature?: string;
 }): HttpContext {
   const headers: Record<string, string> = {
-    'content-type': 'application/json',
+    "content-type": "application/json",
   };
   if (params.signature != null) {
-    headers['x-payment-signature'] = params.signature;
+    headers["x-payment-signature"] = params.signature;
   }
   if (params.stripeSignature != null) {
-    headers['stripe-signature'] = params.stripeSignature;
+    headers["stripe-signature"] = params.stripeSignature;
   }
   const context: HttpContext = {
-    request: new Request('http://localhost/api/v1/payments/webhook', {
-      method: 'POST',
+    request: new Request("http://localhost/api/v1/payments/webhook", {
+      method: "POST",
       headers,
       body: params.body,
     }),
     params: {},
-    query: new URL('http://localhost/api/v1/payments/webhook').searchParams,
-    requestId: 'req-webhook',
-    clientIp: '127.0.0.1',
+    query: new URL("http://localhost/api/v1/payments/webhook").searchParams,
+    requestId: "req-webhook",
+    clientIp: "127.0.0.1",
   };
   return context;
 }
 
 function buildReconcileContext(body: Record<string, unknown>): HttpContext {
   return {
-    request: new Request('http://localhost/api/v1/payments/reconcile', {
-      method: 'POST',
+    request: new Request("http://localhost/api/v1/payments/reconcile", {
+      method: "POST",
       headers: {
-        'content-type': 'application/json',
+        "content-type": "application/json",
       },
       body: JSON.stringify(body),
     }),
     params: {},
-    query: new URL('http://localhost/api/v1/payments/reconcile').searchParams,
-    requestId: 'req-reconcile',
-    clientIp: '127.0.0.1',
+    query: new URL("http://localhost/api/v1/payments/reconcile").searchParams,
+    requestId: "req-reconcile",
+    clientIp: "127.0.0.1",
     auth: {
-      userId: 'admin-1',
-      roles: ['administrator'],
+      userId: "admin-1",
+      roles: ["administrator"],
     },
   };
 }
 
-describe('payment webhook and reconciliation', () => {
-  test('rejects webhook with invalid signature', async () => {
-    const secret = 'payment-secret';
+describe("payment webhook and reconciliation", () => {
+  test("rejects webhook with invalid signature", async () => {
+    const secret = "payment-secret";
     const gateway = new MutableGateway(secret);
     const store = new InMemoryPaymentStore();
     const handlers = createHandlers(
       store,
       gateway,
-      'pay-1',
-      '2026-02-07T22:00:00Z'
+      "pay-1",
+      "2026-02-07T22:00:00Z",
     );
 
     const body = JSON.stringify({
-      provider: 'card_simulator',
-      event: 'payment.updated',
+      provider: "card_simulator",
+      event: "payment.updated",
       data: {
-        provider_reference: 'sim_authorized_1111_1',
+        provider_reference: "sim_authorized_1111_1",
       },
     });
 
     const response = await handlers.webhook(
       buildWebhookContext({
         body,
-        signature: 'sha256=invalid',
-      })
+        signature: "sha256=invalid",
+      }),
     );
 
     expect(response.status).toBe(401);
     const payload = await response.json();
-    expect(payload.error.message_key).toBe('payment.webhook_invalid_signature');
+    expect(payload.error.message_key).toBe("payment.webhook_invalid_signature");
   });
 
-  test('processes webhook and updates payment + compensation status', async () => {
-    const secret = 'payment-secret';
+  test("processes webhook and updates payment + compensation status", async () => {
+    const secret = "payment-secret";
     const gateway = new MutableGateway(secret);
     const store = new InMemoryPaymentStore();
 
     store.addCompensation({
-      id: 'comp-1',
-      supporterUserId: 'supporter-1',
+      id: "comp-1",
+      supporterUserId: "supporter-1",
       totalAmount: 100,
-      currency: 'BRL',
-      areaId: 'area-1',
-      status: 'pending',
+      currency: "BRL",
+      areaId: "area-1",
+      status: "pending",
     });
 
-    const providerReference = 'sim_authorized_1111_1';
+    const providerReference = "sim_authorized_1111_1";
     store.addPayment({
-      id: 'pay-1',
-      compensationId: 'comp-1',
-      provider: 'card_simulator',
+      id: "pay-1",
+      compensationId: "comp-1",
+      provider: "card_simulator",
       providerReference,
       amount: 100,
-      currency: 'BRL',
-      status: 'pending',
+      currency: "BRL",
+      status: "pending",
     });
 
-    gateway.setStatus(providerReference, 'authorized');
+    gateway.setStatus(providerReference, "authorized");
 
     const handlers = createHandlers(
       store,
       gateway,
-      'pay-1',
-      '2026-02-07T22:10:00Z'
+      "pay-1",
+      "2026-02-07T22:10:00Z",
     );
 
     const body = JSON.stringify({
-      provider: 'card_simulator',
-      event: 'payment.updated',
+      provider: "card_simulator",
+      event: "payment.updated",
       data: {
         provider_reference: providerReference,
       },
     });
-    const signature = createHmac('sha256', secret).update(body, 'utf-8').digest('hex');
+    const signature = createHmac("sha256", secret)
+      .update(body, "utf-8")
+      .digest("hex");
 
     const response = await handlers.webhook(
       buildWebhookContext({
         body,
         signature: `sha256=${signature}`,
-      })
+      }),
     );
 
     expect(response.status).toBe(202);
     const payload = await response.json();
     expect(payload.data.processed).toBe(true);
-    expect(payload.data.payment_status).toBe('paid');
-    expect(payload.data.compensation_status).toBe('paid');
-    expect(store.getPayment('pay-1')?.status).toBe('paid');
-    expect(store.getCompensation('comp-1')?.status).toBe('paid');
+    expect(payload.data.payment_status).toBe("paid");
+    expect(payload.data.compensation_status).toBe("paid");
+    expect(store.getPayment("pay-1")?.status).toBe("paid");
+    expect(store.getCompensation("comp-1")?.status).toBe("paid");
   });
 
-  test('reconciles pending payments and updates only resolved ones', async () => {
-    const secret = 'payment-secret';
+  test("reconciles pending payments and updates only resolved ones", async () => {
+    const secret = "payment-secret";
     const gateway = new MutableGateway(secret);
     const store = new InMemoryPaymentStore();
 
     store.addCompensation({
-      id: 'comp-a',
-      supporterUserId: 'supporter-a',
+      id: "comp-a",
+      supporterUserId: "supporter-a",
       totalAmount: 100,
-      currency: 'BRL',
-      areaId: 'area-a',
-      status: 'pending',
+      currency: "BRL",
+      areaId: "area-a",
+      status: "pending",
     });
     store.addCompensation({
-      id: 'comp-b',
-      supporterUserId: 'supporter-b',
+      id: "comp-b",
+      supporterUserId: "supporter-b",
       totalAmount: 80,
-      currency: 'BRL',
-      areaId: 'area-b',
-      status: 'pending',
+      currency: "BRL",
+      areaId: "area-b",
+      status: "pending",
     });
 
     store.addPayment({
-      id: 'pay-a',
-      compensationId: 'comp-a',
-      provider: 'card_simulator',
-      providerReference: 'sim_authorized_1111_1',
+      id: "pay-a",
+      compensationId: "comp-a",
+      provider: "card_simulator",
+      providerReference: "sim_authorized_1111_1",
       amount: 100,
-      currency: 'BRL',
-      status: 'pending',
+      currency: "BRL",
+      status: "pending",
     });
     store.addPayment({
-      id: 'pay-b',
-      compensationId: 'comp-b',
-      provider: 'card_simulator',
-      providerReference: 'sim_timeout_2222_1',
+      id: "pay-b",
+      compensationId: "comp-b",
+      provider: "card_simulator",
+      providerReference: "sim_timeout_2222_1",
       amount: 80,
-      currency: 'BRL',
-      status: 'pending',
+      currency: "BRL",
+      status: "pending",
     });
 
-    gateway.setStatus('sim_authorized_1111_1', 'authorized');
-    gateway.setStatus('sim_timeout_2222_1', 'timeout');
+    gateway.setStatus("sim_authorized_1111_1", "authorized");
+    gateway.setStatus("sim_timeout_2222_1", "timeout");
 
     const handlers = createHandlers(
       store,
       gateway,
-      'pay-a',
-      '2026-02-07T22:20:00Z'
+      "pay-a",
+      "2026-02-07T22:20:00Z",
     );
 
-    const response = await handlers.reconcile(buildReconcileContext({ limit: 20 }));
+    const response = await handlers.reconcile(
+      buildReconcileContext({ limit: 20 }),
+    );
 
     expect(response.status).toBe(200);
     const payload = await response.json();
@@ -641,16 +658,16 @@ describe('payment webhook and reconciliation', () => {
     expect(payload.data.marked_paid).toBe(1);
     expect(payload.data.marked_failed).toBe(0);
     expect(payload.data.remained_pending).toBe(1);
-    expect(store.getPayment('pay-a')?.status).toBe('paid');
-    expect(store.getCompensation('comp-a')?.status).toBe('paid');
-    expect(store.getPayment('pay-b')?.status).toBe('pending');
-    expect(store.getCompensation('comp-b')?.status).toBe('pending');
+    expect(store.getPayment("pay-a")?.status).toBe("paid");
+    expect(store.getCompensation("comp-a")?.status).toBe("paid");
+    expect(store.getPayment("pay-b")?.status).toBe("pending");
+    expect(store.getCompensation("comp-b")?.status).toBe("pending");
   });
 
-  test('processes stripe account.updated webhook and syncs connect status', async () => {
+  test("processes stripe account.updated webhook and syncs connect status", async () => {
     resetStripeClient();
-    process.env.STRIPE_SECRET_KEY = 'sk_test_stub_for_webhook';
-    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test_account_updated';
+    process.env.STRIPE_SECRET_KEY = "sk_test_stub_for_webhook";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_account_updated";
 
     const store = new InMemoryPaymentStore();
     const gateway = new StripeWebhookGatewayStub();
@@ -668,27 +685,27 @@ describe('payment webhook and reconciliation', () => {
       compensationCertificateStorage: new InMemoryCertificateStorage() as any,
       compensationCertificatePdfGenerator:
         new InMemoryCertificatePdfGenerator() as any,
-      idGenerator: { generate: () => 'id-1' },
-      clock: { now: () => new Date('2026-02-07T23:00:00Z') },
+      idGenerator: { generate: () => "id-1" },
+      clock: { now: () => new Date("2026-02-07T23:00:00Z") },
       auditLog: { async log() {} },
       stripeConnectRepository: {
         async findByStripeAccountId(accountId: string) {
-          if (accountId !== 'acct_test_123') return null;
+          if (accountId !== "acct_test_123") return null;
           return {
-            id: 'sca-1',
-            userId: 'producer-1',
-            stripeAccountId: 'acct_test_123',
+            id: "sca-1",
+            userId: "producer-1",
+            stripeAccountId: "acct_test_123",
             chargesEnabled: false,
             payoutsEnabled: false,
-            country: 'BR',
-            createdAt: new Date('2026-02-01T00:00:00Z'),
-            updatedAt: new Date('2026-02-01T00:00:00Z'),
+            country: "BR",
+            createdAt: new Date("2026-02-01T00:00:00Z"),
+            updatedAt: new Date("2026-02-01T00:00:00Z"),
           };
         },
         async updateStatus(
           id: string,
           chargesEnabled: boolean,
-          payoutsEnabled: boolean
+          payoutsEnabled: boolean,
         ) {
           updatedCalls.push({ id, chargesEnabled, payoutsEnabled });
         },
@@ -696,13 +713,13 @@ describe('payment webhook and reconciliation', () => {
     });
 
     const payload = JSON.stringify({
-      id: 'evt_1',
-      object: 'event',
-      type: 'account.updated',
+      id: "evt_1",
+      object: "event",
+      type: "account.updated",
       data: {
         object: {
-          id: 'acct_test_123',
-          object: 'account',
+          id: "acct_test_123",
+          object: "account",
           charges_enabled: true,
           payouts_enabled: true,
         },
@@ -711,19 +728,16 @@ describe('payment webhook and reconciliation', () => {
 
     const timestamp = Math.floor(Date.now() / 1000);
     const signedPayload = `${timestamp}.${payload}`;
-    const signature = createHmac(
-      'sha256',
-      process.env.STRIPE_WEBHOOK_SECRET!
-    )
-      .update(signedPayload, 'utf-8')
-      .digest('hex');
+    const signature = createHmac("sha256", process.env.STRIPE_WEBHOOK_SECRET!)
+      .update(signedPayload, "utf-8")
+      .digest("hex");
     const stripeSignature = `t=${timestamp},v1=${signature}`;
 
     const response = await handlers.webhook(
       buildWebhookContext({
         body: payload,
         stripeSignature,
-      })
+      }),
     );
 
     expect(response.status).toBe(202);
@@ -731,7 +745,7 @@ describe('payment webhook and reconciliation', () => {
     expect(body.data.processed).toBe(true);
     expect(updatedCalls).toHaveLength(1);
     expect(updatedCalls[0]).toEqual({
-      id: 'sca-1',
+      id: "sca-1",
       chargesEnabled: true,
       payoutsEnabled: true,
     });

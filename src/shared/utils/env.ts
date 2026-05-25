@@ -131,9 +131,7 @@ function enumEnv<T extends string>(
   if (allowed.includes(normalized)) {
     return normalized;
   }
-  throw new Error(
-    `Invalid env ${name}: expected one of ${allowed.join(", ")}`,
-  );
+  throw new Error(`Invalid env ${name}: expected one of ${allowed.join(", ")}`);
 }
 
 export const env: Env = {

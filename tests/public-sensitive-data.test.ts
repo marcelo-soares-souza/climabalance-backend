@@ -1,11 +1,11 @@
-import { describe, expect, test } from 'bun:test';
-import { createUserHandlers } from '../src/infrastructure/http/user-handlers';
-import { createAreaHandlers } from '../src/infrastructure/http/area-handlers';
-import type { HttpContext } from '../src/shared/http/router';
-import type { User, UserProfile } from '../src/domain/user/user';
-import { Area } from '../src/domain/areas/entities/area';
-import { AreaStatus } from '../src/domain/areas/value-objects/area-status';
-import { Location } from '../src/domain/areas/value-objects/location';
+import { describe, expect, test } from "bun:test";
+import { createUserHandlers } from "../src/infrastructure/http/user-handlers";
+import { createAreaHandlers } from "../src/infrastructure/http/area-handlers";
+import type { HttpContext } from "../src/shared/http/router";
+import type { User, UserProfile } from "../src/domain/user/user";
+import { Area } from "../src/domain/areas/entities/area";
+import { AreaStatus } from "../src/domain/areas/value-objects/area-status";
+import { Location } from "../src/domain/areas/value-objects/location";
 
 function buildGetContext(
   path: string,
@@ -15,8 +15,8 @@ function buildGetContext(
     request: new Request(`http://localhost${path}`),
     params: {},
     query: new URL(`http://localhost${path}`).searchParams,
-    requestId: 'req-1',
-    clientIp: '127.0.0.1',
+    requestId: "req-1",
+    clientIp: "127.0.0.1",
     auth,
   };
 }
@@ -28,61 +28,61 @@ function buildJsonContext(
 ): HttpContext {
   return {
     request: new Request(`http://localhost${path}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     }),
     params: {},
     query: new URL(`http://localhost${path}`).searchParams,
-    requestId: 'req-1',
-    clientIp: '127.0.0.1',
+    requestId: "req-1",
+    clientIp: "127.0.0.1",
     auth,
   };
 }
 
-describe('public sensitive data masking', () => {
+describe("public sensitive data masking", () => {
   const user: User = {
-    id: 'user-1',
-    email: 'marcelo@example.com',
-    passwordHash: 'hash',
-    slug: 'marcelo',
-    status: 'active',
-    locale: 'pt-BR',
-    emailConfirmedAt: new Date('2026-01-01T00:00:00Z'),
-    lastLoginAt: new Date('2026-05-01T00:00:00Z'),
-    createdAt: new Date('2026-01-01T00:00:00Z'),
-    updatedAt: new Date('2026-05-01T00:00:00Z'),
+    id: "user-1",
+    email: "marcelo@example.com",
+    passwordHash: "hash",
+    slug: "marcelo",
+    status: "active",
+    locale: "pt-BR",
+    emailConfirmedAt: new Date("2026-01-01T00:00:00Z"),
+    lastLoginAt: new Date("2026-05-01T00:00:00Z"),
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-05-01T00:00:00Z"),
     deletedAt: null,
   };
 
   const profile: UserProfile = {
-    id: 'profile-1',
+    id: "profile-1",
     userId: user.id,
-    displayName: 'Marcelo',
-    documentType: 'cpf',
-    documentNumber: '12345678901',
-    birthDate: '1990-01-01',
-    phone: '5511999999999',
-    countryCode: 'BR',
-    addressLine1: 'Street 1',
-    addressCity: 'Sao Paulo',
-    addressState: 'SP',
-    addressPostalCode: '01000-000',
-    addressCountry: 'BR',
-    createdAt: new Date('2026-01-01T00:00:00Z'),
-    updatedAt: new Date('2026-05-01T00:00:00Z'),
+    displayName: "Marcelo",
+    documentType: "cpf",
+    documentNumber: "12345678901",
+    birthDate: "1990-01-01",
+    phone: "5511999999999",
+    countryCode: "BR",
+    addressLine1: "Street 1",
+    addressCity: "Sao Paulo",
+    addressState: "SP",
+    addressPostalCode: "01000-000",
+    addressCountry: "BR",
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-05-01T00:00:00Z"),
     deletedAt: null,
   };
 
   const usersRepo = {
     findById: async (id: string) => (id === user.id ? user : null),
     findBySlug: async (slug: string) => (slug === user.slug ? user : null),
-    getRoles: async () => ['individual'],
+    getRoles: async () => ["individual"],
     getProfile: async (userId: string) => (userId === user.id ? profile : null),
     listPublicDirectory: async () => [],
   } as any;
 
-  test('public user summary returns masked email only', async () => {
+  test("public user summary returns masked email only", async () => {
     const handlers = createUserHandlers({
       users: usersRepo,
       auditLog: { log: async () => {} },
@@ -101,17 +101,17 @@ describe('public sensitive data masking', () => {
     });
 
     const response = await handlers.get(
-      buildGetContext('/api/v1/users/marcelo'),
-      'marcelo',
+      buildGetContext("/api/v1/users/marcelo"),
+      "marcelo",
     );
 
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.data.email).toBeUndefined();
-    expect(payload.data.email_masked).toBe('ma***@example.com');
+    expect(payload.data.email_masked).toBe("ma***@example.com");
   });
 
-  test('public user profile returns masked document only', async () => {
+  test("public user profile returns masked document only", async () => {
     const handlers = createUserHandlers({
       users: usersRepo,
       auditLog: { log: async () => {} },
@@ -130,17 +130,17 @@ describe('public sensitive data masking', () => {
     });
 
     const response = await handlers.getProfile(
-      buildGetContext('/api/v1/users/marcelo/profile'),
-      'marcelo',
+      buildGetContext("/api/v1/users/marcelo/profile"),
+      "marcelo",
     );
 
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.data.document_type).toBeUndefined();
     expect(payload.data.document_number).toBeUndefined();
-    expect(payload.data.document_number_masked).toBe('***8901');
+    expect(payload.data.document_number_masked).toBe("***8901");
     expect(payload.data.birth_date).toBeUndefined();
-    expect(payload.data.birth_date_masked).toBe('****-**-**');
+    expect(payload.data.birth_date_masked).toBe("****-**-**");
     expect(payload.data.phone).toBeUndefined();
     expect(payload.data.address_line1).toBeUndefined();
     expect(payload.data.address_line2).toBeUndefined();
@@ -148,10 +148,10 @@ describe('public sensitive data masking', () => {
     expect(payload.data.address_state).toBeUndefined();
     expect(payload.data.address_postal_code).toBeUndefined();
     expect(payload.data.address_country).toBeUndefined();
-    expect(payload.data.country_code).toBe('BR');
+    expect(payload.data.country_code).toBe("BR");
   });
 
-  test('self user profile still returns real document', async () => {
+  test("self user profile still returns real document", async () => {
     const handlers = createUserHandlers({
       users: usersRepo,
       auditLog: { log: async () => {} },
@@ -170,29 +170,29 @@ describe('public sensitive data masking', () => {
     });
 
     const response = await handlers.getProfile(
-      buildGetContext('/api/v1/users/marcelo/profile', {
+      buildGetContext("/api/v1/users/marcelo/profile", {
         userId: user.id,
-        roles: ['individual'],
+        roles: ["individual"],
       }),
-      'marcelo',
+      "marcelo",
     );
 
     expect(response.status).toBe(200);
     const payload = await response.json();
-    expect(payload.data.document_type).toBe('cpf');
-    expect(payload.data.document_number).toBe('12345678901');
-    expect(payload.data.document_number_masked).toBe('***8901');
-    expect(payload.data.birth_date).toBe('1990-01-01');
-    expect(payload.data.birth_date_masked).toBe('****-**-**');
-    expect(payload.data.phone).toBe('5511999999999');
-    expect(payload.data.address_line1).toBe('Street 1');
-    expect(payload.data.address_city).toBe('Sao Paulo');
-    expect(payload.data.address_state).toBe('SP');
-    expect(payload.data.address_postal_code).toBe('01000-000');
-    expect(payload.data.address_country).toBe('BR');
+    expect(payload.data.document_type).toBe("cpf");
+    expect(payload.data.document_number).toBe("12345678901");
+    expect(payload.data.document_number_masked).toBe("***8901");
+    expect(payload.data.birth_date).toBe("1990-01-01");
+    expect(payload.data.birth_date_masked).toBe("****-**-**");
+    expect(payload.data.phone).toBe("5511999999999");
+    expect(payload.data.address_line1).toBe("Street 1");
+    expect(payload.data.address_city).toBe("Sao Paulo");
+    expect(payload.data.address_state).toBe("SP");
+    expect(payload.data.address_postal_code).toBe("01000-000");
+    expect(payload.data.address_country).toBe("BR");
   });
 
-  test('self update rejects sensitive fields', async () => {
+  test("self update rejects sensitive fields", async () => {
     let updateCalled = false;
     const auditLogs: any[] = [];
     const handlers = createUserHandlers({
@@ -203,9 +203,13 @@ describe('public sensitive data masking', () => {
           return user;
         },
       },
-      auditLog: { log: async (entry: any) => { auditLogs.push(entry); } },
+      auditLog: {
+        log: async (entry: any) => {
+          auditLogs.push(entry);
+        },
+      },
       passwordHasher: {
-        hash: async () => 'new-hash',
+        hash: async () => "new-hash",
       } as any,
       profileAvatarStorage: {} as any,
       calculationRepository: {
@@ -222,28 +226,28 @@ describe('public sensitive data masking', () => {
 
     const response = await handlers.update(
       buildJsonContext(
-        '/api/v1/users/marcelo',
-        { status: 'suspended' },
-        { userId: user.id, roles: ['individual'] },
+        "/api/v1/users/marcelo",
+        { status: "suspended" },
+        { userId: user.id, roles: ["individual"] },
       ),
-      'marcelo',
+      "marcelo",
     );
 
     expect(response.status).toBe(403);
     expect(updateCalled).toBe(false);
     expect(auditLogs).toHaveLength(1);
     expect(auditLogs[0]).toMatchObject({
-      action: 'user.update.forbidden_sensitive_self_update',
-      entityType: 'user',
+      action: "user.update.forbidden_sensitive_self_update",
+      entityType: "user",
       entityId: user.id,
       success: false,
       httpStatus: 403,
       isSensitive: true,
     });
-    expect(auditLogs[0].changedFields).toEqual(['status']);
+    expect(auditLogs[0].changedFields).toEqual(["status"]);
   });
 
-  test('self update still allows locale', async () => {
+  test("self update still allows locale", async () => {
     let updatedLocale: string | undefined;
     const auditLogs: any[] = [];
     const handlers = createUserHandlers({
@@ -254,7 +258,11 @@ describe('public sensitive data masking', () => {
           return { ...user, locale: input.locale ?? user.locale };
         },
       },
-      auditLog: { log: async (entry: any) => { auditLogs.push(entry); } },
+      auditLog: {
+        log: async (entry: any) => {
+          auditLogs.push(entry);
+        },
+      },
       passwordHasher: {} as any,
       profileAvatarStorage: {} as any,
       calculationRepository: {
@@ -271,45 +279,45 @@ describe('public sensitive data masking', () => {
 
     const response = await handlers.update(
       buildJsonContext(
-        '/api/v1/users/marcelo',
-        { locale: 'en' },
-        { userId: user.id, roles: ['individual'] },
+        "/api/v1/users/marcelo",
+        { locale: "en" },
+        { userId: user.id, roles: ["individual"] },
       ),
-      'marcelo',
+      "marcelo",
     );
 
     expect(response.status).toBe(200);
-    expect(updatedLocale).toBe('en');
+    expect(updatedLocale).toBe("en");
     expect(auditLogs).toHaveLength(1);
     expect(auditLogs[0]).toMatchObject({
-      action: 'user.updated',
-      entityType: 'user',
+      action: "user.updated",
+      entityType: "user",
       entityId: user.id,
       success: true,
       isSensitive: true,
       previousState: {
-        emailMasked: 'ma***@example.com',
-        locale: 'pt-BR',
+        emailMasked: "ma***@example.com",
+        locale: "pt-BR",
       },
       newState: {
-        emailMasked: 'ma***@example.com',
-        locale: 'en',
+        emailMasked: "ma***@example.com",
+        locale: "en",
       },
     });
-    expect(auditLogs[0].changedFields).toEqual(['locale']);
+    expect(auditLogs[0].changedFields).toEqual(["locale"]);
   });
 
-  test('public area detail returns masked owner email only', async () => {
+  test("public area detail returns masked owner email only", async () => {
     const area = new Area({
-      id: 'area-1',
+      id: "area-1",
       ownerUserId: user.id,
-      name: 'My Garden',
-      slug: 'my-garden',
+      name: "My Garden",
+      slug: "my-garden",
       location: new Location(-23.55, -46.63),
-      status: new AreaStatus('active'),
+      status: new AreaStatus("active"),
       maxPurchasableTrees: null,
-      createdAt: new Date('2026-01-01T00:00:00Z'),
-      updatedAt: new Date('2026-01-01T00:00:00Z'),
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
     });
 
     const handlers = createAreaHandlers({
@@ -338,13 +346,13 @@ describe('public sensitive data masking', () => {
     });
 
     const response = await handlers.get(
-      buildGetContext('/api/v1/areas/my-garden'),
-      'my-garden',
+      buildGetContext("/api/v1/areas/my-garden"),
+      "my-garden",
     );
 
     expect(response.status).toBe(200);
     const payload = await response.json();
     expect(payload.data.ownerEmail).toBeUndefined();
-    expect(payload.data.ownerEmailMasked).toBe('ma***@example.com');
+    expect(payload.data.ownerEmailMasked).toBe("ma***@example.com");
   });
 });
