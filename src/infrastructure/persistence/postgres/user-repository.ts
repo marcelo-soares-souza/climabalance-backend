@@ -520,7 +520,7 @@ export class PostgresUserRepository implements UserRepository {
         GROUP BY supporter_user_id
       ) ts ON ts.supporter_user_id = u.id
       WHERE u.deleted_at IS NULL AND u.status = 'active'
-      ORDER BY total_trees DESC, u.created_at DESC
+      ORDER BY up.updated_at DESC, u.created_at DESC
       LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
