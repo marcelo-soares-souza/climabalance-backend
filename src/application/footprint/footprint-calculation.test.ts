@@ -998,7 +998,7 @@ describe("footprint calculations", () => {
     expect(error).toBeInstanceOf(ValidationError);
   });
 
-  it("prevents non-admin from deleting finalized calculations", async () => {
+  it("allows owner to delete their own finalized calculation", async () => {
     const calculationRepository = new MemoryFootprintCalculationRepository();
 
     const calculation: FootprintCalculation = {
@@ -1022,18 +1022,14 @@ describe("footprint calculations", () => {
 
     await calculationRepository.save(calculation);
 
-    let error: unknown = null;
-    try {
-      await deleteFootprintCalculation(
-        { calculationRepository },
-        "calc-1",
-        "user-1",
-        false,
-      );
-    } catch (err) {
-      error = err;
-    }
+    await deleteFootprintCalculation(
+      { calculationRepository },
+      "calc-1",
+      "user-1",
+      false,
+    );
 
-    expect(error).toBeInstanceOf(ValidationError);
+    const deleted = await calculationRepository.findById("calc-1");
+    expect(deleted?.deleted_at).not.toBeNull();
   });
 });

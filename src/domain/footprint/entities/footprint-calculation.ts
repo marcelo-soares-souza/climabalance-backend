@@ -55,7 +55,8 @@ export function canFinalizeCalculation(
 
 /**
  * Check if calculation can be deleted
- * Admin can delete any calculation (except soft-deleted)
+ * Admin can delete any calculation (except soft-deleted).
+ * Owners can delete their own calculations regardless of status.
  */
 export function canDeleteCalculation(
   calculation: FootprintCalculation,
@@ -64,8 +65,7 @@ export function canDeleteCalculation(
   if (isAdmin) {
     return !calculation.deleted_at;
   }
-  // Only drafts can be deleted by regular users
-  return calculation.status === "draft" && !calculation.deleted_at;
+  return !calculation.deleted_at;
 }
 
 /**
