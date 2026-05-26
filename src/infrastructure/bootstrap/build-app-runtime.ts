@@ -90,6 +90,8 @@ function createEmailSender(): EmailSender {
       );
     }
 
+    const emailDomain = env.emailFrom.match(/@([^>"]+)/)?.[1] || undefined;
+
     return new SMTPEmailSender({
       host: env.smtpServer,
       port: env.smtpPort,
@@ -98,6 +100,7 @@ function createEmailSender(): EmailSender {
         pass: env.smtpPassword,
       },
       from: env.emailFrom,
+      domain: emailDomain,
     });
   }
 

@@ -21,8 +21,8 @@
   },
   "dependencies": {
     "geotiff": "^3.0.5",
-    "ioredis": "^5.10.1",
-    "nodemailer": "^8.0.8",
+    "ioredis": "^5.11.0",
+    "nodemailer": "^8.0.9",
     "pg": "^8.21.0",
     "proj4": "^2.20.8",
     "sharp": "^0.34.5",
@@ -40,7 +40,7 @@
     "@types/proj4": "^2.19.0",
     "eslint": "^10.4.0",
     "globals": "^17.6.0",
-    "typescript-eslint": "^8.59.4",
+    "typescript-eslint": "^8.60.0",
     "prettier": "^3.8.3"
   }
 }

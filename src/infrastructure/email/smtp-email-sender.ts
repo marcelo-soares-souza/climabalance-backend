@@ -10,6 +10,7 @@ export type SMTPConfig = {
     pass: string;
   };
   from: string;
+  domain?: string;
 };
 
 export class SMTPEmailSender implements EmailSender {
@@ -22,10 +23,13 @@ export class SMTPEmailSender implements EmailSender {
       host: config.host,
       port: config.port,
       secure: config.port === 465,
+      requireTLS: config.port === 587,
       auth: {
         user: config.auth.user,
         pass: config.auth.pass,
+        method: "PLAIN",
       },
+      name: config.domain || config.host,
     });
   }
 
