@@ -66,6 +66,10 @@ export class Period {
   }
 
   static fromStrings(start: string, end: string): Period {
-    return new Period(new Date(start), new Date(end));
+    const parseDate = (s: string) => {
+      const [year, month, day] = s.split("-").map(Number);
+      return new Date(year!, month! - 1, day!);
+    };
+    return new Period(parseDate(start), parseDate(end));
   }
 }
