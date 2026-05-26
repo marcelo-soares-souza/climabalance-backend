@@ -139,6 +139,24 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(createAreaSchema, body);
 
+        if (!auth.roles.includes("administrator")) {
+          const areaCount = await deps.areaRepository.countByOwnerId(
+            auth.userId,
+          );
+          if (areaCount >= 3) {
+            return jsonResponse(
+              400,
+              {
+                error: {
+                  message_key: "area.limit_reached",
+                  details: { max: 3, current: areaCount },
+                },
+              },
+              logContext,
+            );
+          }
+        }
+
         const result = await createArea(
           {
             areaRepository: deps.areaRepository,
@@ -536,6 +554,18 @@ export function createAreaHandlers(deps: AreaHandlersDeps) {
           id,
           auth.userId,
         );
+
+        const area = await deps.areaRepository.findById(id);
+        if (area) {
+          const owner = await deps.users.findById(area.ownerUserId);
+          await deps.jobQueue
+            .enqueue("area.activated", {
+              areaId: id,
+              areaName: area.name,
+              producerEmail: owner?.email ?? "",
+            })
+            .catch(() => {});
+        }
 
         return jsonResponse(
           200,

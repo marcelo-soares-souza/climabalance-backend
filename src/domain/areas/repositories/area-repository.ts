@@ -101,4 +101,9 @@ export interface AreaRepository {
     totalTreesPlanted: number;
     totalCO2Captured: number;
   }>;
+
+  /**
+   * Count non-deleted areas owned by a user
+   */
+  countByOwnerId(ownerUserId: string): Promise<number>;
 }

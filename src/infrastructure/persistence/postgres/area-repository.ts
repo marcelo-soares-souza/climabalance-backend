@@ -352,6 +352,14 @@ ORDER BY updated_at DESC, id DESC`,
     };
   }
 
+  async countByOwnerId(ownerUserId: string): Promise<number> {
+    const result = await this.pool.query(
+      `SELECT COUNT(*)::int AS count FROM areas WHERE owner_user_id = $1 AND deleted_at IS NULL`,
+      [ownerUserId],
+    );
+    return result.rows[0].count;
+  }
+
   private mapRowToArea(row: any): Area {
     const location = new Location(
       parseFloat(row.latitude),

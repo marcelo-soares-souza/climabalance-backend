@@ -11,6 +11,8 @@
   "email.areaAuditRequested.body": "The area \"{{areaName}}\" has been submitted for audit.\n\nReforester: {{producerEmail}}\n\nAccess: {{url}}",
   "email.areaApproved.subject": "Area approved",
   "email.areaApproved.body": "Your area \"{{areaName}}\" has been approved!\n\nIt is now visible to supporters on the map.\n\nAccess: {{url}}",
+  "email.areaActivated.subject": "Area activated",
+  "email.areaActivated.body": "Your area \"{{areaName}}\" has been activated!\n\nIt is now available for support and compensation on the platform.\n\nAccess: {{url}}",
   "email.areaRejected.subject": "Area rejected",
   "email.areaRejected.body": "Your area \"{{areaName}}\" has been rejected.\n\nReason: {{reason}}\n\nPlease review the feedback and submit a new version.\n\nAccess: {{url}}",
   "email.stripeOnboardingFailed.subject": "Stripe onboarding requires attention",

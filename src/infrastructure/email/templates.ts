@@ -83,6 +83,19 @@ export function buildAreaApproved(
   };
 }
 
+export function buildAreaActivated(
+  locale: string,
+  to: string,
+  areaName: string,
+  url: string,
+): EmailMessage {
+  return {
+    to,
+    subject: t("email.areaActivated.subject", locale),
+    text: t("email.areaActivated.body", locale, { areaName, url }),
+  };
+}
+
 export function buildAreaRejected(
   locale: string,
   to: string,

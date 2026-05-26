@@ -6,6 +6,7 @@ import {
   buildAreaCreatedNotification,
   buildAreaAuditRequested,
   buildAreaApproved,
+  buildAreaActivated,
   buildAreaRejected,
   buildStripeOnboardingFailed,
   buildContributionRefunded,
@@ -118,6 +119,21 @@ export async function handleAreaApproved(
   );
   await deps.emailSender.send(
     buildAreaApproved(locale, payload.producerEmail, payload.areaName, url),
+  );
+}
+
+export async function handleAreaActivated(
+  payload: { areaId: string; areaName: string; producerEmail: string },
+  deps: JobHandlerDeps,
+): Promise<void> {
+  const locale = await resolveUserLocale(payload.producerEmail, deps.users);
+  const url = await resolveAreaUrl(
+    payload.areaId,
+    deps.frontendUrl,
+    deps.areas,
+  );
+  await deps.emailSender.send(
+    buildAreaActivated(locale, payload.producerEmail, payload.areaName, url),
   );
 }
 

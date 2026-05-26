@@ -11,6 +11,8 @@
   "email.areaAuditRequested.body": "La zone \"{{areaName}}\" a été soumise pour audit.\n\nReboiseur : {{producerEmail}}\n\nAccès : {{url}}",
   "email.areaApproved.subject": "Zone approuvée",
   "email.areaApproved.body": "Votre zone \"{{areaName}}\" a été approuvée !\n\nElle est désormais visible pour les supporters sur la carte.\n\nAccès : {{url}}",
+  "email.areaActivated.subject": "Zone activée",
+  "email.areaActivated.body": "Votre zone \"{{areaName}}\" a été activée !\n\nElle est désormais disponible pour le soutien et la compensation sur la plateforme.\n\nAccès : {{url}}",
   "email.areaRejected.subject": "Zone rejetée",
   "email.areaRejected.body": "Votre zone \"{{areaName}}\" a été rejetée.\n\nMotif : {{reason}}\n\nVeuillez examiner les commentaires et soumettre une nouvelle version.\n\nAccès : {{url}}",
   "email.stripeOnboardingFailed.subject": "L'intégration Stripe nécessite votre attention",

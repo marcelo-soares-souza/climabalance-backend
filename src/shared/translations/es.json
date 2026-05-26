@@ -11,6 +11,8 @@
   "email.areaAuditRequested.body": "El área \"{{areaName}}\" ha sido enviada para auditoría.\n\nReforestador: {{producerEmail}}\n\nAcceso: {{url}}",
   "email.areaApproved.subject": "Área aprobada",
   "email.areaApproved.body": "¡Tu área \"{{areaName}}\" ha sido aprobada!\n\nAhora es visible para los seguidores en el mapa.\n\nAcceso: {{url}}",
+  "email.areaActivated.subject": "Área activada",
+  "email.areaActivated.body": "¡Tu área \"{{areaName}}\" ha sido activada!\n\nAhora está disponible para apoyo y compensación en la plataforma.\n\nAcceso: {{url}}",
   "email.areaRejected.subject": "Área rechazada",
   "email.areaRejected.body": "Tu área \"{{areaName}}\" ha sido rechazada.\n\nMotivo: {{reason}}\n\nRevisa los comentarios y envía una nueva versión.\n\nAcceso: {{url}}",
   "email.stripeOnboardingFailed.subject": "La incorporación de Stripe requiere atención",
