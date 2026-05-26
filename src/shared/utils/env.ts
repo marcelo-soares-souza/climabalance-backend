@@ -54,6 +54,7 @@ export type Env = {
   alertWebhookUrl?: string;
   alertSeverityThreshold: string;
   requireValkey: boolean;
+  usdToBrlExchangeRate: number;
   enableApiDocs: boolean;
   apiDocsAuthMode: "none" | "admin" | "basic";
   apiDocsBasicUsername?: string;
@@ -322,6 +323,9 @@ export const env: Env = {
       "REQUIRE_VALKEY",
       env.appEnv === "production" || env.appEnv === "staging",
     );
+  },
+  get usdToBrlExchangeRate() {
+    return numberEnv("USD_TO_BRL_EXCHANGE_RATE", 5);
   },
   get enableApiDocs() {
     return booleanEnv("ENABLE_API_DOCS", env.appEnv === "local");

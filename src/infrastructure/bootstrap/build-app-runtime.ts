@@ -255,6 +255,7 @@ export function buildAppRuntime() {
     stripePlatformFeePercent: env.stripePlatformFeePercent,
     profileAvatarStorage,
     defaultMaxPurchasableTrees: env.defaultMaxPurchasableTrees,
+    usdToBrlExchangeRate: env.usdToBrlExchangeRate,
     satelliteBboxSizeKm: env.satelliteBboxSizeKm,
     satelliteMaxCloud: env.satelliteMaxCloud,
     satelliteDaysBack: env.satelliteDaysBack,

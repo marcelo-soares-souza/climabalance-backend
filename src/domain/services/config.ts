@@ -11,4 +11,5 @@ export interface Config {
   readonly passwordResetTtlMinutes: number;
   readonly refreshTokenTtlDays: number;
   readonly frontendUrl: string;
+  readonly usdToBrlExchangeRate: number;
 }

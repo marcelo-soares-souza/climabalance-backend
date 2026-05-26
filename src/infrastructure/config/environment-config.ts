@@ -14,6 +14,7 @@ export class EnvironmentConfig implements Config {
   readonly passwordResetTtlMinutes: number;
   readonly refreshTokenTtlDays: number;
   readonly frontendUrl: string;
+  readonly usdToBrlExchangeRate: number;
 
   constructor() {
     this.jwtSecret = env.jwtSecret;
@@ -24,5 +25,6 @@ export class EnvironmentConfig implements Config {
     this.passwordResetTtlMinutes = env.passwordResetTtlMinutes;
     this.refreshTokenTtlDays = env.refreshTokenTtlDays;
     this.frontendUrl = env.frontendUrl;
+    this.usdToBrlExchangeRate = env.usdToBrlExchangeRate;
   }
 }

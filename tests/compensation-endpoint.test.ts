@@ -142,6 +142,10 @@ class InMemoryCompensationCertificatePdfGenerator implements CompensationCertifi
 
 const mockUsers = {
   findBySlug: async (slug: string) => ({ id: slug }) as any,
+  getProfile: async (_userId: string) => ({
+    countryCode: "US",
+    addressCountry: "US",
+  }),
 } as any;
 
 class InMemoryAreaRepository {
@@ -269,6 +273,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 1000,
       auditLog: {
         async log() {},
@@ -320,6 +325,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
@@ -375,6 +381,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
@@ -429,6 +436,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
@@ -484,6 +492,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
@@ -528,6 +537,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},
@@ -579,6 +589,7 @@ describe("POST /api/v1/compensations handler", () => {
       clock: {
         now: () => new Date("2026-02-07T16:00:00Z"),
       },
+      usdToBrlExchangeRate: 5,
       defaultMaxPurchasableTrees: 100,
       auditLog: {
         async log() {},

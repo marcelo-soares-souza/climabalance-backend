@@ -1,21 +1,21 @@
 import type { AreaRepository } from "../../domain/areas/repositories/area-repository";
 import type { CompensationHistoryRepository } from "../../domain/compensations/repositories/compensation-history-repository";
+import type { UserRepository } from "../../domain/user/user-repository";
 import { NotFoundError, ValidationError } from "../../domain/errors";
+import { resolveUserCurrency } from "./resolve-user-country";
+import { convertUsdToBrl } from "./convert-currency";
 
 export const TREE_PURCHASE_HORIZON_YEARS = 20;
 const DEFAULT_T_CO2E_PER_TREE_PER_YEAR = 0.00075;
 
-// Area tree pricing is currently defined in USD across the product.
-const DEFAULT_PRICE_BY_CURRENCY: Record<string, number> = {
-  BRL: 15.0,
-  USD: 15.0,
-  EUR: 15.0,
-};
+// Base pricing is always defined in USD.
+const DEFAULT_USD_PRICE = 15.0;
 
 export type QuoteTreePurchaseCompensationInput = {
   areaId: string;
   treesRequested: number;
   currency: string;
+  userId?: string;
 };
 
 export type QuoteTreePurchaseCompensationResult = {
@@ -37,7 +37,8 @@ export async function quoteTreePurchaseCompensation(
   deps: {
     areaRepository: AreaRepository;
     compensationHistoryRepository: CompensationHistoryRepository;
-    treePriceResolver?: (currency: string, areaId: string) => number | null;
+    userRepository: UserRepository;
+    usdToBrlExchangeRate: number;
     defaultMaxPurchasableTrees: number;
   },
   input: QuoteTreePurchaseCompensationInput,
@@ -72,24 +73,31 @@ export async function quoteTreePurchaseCompensation(
   const estimatedTotalTCO2e =
     input.treesRequested * tCO2ePerTreePerYear * horizonYears;
   const estimatedTotalKgCO2e = estimatedTotalTCO2e * 1000;
-  const currency = input.currency.trim().toUpperCase();
 
-  const resolvedPrice =
-    (area.pricePerTree != null && area.pricePerTree > 0
+  const effectiveCurrency = input.userId
+    ? await resolveUserCurrency(deps.userRepository, input.userId)
+    : "USD";
+
+  const basePriceUsd =
+    area.pricePerTree != null && area.pricePerTree > 0
       ? area.pricePerTree
-      : null) ??
-    deps.treePriceResolver?.(currency, area.id) ??
-    DEFAULT_PRICE_BY_CURRENCY[currency] ??
-    null;
+      : DEFAULT_USD_PRICE;
 
-  if (!resolvedPrice || resolvedPrice <= 0) {
+  if (!basePriceUsd || basePriceUsd <= 0) {
     throw new ValidationError([
       {
-        field: "currency",
-        message: "unsupported_currency",
+        field: "price_per_tree",
+        message: "invalid_price",
       },
     ]);
   }
+
+  const pricePerTree =
+    effectiveCurrency === "BRL"
+      ? convertUsdToBrl(basePriceUsd, deps.usdToBrlExchangeRate)
+      : basePriceUsd;
+
+  const totalAmount = input.treesRequested * pricePerTree;
 
   return {
     areaId: area.id,
@@ -99,9 +107,9 @@ export async function quoteTreePurchaseCompensation(
     estimatedKgCO2PerTreePerYear,
     estimatedTotalTCO2e,
     estimatedTotalKgCO2e,
-    pricePerTree: resolvedPrice,
-    totalAmount: input.treesRequested * resolvedPrice,
-    currency,
+    pricePerTree,
+    totalAmount,
+    currency: effectiveCurrency,
     maxPurchasableTrees: area.maxPurchasableTrees,
     remainingPurchasableTrees,
   };

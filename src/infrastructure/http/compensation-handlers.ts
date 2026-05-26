@@ -36,6 +36,7 @@ export interface CompensationHandlersDeps {
   clock: Clock;
   auditLog: Pick<AuditLogRepository, "log">;
   defaultMaxPurchasableTrees: number;
+  usdToBrlExchangeRate: number;
 }
 
 export function createCompensationHandlers(deps: CompensationHandlersDeps) {
@@ -65,12 +66,15 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           {
             areaRepository: deps.areaRepository,
             compensationHistoryRepository: deps.compensationHistoryRepository,
+            userRepository: deps.users,
+            usdToBrlExchangeRate: deps.usdToBrlExchangeRate,
             defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
             areaId,
             treesRequested: validated.trees_requested!,
             currency: validated.currency,
+            userId: auth.userId,
           },
         );
 
@@ -94,7 +98,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
             totalTCO2e: quote.estimatedTotalTCO2e,
             treesCount: quote.treesRequested,
             totalAmount: quote.totalAmount,
-            currency: validated.currency,
+            currency: quote.currency,
           },
         );
 
@@ -323,6 +327,7 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
     async quote(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       try {
+        const auth = requireAuth(ctx);
         const body = await parseJson(ctx.request, ctx);
         const validated = parseWithSchema(quoteTreePurchaseSchema, body);
 
@@ -339,12 +344,15 @@ export function createCompensationHandlers(deps: CompensationHandlersDeps) {
           {
             areaRepository: deps.areaRepository,
             compensationHistoryRepository: deps.compensationHistoryRepository,
+            userRepository: deps.users,
+            usdToBrlExchangeRate: deps.usdToBrlExchangeRate,
             defaultMaxPurchasableTrees: deps.defaultMaxPurchasableTrees,
           },
           {
             areaId,
             treesRequested: validated.trees_requested,
             currency: validated.currency,
+            userId: auth.userId,
           },
         );
 
