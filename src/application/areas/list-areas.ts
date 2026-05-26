@@ -146,6 +146,11 @@ export async function listAreas(
       .filter((owner): owner is NonNullable<typeof owner> => owner != null)
       .map((owner) => [owner.id, owner.slug]),
   );
+  const ownerEmailById = new Map(
+    owners
+      .filter((owner): owner is NonNullable<typeof owner> => owner != null)
+      .map((owner) => [owner.id, owner.email]),
+  );
   const deletedOwnerIds = new Set(
     owners
       .filter(
@@ -177,6 +182,7 @@ export async function listAreas(
       id: area.id,
       ownerUserId: area.ownerUserId,
       ownerSlug: ownerSlugById.get(area.ownerUserId),
+      ownerEmail: ownerEmailById.get(area.ownerUserId),
       name: area.name,
       slug: area.slug,
       description: area.description,
