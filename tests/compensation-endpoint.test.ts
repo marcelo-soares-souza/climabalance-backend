@@ -140,13 +140,20 @@ class InMemoryCompensationCertificatePdfGenerator implements CompensationCertifi
   }
 }
 
-const mockUsers = {
-  findBySlug: async (slug: string) => ({ id: slug }) as any,
-  getProfile: async (_userId: string) => ({
-    countryCode: "US",
-    addressCountry: "US",
-  }),
-} as any;
+function createMockUsers(
+  countryCode = "US",
+  addressCountry?: string,
+) {
+  return {
+    findBySlug: async (slug: string) => ({ id: slug }) as any,
+    getProfile: async (_userId: string) => ({
+      countryCode,
+      addressCountry: addressCountry ?? countryCode,
+    }),
+  } as any;
+}
+
+const mockUsers = createMockUsers("US");
 
 class InMemoryAreaRepository {
   constructor(private readonly area: Area) {}
@@ -614,5 +621,98 @@ describe("POST /api/v1/compensations handler", () => {
     expect(payload.data.total_t_co2e).toBeCloseTo(0.15, 6);
     expect(payload.data.trees_count).toBe(10);
     expect(payload.data.total_amount).toBe(120);
+  });
+
+  test("quote returns BRL with converted price for Brazilian user", async () => {
+    const handlers = createCompensationHandlers({
+      users: createMockUsers("BR"),
+      areaRepository: new InMemoryAreaRepository(activeArea) as any,
+      compensationStore: new InMemoryCompensationStore({
+        id: "area-1",
+        status: "active",
+        maxPurchasableTrees: null,
+      }),
+      compensationHistoryRepository:
+        new InMemoryCompensationHistoryRepository(),
+      compensationCertificateRepository:
+        new InMemoryCompensationCertificateRepository(),
+      compensationCertificateStorage:
+        new InMemoryCompensationCertificateStorage(),
+      compensationCertificatePdfGenerator:
+        new InMemoryCompensationCertificatePdfGenerator(),
+      idGenerator: {
+        generate: () => "comp-123",
+      },
+      clock: {
+        now: () => new Date("2026-02-07T16:00:00Z"),
+      },
+      usdToBrlExchangeRate: 5,
+      defaultMaxPurchasableTrees: 100,
+      auditLog: {
+        async log() {},
+      },
+    });
+
+    const response = await handlers.quote(
+      buildPostContext("/api/v1/compensations/quote", {
+        area_id: "area-1",
+        trees_requested: 10,
+        currency: "USD",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.data.currency).toBe("BRL");
+    expect(payload.data.price_per_tree).toBe(60);
+    expect(payload.data.total_amount).toBe(600);
+  });
+
+  test("create compensation persists BRL for Brazilian user", async () => {
+    let idSequence = 0;
+    const handlers = createCompensationHandlers({
+      users: createMockUsers("BR"),
+      areaRepository: new InMemoryAreaRepository(activeArea) as any,
+      compensationStore: new InMemoryCompensationStore({
+        id: "area-1",
+        status: "active",
+        maxPurchasableTrees: null,
+      }),
+      compensationHistoryRepository:
+        new InMemoryCompensationHistoryRepository(),
+      compensationCertificateRepository:
+        new InMemoryCompensationCertificateRepository(),
+      compensationCertificateStorage:
+        new InMemoryCompensationCertificateStorage(),
+      compensationCertificatePdfGenerator:
+        new InMemoryCompensationCertificatePdfGenerator(),
+      idGenerator: {
+        generate: () =>
+          ["comp-tree-br-1", "cert-tree-br-1"][idSequence++] ?? "id-fallback",
+      },
+      clock: {
+        now: () => new Date("2026-02-07T16:00:00Z"),
+      },
+      usdToBrlExchangeRate: 5,
+      defaultMaxPurchasableTrees: 100,
+      auditLog: {
+        async log() {},
+      },
+    });
+
+    const response = await handlers.create(
+      buildContext({
+        area_id: "area-1",
+        compensation_mode: "tree_purchase",
+        trees_requested: 10,
+        currency: "USD",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    const payload = await response.json();
+    expect(payload.data.currency).toBe("BRL");
+    expect(payload.data.price_per_tree).toBe(60);
+    expect(payload.data.total_amount).toBe(600);
   });
 });
