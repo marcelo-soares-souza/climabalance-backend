@@ -342,6 +342,26 @@ export function buildRouter(
     withAuth((ctx) => privacyHandlers.recordCookieConsent(ctx)),
   );
 
+  // Admin privacy routes
+  addRoute(
+    "GET",
+    "/api/v1/admin/subject-requests",
+    "protected",
+    withAuth(
+      (ctx) => privacyHandlers.listAllSubjectRequests(ctx),
+      { roles: ["administrator"] },
+    ),
+  );
+  addRoute(
+    "PATCH",
+    "/api/v1/admin/subject-requests/:id",
+    "protected",
+    withAuth(
+      (ctx) => privacyHandlers.updateSubjectRequest(ctx),
+      { roles: ["administrator"] },
+    ),
+  );
+
   // Location routes
   addRoute("GET", "/api/v1/locations/states", "public", (ctx) =>
     locationHandlers.listStates(ctx),

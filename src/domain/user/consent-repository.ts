@@ -24,10 +24,32 @@ export interface ConsentRepository {
     input: CreateSubjectRequestInput,
   ): Promise<SubjectRequest>;
   getSubjectRequestsByUser(userId: string): Promise<SubjectRequest[]>;
-  updateSubjectRequestStatus(
+  getSubjectRequestById(id: string): Promise<SubjectRequest | null>;
+  listAllSubjectRequests(filters: SubjectRequestFilters): Promise<{
+    requests: SubjectRequest[];
+    total: number;
+  }>;
+  updateSubjectRequest(
     id: string,
-    status: string,
-    resolvedByUserId?: string,
-    resolutionNotes?: string,
+    updates: UpdateSubjectRequestInput,
   ): Promise<SubjectRequest | null>;
 }
+
+export type SubjectRequestFilters = {
+  status?: string;
+  requestType?: string;
+  assignedToUserId?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type UpdateSubjectRequestInput = {
+  status?: string;
+  assigneeUserId?: string;
+  resolvedByUserId?: string;
+  resolutionNotes?: string;
+  dueAt?: Date;
+  legalBasis?: string;
+  identityVerified?: boolean;
+  dataCategoriesAffected?: string[];
+};

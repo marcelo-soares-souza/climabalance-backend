@@ -19,6 +19,15 @@ export type UserDataExport = {
     version: string | null;
     createdAt: string;
   }>;
+  subjectRequests: Array<{
+    id: string;
+    requestType: string;
+    status: string;
+    details: string | null;
+    resolutionNotes: string | null;
+    resolvedAt: string | null;
+    createdAt: string;
+  }>;
   compensations: Array<Record<string, unknown>>;
   certificates: Array<Record<string, unknown>>;
   footprints: Array<Record<string, unknown>>;
@@ -74,6 +83,7 @@ export async function exportUserData(
   const profile = await deps.users.getProfile(userId);
   const roles = await deps.users.getRoles(userId);
   const consents = await deps.consents.getConsentsByUser(userId);
+  const subjectRequests = await deps.consents.getSubjectRequestsByUser(userId);
   void deps.compensationHistoryRepository.getPaidContributionSummaryBySupporter(
     userId,
   );
@@ -106,10 +116,26 @@ export async function exportUserData(
       ? {
           displayName: profile.displayName,
           documentType: profile.documentType,
+          documentNumber: profile.documentNumber,
           birthDate: profile.birthDate,
           phone: profile.phone,
           countryCode: profile.countryCode,
+          addressLine1: profile.addressLine1,
+          addressLine2: profile.addressLine2,
+          addressCity: profile.addressCity,
+          addressState: profile.addressState,
+          addressPostalCode: profile.addressPostalCode,
+          addressCountry: profile.addressCountry,
           about: profile.about,
+          websiteUrl: profile.websiteUrl,
+          instagramUrl: profile.instagramUrl,
+          facebookUrl: profile.facebookUrl,
+          xUrl: profile.xUrl,
+          blueskyUrl: profile.blueskyUrl,
+          mastodonUrl: profile.mastodonUrl,
+          youtubeUrl: profile.youtubeUrl,
+          linkedinUrl: profile.linkedinUrl,
+          avatarPath: profile.avatarPath,
         }
       : null,
     roles,
@@ -118,6 +144,15 @@ export async function exportUserData(
       consented: c.consented,
       version: c.version ?? null,
       createdAt: c.createdAt.toISOString(),
+    })),
+    subjectRequests: subjectRequests.map((r) => ({
+      id: r.id,
+      requestType: r.requestType,
+      status: r.status,
+      details: r.details ?? null,
+      resolutionNotes: r.resolutionNotes ?? null,
+      resolvedAt: r.resolvedAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
     })),
     compensations,
     certificates,

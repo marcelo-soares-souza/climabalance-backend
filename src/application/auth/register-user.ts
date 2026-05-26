@@ -93,7 +93,7 @@ export async function registerUser(
         userId: user.id,
         consentType: "privacy_policy",
         consented: input.acceptedPrivacy,
-        version: "2026-04-24",
+        version: "2026-05-26",
         ipAddress: input.ipAddress,
       });
     }
@@ -105,7 +105,7 @@ export async function registerUser(
         userId: user.id,
         consentType: "terms_of_use",
         consented: input.acceptedTerms,
-        version: "2026-01",
+        version: "2026-05-26",
         ipAddress: input.ipAddress,
       });
     }

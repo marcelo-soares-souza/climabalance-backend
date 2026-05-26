@@ -21,12 +21,11 @@ export type Env = {
   passwordResetTtlMinutes: number;
   refreshTokenTtlDays: number;
   refreshCookieName: string;
-  valkeyUrl: string;
-  jwtKeys: string;
   refreshCookieDomain?: string;
   refreshCookiePath: string;
   refreshCookieSameSite: "lax" | "strict" | "none";
   refreshCookieSecure: boolean;
+  accessCookieName: string;
   paymentWebhookSecret: string;
   stripeSecretKey: string;
   stripePublishableKey: string;
@@ -204,6 +203,9 @@ export const env: Env = {
   },
   get refreshCookieName() {
     return process.env.REFRESH_COOKIE_NAME ?? "cb_refresh_token";
+  },
+  get accessCookieName() {
+    return process.env.ACCESS_COOKIE_NAME ?? "cb_access_token";
   },
   get valkeyUrl() {
     return process.env.VALKEY_URL ?? "redis://localhost:6379";

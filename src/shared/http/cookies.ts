@@ -23,6 +23,11 @@ export function getRefreshTokenFromCookie(request: Request): string | null {
   return cookies[env.refreshCookieName] ?? null;
 }
 
+export function getAccessTokenFromCookie(request: Request): string | null {
+  const cookies = parseCookieHeader(request.headers.get("cookie"));
+  return cookies[env.accessCookieName] ?? null;
+}
+
 export function buildRefreshTokenCookie(
   token: string,
   maxAgeSeconds: number,
@@ -33,6 +38,54 @@ export function buildRefreshTokenCookie(
     "HttpOnly",
     `SameSite=${capitalizeSameSite(env.refreshCookieSameSite)}`,
     `Max-Age=${maxAgeSeconds}`,
+  ];
+
+  if (env.refreshCookieDomain) {
+    parts.push(`Domain=${env.refreshCookieDomain}`);
+  }
+  if (env.refreshCookieSecure) {
+    parts.push("Secure");
+  }
+  if (env.refreshCookieSameSite === "none") {
+    parts.push("Partitioned");
+  }
+
+  return parts.join("; ");
+}
+
+export function buildAccessTokenCookie(
+  token: string,
+  maxAgeSeconds: number,
+): string {
+  const parts = [
+    `${env.accessCookieName}=${encodeURIComponent(token)}`,
+    `Path=/`,
+    "HttpOnly",
+    `SameSite=${capitalizeSameSite(env.refreshCookieSameSite)}`,
+    `Max-Age=${maxAgeSeconds}`,
+  ];
+
+  if (env.refreshCookieDomain) {
+    parts.push(`Domain=${env.refreshCookieDomain}`);
+  }
+  if (env.refreshCookieSecure) {
+    parts.push("Secure");
+  }
+  if (env.refreshCookieSameSite === "none") {
+    parts.push("Partitioned");
+  }
+
+  return parts.join("; ");
+}
+
+export function buildAccessTokenCookieCleared(): string {
+  const parts = [
+    `${env.accessCookieName}=`,
+    `Path=/`,
+    "HttpOnly",
+    `SameSite=${capitalizeSameSite(env.refreshCookieSameSite)}`,
+    "Max-Age=0",
+    "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
   ];
 
   if (env.refreshCookieDomain) {

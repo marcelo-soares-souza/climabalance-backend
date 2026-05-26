@@ -1298,6 +1298,55 @@ const routes: ApiRouteDoc[] = [
     successResponse: "OkData",
   },
   {
+    method: "get",
+    path: "/api/v1/admin/subject-requests",
+    summary: "List all subject requests",
+    description:
+      "Lists GDPR/LGPD data subject requests for administrators with optional filters.",
+    tags: ["Privacy", "Admin"],
+    secured: true,
+    queryParameters: [
+      {
+        name: "status",
+        description: "Filter by request status",
+        schema: stringSchema,
+      },
+      {
+        name: "request_type",
+        description: "Filter by request type",
+        schema: stringSchema,
+      },
+      {
+        name: "assigned_to",
+        description: "Filter by assignee user ID",
+        schema: uuidLikeSchema,
+      },
+      {
+        name: "limit",
+        description: "Max records to return",
+        schema: { type: "integer", minimum: 1, maximum: 200 },
+      },
+      {
+        name: "offset",
+        description: "Records offset",
+        schema: { type: "integer", minimum: 0 },
+      },
+    ],
+    successStatus: "200",
+    successResponse: "OkData",
+  },
+  {
+    method: "patch",
+    path: "/api/v1/admin/subject-requests/:id",
+    summary: "Update subject request",
+    description:
+      "Updates administrative workflow fields for a GDPR/LGPD subject request.",
+    tags: ["Privacy", "Admin"],
+    secured: true,
+    successStatus: "200",
+    successResponse: "OkData",
+  },
+  {
     method: "post",
     path: "/api/v1/privacy/cookie-consent",
     summary: "Record cookie consent",

@@ -5,13 +5,15 @@ import { errorResponse } from "../../shared/http/response";
 import { getLogger } from "../../shared/utils/logger";
 import { buildLogContext } from "../../shared/http/log-context";
 import { verifyRequestCsrfToken } from "../../shared/http/csrf";
+import { getAccessTokenFromCookie } from "../../shared/http/cookies";
 
 function getToken(request: Request): string | null {
   const header = request.headers.get("authorization");
-  if (!header) return null;
-  const [type, token] = header.split(" ");
-  if (type !== "Bearer" || !token) return null;
-  return token;
+  if (header) {
+    const [type, token] = header.split(" ");
+    if (type === "Bearer" && token) return token;
+  }
+  return getAccessTokenFromCookie(request);
 }
 
 function requireCsrfCheck(request: Request): boolean {

@@ -71,6 +71,11 @@ export type SubjectRequest = {
   resolutionNotes?: string;
   resolvedByUserId?: string;
   resolvedAt?: Date;
+  assigneeUserId?: string;
+  dueAt?: Date;
+  legalBasis?: string;
+  identityVerified: boolean;
+  dataCategoriesAffected?: string[];
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;

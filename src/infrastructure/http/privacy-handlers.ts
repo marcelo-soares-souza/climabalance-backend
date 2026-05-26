@@ -244,6 +244,175 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
       }
     },
 
+    listAllSubjectRequests: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
+      try {
+        const url = new URL(ctx.request.url);
+        const status = url.searchParams.get("status") || undefined;
+        const requestType = url.searchParams.get("request_type") || undefined;
+        const assignedTo = url.searchParams.get("assigned_to") || undefined;
+        const limit = Math.min(
+          Number(url.searchParams.get("limit")) || 50,
+          200,
+        );
+        const offset = Number(url.searchParams.get("offset")) || 0;
+
+        const { requests, total } = await deps.consents.listAllSubjectRequests({
+          status,
+          requestType,
+          assignedToUserId: assignedTo,
+          limit,
+          offset,
+        });
+
+        log.info("privacy.admin.subject_requests.list", {
+          count: requests.length,
+          total,
+          actor_user_id: ctx.auth?.userId,
+        });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth!.userId,
+          action: "privacy.admin.subject_requests_listed",
+          entityType: "privacy_subject_request",
+          entityId: "admin",
+          success: true,
+          httpStatus: 200,
+          severity: "info",
+          category: ["privacy", "admin"],
+          isSensitive: true,
+        });
+
+        return jsonResponse(
+          200,
+          {
+            data: requests.map((r) => ({
+              id: r.id,
+              user_id: r.userId,
+              request_type: r.requestType,
+              status: r.status,
+              details: r.details ?? null,
+              resolution_notes: r.resolutionNotes ?? null,
+              resolved_by_user_id: r.resolvedByUserId ?? null,
+              resolved_at: r.resolvedAt?.toISOString() ?? null,
+              assignee_user_id: r.assigneeUserId ?? null,
+              due_at: r.dueAt?.toISOString() ?? null,
+              legal_basis: r.legalBasis ?? null,
+              identity_verified: r.identityVerified,
+              data_categories_affected: r.dataCategoriesAffected ?? null,
+              created_at: r.createdAt.toISOString(),
+              updated_at: r.updatedAt.toISOString(),
+            })),
+            total,
+            limit,
+            offset,
+          },
+          logContext,
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
+    updateSubjectRequest: async (ctx: HttpContext) => {
+      const logContext = buildLogContext(ctx);
+      const log = getLogger(logContext);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
+      try {
+        const id = (ctx.params as Record<string, string>)?.id;
+        if (!id) {
+          return errorResponse(400, "request.invalid_params", undefined, logContext);
+        }
+
+        const body = await parseJson(ctx.request, ctx);
+        if (typeof body !== "object" || body === null) {
+          return errorResponse(400, "request.invalid_body", undefined, logContext);
+        }
+
+        const updateSchema = z.object({
+          status: z.enum(["pending", "in_progress", "completed", "rejected"]).optional(),
+          assignee_user_id: z.string().nullable().optional(),
+          resolution_notes: z.string().max(2000).optional(),
+          due_at: z.string().datetime().optional(),
+          legal_basis: z.string().max(100).optional(),
+          identity_verified: z.boolean().optional(),
+          data_categories_affected: z.array(z.string()).optional(),
+        });
+
+        const validated = parseWithSchema(updateSchema, body);
+
+        const existing = await deps.consents.getSubjectRequestById(id);
+        if (!existing) {
+          return errorResponse(404, "privacy.subject_request.not_found", undefined, logContext);
+        }
+
+        const updated = await deps.consents.updateSubjectRequest(id, {
+          status: validated.status,
+          assigneeUserId: validated.assignee_user_id,
+          resolvedByUserId: validated.status === "completed" || validated.status === "rejected"
+            ? ctx.auth!.userId
+            : undefined,
+          resolutionNotes: validated.resolution_notes,
+          dueAt: validated.due_at ? new Date(validated.due_at) : undefined,
+          legalBasis: validated.legal_basis,
+          identityVerified: validated.identity_verified,
+          dataCategoriesAffected: validated.data_categories_affected,
+        });
+
+        log.info("privacy.admin.subject_request.updated", {
+          subject_request_id: id,
+          actor_user_id: ctx.auth?.userId,
+          changes: Object.keys(validated),
+        });
+        await requestAuditLog.log({
+          actorUserId: ctx.auth!.userId,
+          action: "privacy.admin.subject_request_updated",
+          entityType: "privacy_subject_request",
+          entityId: id,
+          success: true,
+          httpStatus: 200,
+          severity: "info",
+          category: ["privacy", "admin", "data_modification"],
+          isSensitive: true,
+          previousState: {
+            status: existing.status,
+            assigneeUserId: existing.assigneeUserId,
+            resolvedByUserId: existing.resolvedByUserId,
+          },
+          newState: {
+            status: updated?.status,
+            assigneeUserId: updated?.assigneeUserId,
+            resolvedByUserId: updated?.resolvedByUserId,
+          },
+          changedFields: Object.keys(validated),
+        });
+
+        return jsonResponse(
+          200,
+          {
+            data: {
+              id: updated?.id,
+              request_type: updated?.requestType,
+              status: updated?.status,
+              resolution_notes: updated?.resolutionNotes ?? null,
+              resolved_at: updated?.resolvedAt?.toISOString() ?? null,
+              assignee_user_id: updated?.assigneeUserId ?? null,
+              due_at: updated?.dueAt?.toISOString() ?? null,
+              legal_basis: updated?.legalBasis ?? null,
+              identity_verified: updated?.identityVerified,
+              data_categories_affected: updated?.dataCategoriesAffected ?? null,
+              created_at: updated?.createdAt.toISOString(),
+              updated_at: updated?.updatedAt.toISOString(),
+            },
+          },
+          logContext,
+        );
+      } catch (error) {
+        return handleError(error, log, logContext);
+      }
+    },
+
     recordCookieConsent: async (ctx: HttpContext) => {
       const logContext = buildLogContext(ctx);
       const log = getLogger(logContext);

@@ -59,6 +59,7 @@ import {
 import {
   buildRefreshTokenCookie,
   buildRefreshTokenCookieCleared,
+  buildAccessTokenCookie,
   getRefreshTokenFromCookie,
 } from "../../shared/http/cookies";
 import { buildCsrfToken } from "../../shared/http/csrf";
@@ -70,14 +71,17 @@ const authResponseHeaders = {
   pragma: "no-cache",
 };
 
-function withRefreshCookie(
+function withAuthCookies(
+  accessToken: string,
+  accessTokenExpiresIn: number,
   refreshToken: string,
-  maxAgeSeconds: number,
-): Record<string, string> {
-  return {
-    ...authResponseHeaders,
-    "set-cookie": buildRefreshTokenCookie(refreshToken, maxAgeSeconds),
-  };
+  refreshExpiresIn: number,
+): Array<[string, string]> {
+  return [
+    ...Object.entries(authResponseHeaders) as Array<[string, string]>,
+    ["set-cookie", buildAccessTokenCookie(accessToken, accessTokenExpiresIn)],
+    ["set-cookie", buildRefreshTokenCookie(refreshToken, refreshExpiresIn)],
+  ];
 }
 
 function clearRefreshCookieHeaders(): Record<string, string> {
@@ -395,7 +399,12 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             },
           },
           logContext,
-          withRefreshCookie(token.refreshToken, token.refreshExpiresIn),
+          withAuthCookies(
+            token.accessToken,
+            token.expiresIn,
+            token.refreshToken,
+            token.refreshExpiresIn,
+          ),
         );
       } catch (error) {
         return handleError(error, log, logContext);
@@ -714,7 +723,12 @@ export function createAuthHandlers(deps: AuthHandlersDeps) {
             },
           },
           logContext,
-          withRefreshCookie(result.refreshToken, result.refreshExpiresIn),
+          withAuthCookies(
+            result.accessToken,
+            result.expiresIn,
+            result.refreshToken,
+            result.refreshExpiresIn,
+          ),
         );
       } catch (error) {
         return handleError(error, log, logContext);
