@@ -34,29 +34,30 @@ export class SMTPEmailSender implements EmailSender {
   }
 
   async send(message: EmailMessage): Promise<void> {
+    const subject = `[ClimaBalance] ${message.subject}`;
     logger.info("email.sending", {
       to: message.to,
-      subject: message.subject,
+      subject,
     });
 
     try {
       const result = await this.transporter.sendMail({
         from: this.from,
         to: message.to,
-        subject: message.subject,
+        subject,
         text: message.text,
         html: message.html,
       });
 
       logger.info("email.sent", {
         to: message.to,
-        subject: message.subject,
+        subject,
         messageId: result.messageId,
       });
     } catch (error) {
       logger.error("email.failed", {
         to: message.to,
-        subject: message.subject,
+        subject,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
