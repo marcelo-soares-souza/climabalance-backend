@@ -15,7 +15,6 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
   };
   compensations: CompensationCreateRecord[] = [];
   private lock: Promise<void> = Promise.resolve();
-  paidTreeCountByArea: Map<string, number> = new Map();
 
   async runInTransaction<T>(
     work: (tx: CompensationAtomicTransaction) => Promise<T>,
@@ -40,7 +39,9 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
           this.compensations.push(record);
         },
         sumCommittedTreeCountByArea: async (areaId: string) => {
-          return this.paidTreeCountByArea.get(areaId) ?? 0;
+          return this.compensations
+            .filter((item) => item.areaId === areaId)
+            .reduce((total, item) => total + item.treesCount, 0);
         },
       };
 
@@ -100,7 +101,12 @@ describe("createCompensationAtomic", () => {
     expect(store.compensations[0].treesRequested).toBe(100);
   });
 
-  test("allows concurrent contribution creation without area stock mutation", async () => {
+  test("rejects concurrent contributions that exceed the area stock", async () => {
+    store.area = {
+      ...store.area,
+      maxPurchasableTrees: 200,
+    };
+
     const deps = {
       store,
       idGenerator: {
@@ -112,7 +118,7 @@ describe("createCompensationAtomic", () => {
       auditLog: {
         async log() {},
       },
-      defaultMaxPurchasableTrees: 100,
+      defaultMaxPurchasableTrees: 200,
     };
 
     const [first, second] = await Promise.allSettled([
@@ -147,13 +153,22 @@ describe("createCompensationAtomic", () => {
     const fulfilled = [first, second].filter(
       (entry) => entry.status === "fulfilled",
     );
+    const rejected = [first, second].filter(
+      (entry) => entry.status === "rejected",
+    );
 
-    expect(fulfilled.length).toBe(2);
-    expect(store.compensations.length).toBe(2);
+    expect(fulfilled.length).toBe(1);
+    expect(rejected.length).toBe(1);
+    expect(store.compensations.length).toBe(1);
     expect(
       store.compensations.every(
         (item) => item.compensationMode === "tree_purchase",
       ),
     ).toBe(true);
+    const failure = rejected[0];
+    expect(failure?.status).toBe("rejected");
+    expect(
+      String((failure as PromiseRejectedResult).reason),
+    ).toContain("tree_limit_exceeded");
   });
 });

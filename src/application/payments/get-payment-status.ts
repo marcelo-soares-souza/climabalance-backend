@@ -89,10 +89,14 @@ export async function getPaymentStatus(
     });
 
     const now = deps.clock.now();
+    const shouldKeepRefundedPayment = payment.paymentStatus === "refunded";
+    const finalPaymentStatus = shouldKeepRefundedPayment
+      ? payment.paymentStatus
+      : latestPaymentStatus;
 
     if (
       latestPaymentStatus !== payment.paymentStatus &&
-      payment.paymentStatus !== "refunded"
+      !shouldKeepRefundedPayment
     ) {
       await tx.updatePaymentStatus({
         paymentId: payment.id,
@@ -120,7 +124,10 @@ export async function getPaymentStatus(
       });
     }
 
-    if (latestPaymentStatus !== payment.paymentStatus) {
+    const shouldLogStatusSync =
+      latestPaymentStatus !== payment.paymentStatus && !shouldKeepRefundedPayment;
+
+    if (shouldLogStatusSync) {
       await deps.auditLog.log({
         actorUserId: input.actorUserId,
         action: "payment.status_synced_via_polling",
@@ -142,7 +149,7 @@ export async function getPaymentStatus(
       provider: payment.provider,
       providerReference: payment.providerReference,
       simulationStatus: gatewayStatus.outcome,
-      paymentStatus: latestPaymentStatus,
+      paymentStatus: finalPaymentStatus,
       compensationStatus: finalCompensationStatus,
       amount: payment.amount,
       currency: payment.currency,

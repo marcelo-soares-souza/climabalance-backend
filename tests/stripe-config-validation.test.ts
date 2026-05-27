@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, test } from "bun:test";
+
 process.env.APP_ENV = "test";
 process.env.APP_PORT = "3000";
 process.env.APP_URL = "http://localhost:3000";
@@ -11,9 +13,6 @@ process.env.PASSWORD_PEPPER = "test-pepper";
 process.env.EMAIL_FROM = "no-reply@example.com";
 process.env.EMAIL_CONFIRM_TTL_MINUTES = "60";
 
-import { beforeEach, describe, expect, test } from "bun:test";
-import { validateStripeConfiguration } from "../src/infrastructure/bootstrap/build-app-runtime";
-
 describe("validateStripeConfiguration", () => {
   const originalSecret = process.env.STRIPE_SECRET_KEY;
   const originalWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -23,25 +22,37 @@ describe("validateStripeConfiguration", () => {
     process.env.STRIPE_WEBHOOK_SECRET = originalWebhookSecret;
   });
 
-  test("does nothing when Stripe gateway is disabled", () => {
+  test("does nothing when Stripe gateway is disabled", async () => {
     process.env.STRIPE_SECRET_KEY = "";
     process.env.STRIPE_WEBHOOK_SECRET = "";
+
+    const { validateStripeConfiguration } = await import(
+      "../src/infrastructure/bootstrap/build-app-runtime"
+    );
 
     expect(() => validateStripeConfiguration(false)).not.toThrow();
   });
 
-  test("fails when Stripe gateway is enabled without required envs", () => {
+  test("fails when Stripe gateway is enabled without required envs", async () => {
     process.env.STRIPE_SECRET_KEY = "";
     process.env.STRIPE_WEBHOOK_SECRET = "";
+
+    const { validateStripeConfiguration } = await import(
+      "../src/infrastructure/bootstrap/build-app-runtime"
+    );
 
     expect(() => validateStripeConfiguration(true)).toThrow(
       "Stripe configuration required when Stripe gateway is enabled: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET",
     );
   });
 
-  test("passes when Stripe gateway is enabled with required envs", () => {
+  test("passes when Stripe gateway is enabled with required envs", async () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_123";
+
+    const { validateStripeConfiguration } = await import(
+      "../src/infrastructure/bootstrap/build-app-runtime"
+    );
 
     expect(() => validateStripeConfiguration(true)).not.toThrow();
   });
