@@ -1111,17 +1111,6 @@ const routes: ApiRouteDoc[] = [
 
   {
     method: "post",
-    path: "/api/v1/payments/simulate",
-    summary: "Simulate card payment",
-    description: "Creates and processes simulated credit card payment.",
-    tags: ["Payments"],
-    secured: true,
-    requestBodyRef: "PaymentSimulateCardRequest",
-    successStatus: "201",
-    successResponse: "CreatedData",
-  },
-  {
-    method: "post",
     path: "/api/v1/payments/create-payment-intent",
     summary: "Create Stripe PaymentIntent",
     description:
@@ -1855,41 +1844,29 @@ export function buildOpenApiDocument(
           },
         },
 
-        PaymentSimulateCardRequest: {
-          type: "object",
-          required: [
-            "compensation_id",
-            "card_number",
-            "cardholder_name",
-            "expiration_month",
-            "expiration_year",
-            "cvv",
-            "installments",
-          ],
-          properties: {
-            compensation_id: uuidLikeSchema,
-            card_number: { type: "string", minLength: 12, maxLength: 25 },
-            cardholder_name: { type: "string", minLength: 2, maxLength: 120 },
-            expiration_month: { type: "integer", minimum: 1, maximum: 12 },
-            expiration_year: { type: "integer", minimum: 2000, maximum: 9999 },
-            cvv: { type: "string", minLength: 3, maxLength: 4 },
-            installments: { type: "integer", minimum: 1, maximum: 12 },
-          },
-        },
         PaymentWebhookRequest: {
           type: "object",
-          required: ["provider", "event", "data"],
+          required: ["type", "data"],
           properties: {
-            provider: { type: "string", enum: ["card_simulator"] },
-            event: { type: "string", enum: ["payment.updated"] },
+            type: {
+              type: "string",
+              enum: [
+                "payment_intent.succeeded",
+                "payment_intent.payment_failed",
+                "payment_intent.canceled",
+                "charge.refunded",
+                "account.updated",
+              ],
+            },
             data: {
               type: "object",
-              required: ["provider_reference"],
               properties: {
-                provider_reference: {
-                  type: "string",
-                  minLength: 8,
-                  maxLength: 140,
+                object: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    status: { type: "string" },
+                  },
                 },
               },
             },

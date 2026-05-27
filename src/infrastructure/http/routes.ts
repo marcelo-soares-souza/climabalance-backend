@@ -83,9 +83,6 @@ export function buildRouter(
 
   const UUID_REGEX =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const paymentSimulatorEnabled =
-    env.appEnv === "local" || env.appEnv === "test";
-
   function withAuthOrSelf(handler: Handler): Handler {
     return withAuth(async (ctx: HttpContext) => {
       const rawId = ctx.params.id;
@@ -713,14 +710,6 @@ export function buildRouter(
     "protected",
     withAuth((ctx) => certificateHandlers.download(ctx, ctx.params.id)),
   );
-  if (paymentSimulatorEnabled) {
-    addRoute(
-      "POST",
-      "/api/v1/payments/simulate",
-      "protected",
-      withAuth((ctx) => paymentHandlers.simulate(ctx)),
-    );
-  }
   addRoute(
     "POST",
     "/api/v1/payments/create-payment-intent",

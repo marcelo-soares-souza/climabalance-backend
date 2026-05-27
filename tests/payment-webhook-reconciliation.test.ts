@@ -14,10 +14,8 @@ import type {
   PendingPaymentRecord,
 } from "../src/application/payments/payment-store";
 import type {
-  CreatePaymentChargeInput,
   PaymentGatewayAdapter,
   PaymentGatewayOutcome,
-  PaymentGatewayChargeResult,
   PaymentGatewayStatusResult,
 } from "../src/application/payments/payment-gateway";
 import type {
@@ -58,6 +56,7 @@ class InMemoryPaymentStore implements PaymentStore {
     amount: number;
     currency: string;
     status: PaymentStatus;
+    stripePaymentIntentId?: string;
   }): void {
     this.payments.set(item.id, { ...item });
   }
@@ -249,17 +248,6 @@ class InMemoryPaymentStore implements PaymentStore {
 class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
   readonly provider = "stripe";
 
-  async createCharge(
-    _input: CreatePaymentChargeInput,
-  ): Promise<PaymentGatewayChargeResult> {
-    return {
-      provider: this.provider,
-      providerReference: "pi_stub",
-      outcome: "authorized",
-      processedAt: new Date("2026-02-07T20:00:00Z"),
-    };
-  }
-
   async getChargeStatus(input: {
     providerReference: string;
   }): Promise<PaymentGatewayStatusResult> {
@@ -297,25 +285,11 @@ class StripeWebhookGatewayStub implements PaymentGatewayAdapter {
 }
 
 class MutableGateway implements PaymentGatewayAdapter {
-  readonly provider = "card_simulator";
+  readonly provider = "stripe";
 
   constructor(private readonly secret: string) {}
 
   private readonly statuses = new Map<string, PaymentGatewayOutcome>();
-
-  async createCharge(
-    input: CreatePaymentChargeInput,
-  ): Promise<PaymentGatewayChargeResult> {
-    const providerReference = `sim_authorized_${input.cardNumber.slice(-4)}_${Date.now()}`;
-    this.statuses.set(providerReference, "authorized");
-
-    return {
-      provider: this.provider,
-      providerReference,
-      outcome: "authorized",
-      processedAt: new Date("2026-02-07T20:00:00Z"),
-    };
-  }
 
   async getChargeStatus(input: {
     providerReference: string;
@@ -332,19 +306,41 @@ class MutableGateway implements PaymentGatewayAdapter {
     payload: string;
     signature: string | null;
   }): Promise<boolean> {
-    if (!input.signature) {
-      return Promise.resolve(false);
+    if (!input.payload || !input.signature) return Promise.resolve(false);
+    if (input.signature.includes("invalid")) return Promise.resolve(false);
+    return Promise.resolve(true);
+  }
+
+  async parseWebhookEvent(
+    rawPayload: string,
+    _signature: string,
+  ): Promise<{
+    eventId: string;
+    type: string;
+    paymentIntentId: string | null;
+    outcome: PaymentGatewayOutcome | null;
+  }> {
+    try {
+      const parsed = JSON.parse(rawPayload);
+      const paymentIntentId =
+        parsed?.data?.provider_reference ??
+        parsed?.data?.object?.id ??
+        null;
+      const outcome = this.statuses.get(paymentIntentId ?? "") ?? null;
+      return {
+        eventId: `evt_${Date.now()}`,
+        type: "payment_intent.succeeded",
+        paymentIntentId,
+        outcome,
+      };
+    } catch {
+      return {
+        eventId: `evt_${Date.now()}`,
+        type: "payment_intent.succeeded",
+        paymentIntentId: null,
+        outcome: null,
+      };
     }
-
-    const received = input.signature.startsWith("sha256=")
-      ? input.signature.slice("sha256=".length)
-      : input.signature;
-
-    const expected = createHmac("sha256", this.secret)
-      .update(input.payload, "utf-8")
-      .digest("hex");
-
-    return Promise.resolve(received === expected);
   }
 
   setStatus(providerReference: string, outcome: PaymentGatewayOutcome): void {
@@ -516,7 +512,7 @@ describe("payment webhook and reconciliation", () => {
     );
 
     const body = JSON.stringify({
-      provider: "card_simulator",
+      provider: "stripe",
       event: "payment.updated",
       data: {
         provider_reference: "sim_authorized_1111_1",
@@ -526,7 +522,7 @@ describe("payment webhook and reconciliation", () => {
     const response = await handlers.webhook(
       buildWebhookContext({
         body,
-        signature: "sha256=invalid",
+        stripeSignature: "sha256=invalid",
       }),
     );
 
@@ -553,11 +549,12 @@ describe("payment webhook and reconciliation", () => {
     store.addPayment({
       id: "pay-1",
       compensationId: "comp-1",
-      provider: "card_simulator",
+      provider: "stripe",
       providerReference,
       amount: 100,
       currency: "BRL",
       status: "pending",
+      stripePaymentIntentId: providerReference,
     });
 
     gateway.setStatus(providerReference, "authorized");
@@ -570,7 +567,7 @@ describe("payment webhook and reconciliation", () => {
     );
 
     const body = JSON.stringify({
-      provider: "card_simulator",
+      provider: "stripe",
       event: "payment.updated",
       data: {
         provider_reference: providerReference,
@@ -583,7 +580,7 @@ describe("payment webhook and reconciliation", () => {
     const response = await handlers.webhook(
       buildWebhookContext({
         body,
-        signature: `sha256=${signature}`,
+        stripeSignature: `sha256=${signature}`,
       }),
     );
 
@@ -621,20 +618,22 @@ describe("payment webhook and reconciliation", () => {
     store.addPayment({
       id: "pay-a",
       compensationId: "comp-a",
-      provider: "card_simulator",
+      provider: "stripe",
       providerReference: "sim_authorized_1111_1",
       amount: 100,
       currency: "BRL",
       status: "pending",
+      stripePaymentIntentId: "sim_authorized_1111_1",
     });
     store.addPayment({
       id: "pay-b",
       compensationId: "comp-b",
-      provider: "card_simulator",
+      provider: "stripe",
       providerReference: "sim_timeout_2222_1",
       amount: 80,
       currency: "BRL",
       status: "pending",
+      stripePaymentIntentId: "sim_timeout_2222_1",
     });
 
     gateway.setStatus("sim_authorized_1111_1", "authorized");

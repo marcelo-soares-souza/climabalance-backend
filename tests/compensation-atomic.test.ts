@@ -39,7 +39,7 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
         insertCompensation: async (record: CompensationCreateRecord) => {
           this.compensations.push(record);
         },
-        sumPaidTreeCountByArea: async (areaId: string) => {
+        sumCommittedTreeCountByArea: async (areaId: string) => {
           return this.paidTreeCountByArea.get(areaId) ?? 0;
         },
       };

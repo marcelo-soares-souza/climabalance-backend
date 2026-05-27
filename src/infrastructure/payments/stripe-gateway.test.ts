@@ -1,6 +1,5 @@
 import { describe, expect, test, mock } from "bun:test";
 import { StripePaymentGatewayAdapter } from "./stripe-gateway";
-import type { CreatePaymentChargeInput } from "../../application/payments/payment-gateway";
 
 function createClock() {
   return { now: () => new Date("2026-05-04T12:00:00Z") };
@@ -26,12 +25,6 @@ function createMockStripe(overrides: Partial<Record<string, any>> = {}) {
   };
 
   return {
-    paymentMethods: {
-      create: mock().mockResolvedValue({
-        id: "pm_test_123",
-        type: "card",
-      }),
-    },
     paymentIntents: {
       create: mock().mockResolvedValue({
         id: "pi_test_123",
@@ -61,140 +54,6 @@ describe("StripePaymentGatewayAdapter", () => {
     });
   });
 
-  describe("createCharge", () => {
-    test("creates a PaymentMethod from card details and confirms a PaymentIntent", async () => {
-      const stripe = createMockStripe();
-      const adapter = new StripePaymentGatewayAdapter({
-        stripe,
-        clock: createClock(),
-        webhookSecret: "whsec_test",
-      });
-
-      const input: CreatePaymentChargeInput = {
-        paymentId: "pay-1",
-        compensationId: "comp-1",
-        amount: 150.0,
-        currency: "BRL",
-        cardNumber: "4242424242424242",
-        cardholderName: "Test User",
-        expirationMonth: 12,
-        expirationYear: 2027,
-        cvv: "123",
-        installments: 1,
-      };
-
-      const result = await adapter.createCharge(input);
-
-      expect(stripe.paymentMethods.create).toHaveBeenCalledTimes(1);
-      expect(stripe.paymentIntents.create).toHaveBeenCalledTimes(1);
-      expect(result.provider).toBe("stripe");
-      expect(result.providerReference).toBe("pi_pi_test_123");
-      expect(result.outcome).toBe("authorized");
-    });
-
-    test("maps requires_payment_method to declined", async () => {
-      const stripe = createMockStripe({
-        paymentIntents: {
-          create: mock().mockResolvedValue({
-            id: "pi_declined_1",
-            status: "requires_payment_method",
-            client_secret: null,
-          }),
-          retrieve: mock(),
-        },
-      });
-      const adapter = new StripePaymentGatewayAdapter({
-        stripe,
-        clock: createClock(),
-        webhookSecret: "whsec_test",
-      });
-
-      const input: CreatePaymentChargeInput = {
-        paymentId: "pay-2",
-        compensationId: "comp-2",
-        amount: 50.0,
-        currency: "USD",
-        cardNumber: "4000000000000002",
-        cardholderName: "Declined User",
-        expirationMonth: 1,
-        expirationYear: 2026,
-        cvv: "456",
-        installments: 1,
-      };
-
-      const result = await adapter.createCharge(input);
-      expect(result.outcome).toBe("declined");
-    });
-
-    test("maps processing to in_review", async () => {
-      const stripe = createMockStripe({
-        paymentIntents: {
-          create: mock().mockResolvedValue({
-            id: "pi_processing_1",
-            status: "processing",
-            client_secret: "pi_secret",
-          }),
-          retrieve: mock(),
-        },
-      });
-      const adapter = new StripePaymentGatewayAdapter({
-        stripe,
-        clock: createClock(),
-        webhookSecret: "whsec_test",
-      });
-
-      const input: CreatePaymentChargeInput = {
-        paymentId: "pay-3",
-        compensationId: "comp-3",
-        amount: 100.0,
-        currency: "BRL",
-        cardNumber: "4000000000000101",
-        cardholderName: "Review User",
-        expirationMonth: 6,
-        expirationYear: 2028,
-        cvv: "789",
-        installments: 2,
-      };
-
-      const result = await adapter.createCharge(input);
-      expect(result.outcome).toBe("in_review");
-    });
-
-    test("maps canceled to canceled", async () => {
-      const stripe = createMockStripe({
-        paymentIntents: {
-          create: mock().mockResolvedValue({
-            id: "pi_canceled_1",
-            status: "canceled",
-            client_secret: null,
-          }),
-          retrieve: mock(),
-        },
-      });
-      const adapter = new StripePaymentGatewayAdapter({
-        stripe,
-        clock: createClock(),
-        webhookSecret: "whsec_test",
-      });
-
-      const input: CreatePaymentChargeInput = {
-        paymentId: "pay-4",
-        compensationId: "comp-4",
-        amount: 75.0,
-        currency: "BRL",
-        cardNumber: "4000000000009987",
-        cardholderName: "Cancel User",
-        expirationMonth: 3,
-        expirationYear: 2026,
-        cvv: "321",
-        installments: 1,
-      };
-
-      const result = await adapter.createCharge(input);
-      expect(result.outcome).toBe("canceled");
-    });
-  });
-
   describe("getChargeStatus", () => {
     test("retrieves PaymentIntent by provider reference and maps outcome", async () => {
       const stripe = createMockStripe();
@@ -205,7 +64,7 @@ describe("StripePaymentGatewayAdapter", () => {
       });
 
       const result = await adapter.getChargeStatus({
-        providerReference: "pi_pi_test_123",
+        providerReference: "pi_test_123",
       });
 
       expect(stripe.paymentIntents.retrieve).toHaveBeenCalledWith(

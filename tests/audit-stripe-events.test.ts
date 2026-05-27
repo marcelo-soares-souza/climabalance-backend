@@ -69,7 +69,7 @@ describe("Audit Compliance - Stripe Payment Events", () => {
 
       const stripeGateway = {
         provider: "stripe",
-        createCharge: mock(async () => ({})),
+
         getChargeStatus: mock(async () => ({})),
         verifyWebhookSignature: mock(() => true),
         createPaymentIntent: mock(async () => ({
@@ -99,7 +99,7 @@ describe("Audit Compliance - Stripe Payment Events", () => {
           idGenerator: { generate: () => "pay-1" },
           clock: { now: () => new Date("2026-05-04T12:00:00Z") },
           auditLog: audit,
-          platformFeePercent: 5,
+          platformFeePercent: 10,
         },
         {
           actorUserId: "supporter-1",
@@ -124,7 +124,7 @@ describe("Audit Compliance - Stripe Payment Events", () => {
 
       const stripeGateway = {
         provider: "stripe",
-        createCharge: mock(async () => ({})),
+
         getChargeStatus: mock(async () => ({})),
         verifyWebhookSignature: mock(() => true),
         createPaymentIntent: mock(async () => ({
@@ -148,7 +148,7 @@ describe("Audit Compliance - Stripe Payment Events", () => {
           idGenerator: { generate: () => "pay-2" },
           clock: { now: () => new Date("2026-05-04T12:00:00Z") },
           auditLog: audit,
-          platformFeePercent: 5,
+          platformFeePercent: 10,
         },
         {
           actorUserId: "supporter-1",
@@ -161,6 +161,73 @@ describe("Audit Compliance - Stripe Payment Events", () => {
       expect(audit.logs[0].metadata).toHaveProperty("payment_method", "pix");
       expect(audit.logs[0].metadata).toHaveProperty("amount", 150);
       expect(audit.logs[0].metadata).toHaveProperty("currency", "BRL");
+    });
+
+    test("calculates application_fee_amount correctly for 10% fee", async () => {
+      const audit = createAuditMock();
+
+      const stripeGateway = {
+        provider: "stripe",
+        getChargeStatus: mock(async () => ({})),
+        verifyWebhookSignature: mock(() => true),
+        createPaymentIntent: mock(async () => ({
+          clientSecret: "pi_secret",
+          paymentIntentId: "pi_fee_test",
+        })),
+      };
+
+      const storeWithAmount100: PaymentStore = {
+        runInTransaction: mock(async (work) => {
+          return work({
+            lockCompensation: mock(async () => ({
+              id: "comp-fee",
+              supporterUserId: "supporter-1",
+              areaId: "area-1",
+              totalAmount: 100,
+              currency: "BRL",
+              status: "pending",
+            })),
+            lockLatestPendingPaymentByCompensationId: mock(async () => null),
+            insertPayment: mock(async () => {}),
+            lockPaymentById: mock(async () => null),
+            lockPaymentByProviderReference: mock(async () => null),
+            lockPaymentByStripePaymentIntentId: mock(async () => null),
+            updatePaymentStatus: mock(async () => {}),
+            updateCompensationStatus: mock(async () => {}),
+          });
+        }),
+        listPendingPayments: mock(async () => []),
+        getCompensationForCertificate: mock(async () => null),
+      };
+
+      await createStripePaymentIntent(
+        {
+          store: storeWithAmount100,
+          paymentGateway: stripeGateway,
+          areaOwnerLookup: { getOwnerUserId: mock(async () => "producer-1") },
+          stripeConnectLookup: {
+            getByUserId: mock(async () => ({
+              stripeAccountId: "acct_prod_1",
+              chargesEnabled: true,
+              payoutsEnabled: true,
+            })),
+          },
+          idGenerator: { generate: () => "pay-fee" },
+          clock: { now: () => new Date("2026-05-04T12:00:00Z") },
+          auditLog: audit,
+          platformFeePercent: 10,
+        },
+        {
+          actorUserId: "supporter-1",
+          actorRoles: ["individual"],
+          compensationId: "comp-fee",
+          paymentMethod: "card",
+        },
+      );
+
+      const createCall = stripeGateway.createPaymentIntent.mock.calls[0]?.[0];
+      expect(createCall.applicationFeeAmount).toBe(10);
+      expect(createCall.amount).toBe(100);
     });
   });
 });

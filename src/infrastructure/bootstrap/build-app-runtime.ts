@@ -8,7 +8,6 @@ import { LocalCertificateStorage } from "../storage/local-certificate-storage";
 import { LocalProfileAvatarStorage } from "../storage/local-profile-avatar-storage";
 import { LocalSatelliteImageStorage } from "../storage/local-satellite-image-storage";
 import { SimpleCertificatePdfGenerator } from "../pdf/simple-certificate-pdf-generator";
-import { CardSimulatorPaymentGatewayAdapter } from "../payments/card-simulator-gateway";
 import { StripePaymentGatewayAdapter } from "../payments/stripe-gateway";
 import { getStripeClient } from "../payments/stripe-client";
 import { PostgresUserRepository } from "../persistence/postgres/user-repository";
@@ -140,19 +139,12 @@ export function buildAppRuntime() {
   const hashService = new WebCryptoHashService();
   const idGenerator = new UUIDv7Generator();
   const clock = new SystemClock();
-  const useStripeGateway =
-    env.appEnv !== "local" || env.stripeSecretKey.trim().length > 0;
-  validateStripeConfiguration(useStripeGateway);
-  const paymentGateway = useStripeGateway
-    ? new StripePaymentGatewayAdapter({
-        stripe: getStripeClient(env.stripeSecretKey),
-        clock,
-        webhookSecret: env.stripeWebhookSecret,
-      })
-    : new CardSimulatorPaymentGatewayAdapter({
-        clock,
-        webhookSecret: env.paymentWebhookSecret,
-      });
+  validateStripeConfiguration(true);
+  const paymentGateway = new StripePaymentGatewayAdapter({
+    stripe: getStripeClient(env.stripeSecretKey),
+    clock,
+    webhookSecret: env.stripeWebhookSecret,
+  });
   const {
     areaMediaStorage,
     compensationCertificateStorage,

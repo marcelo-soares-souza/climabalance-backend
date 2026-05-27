@@ -43,6 +43,15 @@ export async function getPaymentStatus(
     store: PaymentStore;
     paymentGateway: PaymentGatewayAdapter;
     clock: { now(): Date };
+    auditLog: {
+      log(entry: {
+        actorUserId: string;
+        action: string;
+        entityType: string;
+        entityId: string;
+        metadata?: Record<string, any>;
+      }): Promise<void>;
+    };
   },
   input: GetPaymentStatusInput,
 ): Promise<GetPaymentStatusResult> {
@@ -79,6 +88,54 @@ export async function getPaymentStatus(
           : payment.paymentStatus,
     });
 
+    const now = deps.clock.now();
+
+    if (
+      latestPaymentStatus !== payment.paymentStatus &&
+      payment.paymentStatus !== "refunded"
+    ) {
+      await tx.updatePaymentStatus({
+        paymentId: payment.id,
+        status: latestPaymentStatus,
+        updatedAt: now,
+        paidAt: latestPaymentStatus === "paid" ? now : undefined,
+      });
+    }
+
+    const finalCompensationStatus =
+      nextCompensationStatus === "paid" ||
+      nextCompensationStatus === "pending" ||
+      nextCompensationStatus === "canceled"
+        ? nextCompensationStatus
+        : payment.compensationStatus;
+
+    if (
+      finalCompensationStatus !== payment.compensationStatus &&
+      payment.compensationStatus !== "refunded"
+    ) {
+      await tx.updateCompensationStatus({
+        compensationId: payment.compensationId,
+        status: finalCompensationStatus,
+        updatedAt: now,
+      });
+    }
+
+    if (latestPaymentStatus !== payment.paymentStatus) {
+      await deps.auditLog.log({
+        actorUserId: input.actorUserId,
+        action: "payment.status_synced_via_polling",
+        entityType: "payment",
+        entityId: payment.id,
+        metadata: {
+          previous_payment_status: payment.paymentStatus,
+          new_payment_status: latestPaymentStatus,
+          previous_compensation_status: payment.compensationStatus,
+          new_compensation_status: finalCompensationStatus,
+          gateway_outcome: gatewayStatus.outcome,
+        },
+      });
+    }
+
     return {
       paymentId: payment.id,
       compensationId: payment.compensationId,
@@ -86,12 +143,7 @@ export async function getPaymentStatus(
       providerReference: payment.providerReference,
       simulationStatus: gatewayStatus.outcome,
       paymentStatus: latestPaymentStatus,
-      compensationStatus:
-        nextCompensationStatus === "paid" ||
-        nextCompensationStatus === "pending" ||
-        nextCompensationStatus === "canceled"
-          ? nextCompensationStatus
-          : payment.compensationStatus,
+      compensationStatus: finalCompensationStatus,
       amount: payment.amount,
       currency: payment.currency,
       processedAt: gatewayStatus.processedAt,

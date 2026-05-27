@@ -37,12 +37,12 @@ class PostgresCompensationAtomicTransaction implements CompensationAtomicTransac
     };
   }
 
-  async sumPaidTreeCountByArea(areaId: string): Promise<number> {
+  async sumCommittedTreeCountByArea(areaId: string): Promise<number> {
     const result = await this.client.query(
       `SELECT COALESCE(SUM(trees_count), 0) AS total
        FROM compensations
        WHERE area_id = $1
-         AND status = 'paid'
+         AND status IN ('pending', 'paid')
          AND deleted_at IS NULL`,
       [areaId],
     );

@@ -5,15 +5,9 @@ import { parseWithSchema } from "./schemas/validation-helper";
 import { buildLogContext } from "../../shared/http/log-context";
 import { getLogger } from "../../shared/utils/logger";
 import { handleError } from "./error-mapper";
-import {
-  paymentWebhookSchema,
-  reconcilePaymentsSchema,
-  simulateCardPaymentSchema,
-} from "./schemas/payment-schemas";
+import { reconcilePaymentsSchema } from "./schemas/payment-schemas";
 import { createPaymentIntentSchema } from "./schemas/stripe-schemas";
-import { simulateCardPayment } from "../../application/payments/simulate-card-payment";
 import { getPaymentStatus } from "../../application/payments/get-payment-status";
-import { processPaymentWebhook } from "../../application/payments/process-payment-webhook";
 import { reconcilePendingPayments } from "../../application/payments/reconcile-payments";
 import {
   mapGatewayOutcomeToPaymentStatus,
@@ -58,71 +52,6 @@ export interface PaymentHandlersDeps {
 
 export function createPaymentHandlers(deps: PaymentHandlersDeps) {
   return {
-    /**
-     * POST /api/v1/payments/simulate
-     * Simulates credit card payment for a pending compensation.
-     */
-    async simulate(ctx: HttpContext) {
-      const logContext = buildLogContext(ctx);
-      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
-      try {
-        const auth = requireAuth(ctx);
-        const body = await parseJson(ctx.request, ctx);
-        const validated = parseWithSchema(simulateCardPaymentSchema, body);
-
-        const result = await simulateCardPayment(
-          {
-            store: deps.paymentStore,
-            paymentGateway: deps.paymentGateway,
-            idGenerator: deps.idGenerator,
-            clock: deps.clock,
-            auditLog: requestAuditLog,
-          },
-          {
-            actorUserId: auth.userId,
-            actorRoles: auth.roles,
-            compensationId: validated.compensation_id,
-            cardNumber: validated.card_number,
-            cardholderName: validated.cardholder_name,
-            expirationMonth: validated.expiration_month,
-            expirationYear: validated.expiration_year,
-            cvv: validated.cvv,
-            installments: validated.installments,
-          },
-        );
-        const certificate = await ensureCertificateAfterPaidCompensation(
-          deps,
-          result.compensationId,
-          auth.userId,
-          requestAuditLog,
-        );
-
-        return jsonResponse(
-          201,
-          {
-            data: {
-              payment_id: result.paymentId,
-              compensation_id: result.compensationId,
-              provider: result.provider,
-              provider_reference: result.providerReference,
-              simulation_status: result.simulationStatus,
-              payment_status: result.paymentStatus,
-              compensation_status: result.compensationStatus,
-              amount: result.amount,
-              currency: result.currency,
-              installments: result.installments,
-              processed_at: result.processedAt,
-              certificate,
-            },
-            message_key: "payment.simulated",
-          },
-          logContext,
-        );
-      } catch (error) {
-        return handleError(error, undefined, logContext);
-      }
-    },
-
     /**
      * POST /api/v1/payments/create-payment-intent
      * Creates a Stripe PaymentIntent (card or Pix) with Connect routing.
@@ -186,7 +115,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             idGenerator: deps.idGenerator,
             clock: deps.clock,
             auditLog: requestAuditLog,
-            platformFeePercent: deps.stripePlatformFeePercent ?? 5,
+            platformFeePercent: deps.stripePlatformFeePercent ?? 10,
           },
           {
             actorUserId: auth.userId,
@@ -228,6 +157,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
      */
     async status(ctx: HttpContext, paymentId: string) {
       const logContext = buildLogContext(ctx);
+      const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const auth = requireAuth(ctx);
         const result = await getPaymentStatus(
@@ -235,6 +165,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             store: deps.paymentStore,
             paymentGateway: deps.paymentGateway,
             clock: deps.clock,
+            auditLog: requestAuditLog,
           },
           {
             paymentId,
@@ -242,6 +173,16 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
             actorRoles: auth.roles,
           },
         );
+
+        const certificate =
+          result.compensationStatus === "paid"
+            ? await ensureCertificateAfterPaidCompensation(
+                deps,
+                result.compensationId,
+                auth.userId,
+                requestAuditLog,
+              )
+            : null;
 
         return jsonResponse(
           200,
@@ -257,6 +198,7 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
               amount: result.amount,
               currency: result.currency,
               processed_at: result.processedAt,
+              certificate,
             },
           },
           logContext,
@@ -268,27 +210,18 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
 
     /**
      * POST /api/v1/payments/webhook
-     * Receives gateway webhook updates and syncs payment status.
-     * Supports card_simulator (HMAC) and Stripe (constructEvent).
+     * Receives Stripe webhook events and syncs payment status.
      */
     async webhook(ctx: HttpContext) {
       const logContext = buildLogContext(ctx);
       const requestAuditLog = withAuditLogContext(deps.auditLog, ctx);
       try {
         const rawPayload = await readTextBody(ctx.request, 1024 * 64);
-
-        // Determine signature header based on provider
-        const isStripe =
-          deps.paymentGateway.provider === "stripe" ||
-          ctx.request.headers.get("stripe-signature") !== null;
-
-        const signature = isStripe
-          ? ctx.request.headers.get("stripe-signature")
-          : ctx.request.headers.get("x-payment-signature");
+        const signature = ctx.request.headers.get("stripe-signature");
 
         const logger = getLogger(logContext);
         logger.info("payment.webhook_received", {
-          provider: isStripe ? "stripe" : "card_simulator",
+          provider: "stripe",
           has_signature: !!signature,
           signature_prefix: signature ? `${signature.slice(0, 12)}...` : null,
           content_length: rawPayload.length,
@@ -319,13 +252,11 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           );
         }
 
-        // For Stripe, parse the event and route to payment or account handler
-        if (isStripe) {
-          const stripeGateway = deps.paymentGateway as any;
-          if (
-            typeof stripeGateway.parseWebhookEvent === "function" &&
-            signature
-          ) {
+        const stripeGateway = deps.paymentGateway as any;
+        if (
+          typeof stripeGateway.parseWebhookEvent === "function" &&
+          signature
+        ) {
             const parsed = await stripeGateway.parseWebhookEvent(
               rawPayload,
               signature,
@@ -630,84 +561,12 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
               logContext,
             );
           }
-        }
-
-        // Card simulator webhook path
-        const parsedJson = rawPayload.length > 0 ? JSON.parse(rawPayload) : {};
-        const body = parseWithSchema(paymentWebhookSchema, parsedJson);
-
-        const result = await processPaymentWebhook(
-          {
-            store: deps.paymentStore,
-            paymentGateway: deps.paymentGateway,
-            clock: deps.clock,
-            auditLog: requestAuditLog,
-          },
-          {
-            provider: body.provider,
-            providerReference: body.data?.provider_reference ?? "",
-            actorUserId: "system:webhook",
-          },
-        );
-
-        if (
-          result.paymentStatus === "failed" &&
-          deps.jobQueue &&
-          deps.users &&
-          result.compensationId
-        ) {
-          const comp = await deps.paymentStore.getCompensationForCertificate(
-            result.compensationId,
-          );
-          if (comp) {
-            const supporter = await deps.users.findById(comp.supporterUserId);
-            if (supporter) {
-              await deps.jobQueue
-                .enqueue("notification.payment_failed", {
-                  email: supporter.email,
-                  amount: comp.totalAmount,
-                  currency: comp.currency,
-                  locale: supporter.locale,
-                  frontendUrl: env.frontendUrl,
-                })
-                .catch(() => {});
-            }
-          }
-        }
-
-        const certificate =
-          result.processed && result.compensationId
-            ? await ensureCertificateAfterPaidCompensation(
-                deps,
-                result.compensationId,
-                "system:webhook",
-                requestAuditLog,
-              )
-            : null;
-
-        if (
-          result.paymentStatus === "paid" &&
-          deps.jobQueue &&
-          deps.areaRepository &&
-          deps.users
-        ) {
-          notifyCompensationMilestone(deps, result.compensationId!).catch(
-            () => {},
-          );
-        }
 
         return jsonResponse(
           202,
           {
-            data: {
-              processed: result.processed,
-              payment_id: result.paymentId,
-              compensation_id: result.compensationId,
-              payment_status: result.paymentStatus,
-              compensation_status: result.compensationStatus,
-              certificate,
-            },
-            message_key: "payment.webhook_processed",
+            data: { processed: false },
+            message_key: "payment.webhook_unhandled",
           },
           logContext,
         );

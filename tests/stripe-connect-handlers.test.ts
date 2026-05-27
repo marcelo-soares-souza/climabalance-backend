@@ -39,6 +39,10 @@ function createDeps(
         id: userId,
         email: "producer@example.com",
       })),
+      getProfile: mock(async () => ({
+        countryCode: "BR",
+        addressCountry: null,
+      })),
       ...overrides.users,
     },
     idGenerator: { generate: () => "id-1" },
@@ -249,6 +253,10 @@ describe("StripeConnectHandlers - onboard", () => {
         findById: mock(async () => ({
           id: "user-1",
           email: "producer@climabalance.org",
+        })),
+        getProfile: mock(async () => ({
+          countryCode: "BR",
+          addressCountry: null,
         })),
       },
     });

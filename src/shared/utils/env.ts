@@ -26,7 +26,6 @@ export type Env = {
   refreshCookieSameSite: "lax" | "strict" | "none";
   refreshCookieSecure: boolean;
   accessCookieName: string;
-  paymentWebhookSecret: string;
   stripeSecretKey: string;
   stripePublishableKey: string;
   stripeWebhookSecret: string;
@@ -228,9 +227,6 @@ export const env: Env = {
       env.appEnv === "production" || env.appEnv === "staging",
     );
   },
-  get paymentWebhookSecret() {
-    return process.env.PAYMENT_WEBHOOK_SECRET ?? "dev-payment-webhook-secret";
-  },
   get stripeSecretKey() {
     return optionalEnv("STRIPE_SECRET_KEY") ?? "";
   },
@@ -241,7 +237,7 @@ export const env: Env = {
     return optionalEnv("STRIPE_WEBHOOK_SECRET") ?? "";
   },
   get stripePlatformFeePercent() {
-    const value = numberEnv("STRIPE_PLATFORM_FEE_PERCENT", 5);
+    const value = numberEnv("STRIPE_PLATFORM_FEE_PERCENT", 10);
     if (value < 0 || value > 100) {
       throw new Error(
         "Invalid STRIPE_PLATFORM_FEE_PERCENT: must be between 0 and 100",

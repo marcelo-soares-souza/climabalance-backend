@@ -64,4 +64,6 @@ export interface CompensationHistoryRepository {
   ): Promise<CompensationHistoryItem | null>;
 
   sumPaidTreeCountByArea(areaId: string, client?: any): Promise<number>;
+
+  sumCommittedTreeCountByArea(areaId: string, client?: any): Promise<number>;
 }

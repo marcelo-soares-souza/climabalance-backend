@@ -166,7 +166,7 @@ export async function createStripePaymentIntent(
       id: paymentId,
       compensationId: compensation.id,
       provider: "stripe",
-      providerReference: `pi_${paymentIntent.paymentIntentId}`,
+      providerReference: paymentIntent.paymentIntentId,
       amount: compensation.totalAmount,
       currency: compensation.currency,
       status: "pending",

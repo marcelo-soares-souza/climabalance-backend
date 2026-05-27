@@ -63,13 +63,6 @@ export async function reconcilePendingPayments(
       continue;
     }
 
-    // Only reconcile non-Stripe providers (e.g. card simulator).
-    // Stripe payments are confirmed exclusively via webhook.
-    if (payment.provider === "stripe") {
-      remainedPending += 1;
-      continue;
-    }
-
     const gatewayStatus = await deps.paymentGateway.getChargeStatus({
       providerReference: payment.providerReference,
     });
@@ -121,6 +114,19 @@ export async function reconcilePendingPayments(
     } else {
       markedFailed += 1;
     }
+
+    await deps.auditLog.log({
+      actorUserId: input.actorUserId,
+      action: "payment.reconciled",
+      entityType: "payment",
+      entityId: payment.id,
+      metadata: {
+        previous_status: "pending",
+        new_status: latestPaymentStatus,
+        compensation_id: payment.compensationId,
+        gateway_outcome: gatewayStatus.outcome,
+      },
+    });
   }
 
   await deps.auditLog.log({

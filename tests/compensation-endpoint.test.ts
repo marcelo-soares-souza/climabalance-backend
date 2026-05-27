@@ -38,6 +38,7 @@ class InMemoryCompensationStore implements CompensationAtomicStore {
       },
       insertCompensation: async (_record: CompensationCreateRecord) => {},
       sumPaidTreeCountByArea: async (_areaId: string) => 0,
+      sumCommittedTreeCountByArea: async (_areaId: string) => 0,
     };
     return work(tx);
   }
@@ -76,6 +77,10 @@ class InMemoryCompensationHistoryRepository implements CompensationHistoryReposi
   }
 
   async sumPaidTreeCountByArea(_areaId: string): Promise<number> {
+    return 0;
+  }
+
+  async sumCommittedTreeCountByArea(_areaId: string): Promise<number> {
     return 0;
   }
 

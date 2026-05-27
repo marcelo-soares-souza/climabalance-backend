@@ -1,15 +1,11 @@
 import Stripe from "stripe";
 import type {
-  CreatePaymentChargeInput,
   PaymentGatewayAdapter,
-  PaymentGatewayChargeResult,
   PaymentGatewayOutcome,
   PaymentGatewayStatusResult,
 } from "../../application/payments/payment-gateway";
 
 const provider = "stripe";
-
-const providerReferencePrefix = "pi_";
 
 export type StripePaymentIntentCreateInput = {
   amount: number;
@@ -39,50 +35,12 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
     },
   ) {}
 
-  async createCharge(
-    input: CreatePaymentChargeInput,
-  ): Promise<PaymentGatewayChargeResult> {
-    const now = this.deps.clock.now();
-
-    const paymentMethod = await this.deps.stripe.paymentMethods.create({
-      type: "card",
-      card: {
-        number: input.cardNumber,
-        exp_month: input.expirationMonth,
-        exp_year: input.expirationYear,
-        cvc: input.cvv,
-      },
-      billing_details: {
-        name: input.cardholderName,
-      },
-    });
-
-    const paymentIntent = await this.deps.stripe.paymentIntents.create({
-      amount: toStripeAmount(input.amount, input.currency),
-      currency: input.currency.toLowerCase(),
-      payment_method: paymentMethod.id,
-      confirm: true,
-      metadata: {
-        compensation_id: input.compensationId,
-        payment_id: input.paymentId,
-      },
-    });
-
-    return {
-      provider,
-      providerReference: `${providerReferencePrefix}${paymentIntent.id}`,
-      outcome: mapStripeStatusToOutcome(paymentIntent.status),
-      processedAt: now,
-    };
-  }
-
   async getChargeStatus(input: {
     providerReference: string;
   }): Promise<PaymentGatewayStatusResult> {
     const now = this.deps.clock.now();
-    const paymentIntentId = extractPaymentIntentId(input.providerReference);
 
-    if (!paymentIntentId) {
+    if (!input.providerReference.startsWith("pi_")) {
       return {
         provider,
         providerReference: input.providerReference,
@@ -91,8 +49,9 @@ export class StripePaymentGatewayAdapter implements PaymentGatewayAdapter {
       };
     }
 
-    const paymentIntent =
-      await this.deps.stripe.paymentIntents.retrieve(paymentIntentId);
+    const paymentIntent = await this.deps.stripe.paymentIntents.retrieve(
+      input.providerReference,
+    );
 
     return {
       provider,
@@ -248,13 +207,6 @@ function mapStripeStatusToOutcome(
     default:
       return "timeout";
   }
-}
-
-function extractPaymentIntentId(providerReference: string): string | null {
-  if (providerReference.startsWith(providerReferencePrefix)) {
-    return providerReference.slice(providerReferencePrefix.length);
-  }
-  return null;
 }
 
 /**
