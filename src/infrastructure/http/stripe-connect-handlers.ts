@@ -14,10 +14,48 @@ import { getStripeClient } from "../payments/stripe-client";
 import { env } from "../../shared/utils/env";
 
 const STRIPE_CONNECT_SUPPORTED_COUNTRIES = new Set([
-  "US", "GB", "AT", "AU", "BE", "BG", "BR", "CA", "HR", "CY", "CZ", "DK",
-  "EE", "FI", "FR", "DE", "GR", "HK", "HU", "IE", "IT", "JP", "LV", "LI",
-  "LT", "LU", "MT", "MX", "NL", "NZ", "NO", "PL", "PT", "RO", "SG", "SK",
-  "SI", "ES", "SE", "CH", "TH", "AE",
+  "US",
+  "GB",
+  "AT",
+  "AU",
+  "BE",
+  "BG",
+  "BR",
+  "CA",
+  "HR",
+  "CY",
+  "CZ",
+  "DK",
+  "EE",
+  "FI",
+  "FR",
+  "DE",
+  "GR",
+  "HK",
+  "HU",
+  "IE",
+  "IT",
+  "JP",
+  "LV",
+  "LI",
+  "LT",
+  "LU",
+  "MT",
+  "MX",
+  "NL",
+  "NZ",
+  "NO",
+  "PL",
+  "PT",
+  "RO",
+  "SG",
+  "SK",
+  "SI",
+  "ES",
+  "SE",
+  "CH",
+  "TH",
+  "AE",
 ]);
 
 const DEFAULT_CONNECT_COUNTRY = "US";
@@ -117,8 +155,9 @@ export function createStripeConnectHandlers(deps: StripeConnectHandlersDeps) {
           type: "account_onboarding",
         });
 
-        const resolvedRecord =
-          await deps.stripeConnectRepository.findByUserId(auth.userId);
+        const resolvedRecord = await deps.stripeConnectRepository.findByUserId(
+          auth.userId,
+        );
 
         await requestAuditLog.log({
           actorUserId: auth.userId,

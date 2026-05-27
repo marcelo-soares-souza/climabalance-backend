@@ -125,7 +125,8 @@ export async function getPaymentStatus(
     }
 
     const shouldLogStatusSync =
-      latestPaymentStatus !== payment.paymentStatus && !shouldKeepRefundedPayment;
+      latestPaymentStatus !== payment.paymentStatus &&
+      !shouldKeepRefundedPayment;
 
     if (shouldLogStatusSync) {
       await deps.auditLog.log({

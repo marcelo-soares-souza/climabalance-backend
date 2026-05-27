@@ -200,7 +200,10 @@ export class PostgresCompensationHistoryRepository implements CompensationHistor
     return Number(result.rows[0]?.total ?? 0);
   }
 
-  async sumCommittedTreeCountByArea(areaId: string, client?: any): Promise<number> {
+  async sumCommittedTreeCountByArea(
+    areaId: string,
+    client?: any,
+  ): Promise<number> {
     const db = client || this.pool;
     const result = await db.query(
       `SELECT COALESCE(SUM(trees_count), 0) AS total

@@ -344,19 +344,17 @@ export function buildRouter(
     "GET",
     "/api/v1/admin/subject-requests",
     "protected",
-    withAuth(
-      (ctx) => privacyHandlers.listAllSubjectRequests(ctx),
-      { roles: ["administrator"] },
-    ),
+    withAuth((ctx) => privacyHandlers.listAllSubjectRequests(ctx), {
+      roles: ["administrator"],
+    }),
   );
   addRoute(
     "PATCH",
     "/api/v1/admin/subject-requests/:id",
     "protected",
-    withAuth(
-      (ctx) => privacyHandlers.updateSubjectRequest(ctx),
-      { roles: ["administrator"] },
-    ),
+    withAuth((ctx) => privacyHandlers.updateSubjectRequest(ctx), {
+      roles: ["administrator"],
+    }),
   );
 
   // Location routes

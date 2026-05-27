@@ -1,7 +1,12 @@
 import { describe, expect, it } from "bun:test";
 import type { UserRepository } from "../../domain/user/user-repository";
 import type { ConsentRepository } from "../../domain/user/consent-repository";
-import type { User, UserProfile, UserConsent, SubjectRequest } from "../../domain/user/user";
+import type {
+  User,
+  UserProfile,
+  UserConsent,
+  SubjectRequest,
+} from "../../domain/user/user";
 import { exportUserData } from "./export-user-data";
 import { UserNotFoundError } from "../../domain/errors";
 
@@ -85,11 +90,24 @@ function makeSubjectRequest(): SubjectRequest {
 }
 
 function makeDeps(overrides: Record<string, unknown> = {}) {
-  const user = "user" in overrides ? (overrides.user as User | null | undefined) : makeUser();
-  const profile = "profile" in overrides ? (overrides.profile as UserProfile | null | undefined) : makeProfile();
-  const roles = "roles" in overrides ? (overrides.roles as string[]) : ["individual"];
-  const consents = "consents" in overrides ? (overrides.consents as UserConsent[]) : [makeConsent()];
-  const subjectRequests = "subjectRequests" in overrides ? (overrides.subjectRequests as SubjectRequest[]) : [makeSubjectRequest()];
+  const user =
+    "user" in overrides
+      ? (overrides.user as User | null | undefined)
+      : makeUser();
+  const profile =
+    "profile" in overrides
+      ? (overrides.profile as UserProfile | null | undefined)
+      : makeProfile();
+  const roles =
+    "roles" in overrides ? (overrides.roles as string[]) : ["individual"];
+  const consents =
+    "consents" in overrides
+      ? (overrides.consents as UserConsent[])
+      : [makeConsent()];
+  const subjectRequests =
+    "subjectRequests" in overrides
+      ? (overrides.subjectRequests as SubjectRequest[])
+      : [makeSubjectRequest()];
 
   return {
     users: {
@@ -113,7 +131,11 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
     } as unknown as ConsentRepository,
     compensationHistoryRepository: {
       async getPaidContributionSummaryBySupporter(_userId: string) {
-        return { estimatedOffsetTCO2e: 1.5, totalTreesPurchased: 10, totalContributionAmount: 500 };
+        return {
+          estimatedOffsetTCO2e: 1.5,
+          totalTreesPurchased: 10,
+          totalContributionAmount: 500,
+        };
       },
       async listBySupporter() {
         return [];
@@ -141,7 +163,9 @@ describe("exportUserData", () => {
       user: null,
     });
 
-    await expect(exportUserData("nonexistent", deps)).rejects.toThrow(UserNotFoundError);
+    await expect(exportUserData("nonexistent", deps)).rejects.toThrow(
+      UserNotFoundError,
+    );
   });
 
   it("throws UserNotFoundError when user is soft-deleted", async () => {
@@ -149,7 +173,9 @@ describe("exportUserData", () => {
       user: makeUser({ deletedAt: new Date("2026-05-15") }),
     });
 
-    await expect(exportUserData("user-1", deps)).rejects.toThrow(UserNotFoundError);
+    await expect(exportUserData("user-1", deps)).rejects.toThrow(
+      UserNotFoundError,
+    );
   });
 
   it("includes all user fields", async () => {

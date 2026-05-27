@@ -145,10 +145,7 @@ class InMemoryCompensationCertificatePdfGenerator implements CompensationCertifi
   }
 }
 
-function createMockUsers(
-  countryCode = "US",
-  addressCountry?: string,
-) {
+function createMockUsers(countryCode = "US", addressCountry?: string) {
   return {
     findBySlug: async (slug: string) => ({ id: slug }) as any,
     getProfile: async (_userId: string) => ({

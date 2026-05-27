@@ -63,8 +63,13 @@ export async function quoteTreePurchaseCompensation(
     deps.defaultMaxPurchasableTrees,
   );
   const committedTreeCount =
-    await deps.compensationHistoryRepository.sumCommittedTreeCountByArea(area.id);
-  const remainingPurchasableTrees = Math.max(0, effectiveMax - committedTreeCount);
+    await deps.compensationHistoryRepository.sumCommittedTreeCountByArea(
+      area.id,
+    );
+  const remainingPurchasableTrees = Math.max(
+    0,
+    effectiveMax - committedTreeCount,
+  );
 
   const tCO2ePerTreePerYear =
     area.tCO2ePerTreePerYear ?? DEFAULT_T_CO2E_PER_TREE_PER_YEAR;

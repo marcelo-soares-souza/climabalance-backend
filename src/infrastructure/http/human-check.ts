@@ -34,14 +34,20 @@ const QUESTIONS: Record<SupportedLocale, HumanCheckQuestion[]> = {
   en: [
     { question: "What is 2 + 2?", answers: ["4", "four"] },
     { question: "What number comes after 8?", answers: ["9", "nine"] },
-    { question: "What is the last month of the year?", answers: ["december", "12"] },
+    {
+      question: "What is the last month of the year?",
+      answers: ["december", "12"],
+    },
     { question: "What is 10 divided by 2?", answers: ["5", "five"] },
     { question: "What day comes after Monday?", answers: ["tuesday"] },
   ],
   es: [
     { question: "Cuánto es 2 + 2?", answers: ["4", "cuatro"] },
     { question: "Qué número viene después de 8?", answers: ["9", "nueve"] },
-    { question: "Cuál es el último mes del año?", answers: ["diciembre", "12"] },
+    {
+      question: "Cuál es el último mes del año?",
+      answers: ["diciembre", "12"],
+    },
     { question: "Cuánto es 10 dividido por 2?", answers: ["5", "cinco"] },
     { question: "Qué día viene después del lunes?", answers: ["martes"] },
   ],

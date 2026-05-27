@@ -323,9 +323,7 @@ class MutableGateway implements PaymentGatewayAdapter {
     try {
       const parsed = JSON.parse(rawPayload);
       const paymentIntentId =
-        parsed?.data?.provider_reference ??
-        parsed?.data?.object?.id ??
-        null;
+        parsed?.data?.provider_reference ?? parsed?.data?.object?.id ?? null;
       const outcome = this.statuses.get(paymentIntentId ?? "") ?? null;
       return {
         eventId: `evt_${Date.now()}`,

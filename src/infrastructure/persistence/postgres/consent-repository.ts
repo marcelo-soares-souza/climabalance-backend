@@ -38,7 +38,8 @@ function mapSubjectRequest(row: Record<string, unknown>): SubjectRequest {
     dueAt: row.due_at ? new Date(row.due_at as string) : undefined,
     legalBasis: row.legal_basis as string | undefined,
     identityVerified: (row.identity_verified as boolean) ?? false,
-    dataCategoriesAffected: (row.data_categories_affected as string[]) ?? undefined,
+    dataCategoriesAffected:
+      (row.data_categories_affected as string[]) ?? undefined,
     createdAt: new Date(row.created_at as string),
     updatedAt: new Date(row.updated_at as string),
     deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,

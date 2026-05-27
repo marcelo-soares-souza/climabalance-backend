@@ -78,7 +78,7 @@ function withAuthCookies(
   refreshExpiresIn: number,
 ): Array<[string, string]> {
   return [
-    ...Object.entries(authResponseHeaders) as Array<[string, string]>,
+    ...(Object.entries(authResponseHeaders) as Array<[string, string]>),
     ["set-cookie", buildAccessTokenCookie(accessToken, accessTokenExpiresIn)],
     ["set-cookie", buildRefreshTokenCookie(refreshToken, refreshExpiresIn)],
   ];

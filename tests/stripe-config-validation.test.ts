@@ -26,9 +26,8 @@ describe("validateStripeConfiguration", () => {
     process.env.STRIPE_SECRET_KEY = "";
     process.env.STRIPE_WEBHOOK_SECRET = "";
 
-    const { validateStripeConfiguration } = await import(
-      "../src/infrastructure/bootstrap/build-app-runtime"
-    );
+    const { validateStripeConfiguration } =
+      await import("../src/infrastructure/bootstrap/build-app-runtime");
 
     expect(() => validateStripeConfiguration(false)).not.toThrow();
   });
@@ -37,9 +36,8 @@ describe("validateStripeConfiguration", () => {
     process.env.STRIPE_SECRET_KEY = "";
     process.env.STRIPE_WEBHOOK_SECRET = "";
 
-    const { validateStripeConfiguration } = await import(
-      "../src/infrastructure/bootstrap/build-app-runtime"
-    );
+    const { validateStripeConfiguration } =
+      await import("../src/infrastructure/bootstrap/build-app-runtime");
 
     expect(() => validateStripeConfiguration(true)).toThrow(
       "Stripe configuration required when Stripe gateway is enabled: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET",
@@ -50,9 +48,8 @@ describe("validateStripeConfiguration", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_123";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_123";
 
-    const { validateStripeConfiguration } = await import(
-      "../src/infrastructure/bootstrap/build-app-runtime"
-    );
+    const { validateStripeConfiguration } =
+      await import("../src/infrastructure/bootstrap/build-app-runtime");
 
     expect(() => validateStripeConfiguration(true)).not.toThrow();
   });

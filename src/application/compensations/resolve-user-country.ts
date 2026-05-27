@@ -7,9 +7,7 @@ export async function resolveUserIsBrazilian(
   const profile = await userRepository.getProfile(userId);
   if (!profile) return false;
 
-  return (
-    profile.countryCode === "BR" || profile.addressCountry === "BR"
-  );
+  return profile.countryCode === "BR" || profile.addressCountry === "BR";
 }
 
 export async function resolveUserCurrency(

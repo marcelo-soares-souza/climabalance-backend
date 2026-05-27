@@ -322,16 +322,28 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
       try {
         const id = (ctx.params as Record<string, string>)?.id;
         if (!id) {
-          return errorResponse(400, "request.invalid_params", undefined, logContext);
+          return errorResponse(
+            400,
+            "request.invalid_params",
+            undefined,
+            logContext,
+          );
         }
 
         const body = await parseJson(ctx.request, ctx);
         if (typeof body !== "object" || body === null) {
-          return errorResponse(400, "request.invalid_body", undefined, logContext);
+          return errorResponse(
+            400,
+            "request.invalid_body",
+            undefined,
+            logContext,
+          );
         }
 
         const updateSchema = z.object({
-          status: z.enum(["pending", "in_progress", "completed", "rejected"]).optional(),
+          status: z
+            .enum(["pending", "in_progress", "completed", "rejected"])
+            .optional(),
           assignee_user_id: z.string().nullable().optional(),
           resolution_notes: z.string().max(2000).optional(),
           due_at: z.string().datetime().optional(),
@@ -344,15 +356,21 @@ export function createPrivacyHandlers(deps: PrivacyHandlersDeps) {
 
         const existing = await deps.consents.getSubjectRequestById(id);
         if (!existing) {
-          return errorResponse(404, "privacy.subject_request.not_found", undefined, logContext);
+          return errorResponse(
+            404,
+            "privacy.subject_request.not_found",
+            undefined,
+            logContext,
+          );
         }
 
         const updated = await deps.consents.updateSubjectRequest(id, {
           status: validated.status,
           assigneeUserId: validated.assignee_user_id,
-          resolvedByUserId: validated.status === "completed" || validated.status === "rejected"
-            ? ctx.auth!.userId
-            : undefined,
+          resolvedByUserId:
+            validated.status === "completed" || validated.status === "rejected"
+              ? ctx.auth!.userId
+              : undefined,
           resolutionNotes: validated.resolution_notes,
           dueAt: validated.due_at ? new Date(validated.due_at) : undefined,
           legalBasis: validated.legal_basis,

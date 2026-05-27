@@ -257,163 +257,50 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
           typeof stripeGateway.parseWebhookEvent === "function" &&
           signature
         ) {
-            const parsed = await stripeGateway.parseWebhookEvent(
-              rawPayload,
-              signature,
-            );
+          const parsed = await stripeGateway.parseWebhookEvent(
+            rawPayload,
+            signature,
+          );
 
-            logger.info("payment.webhook_stripe_event", {
-              event_id: parsed.eventId,
-              event_type: parsed.type,
-              payment_intent_id: parsed.paymentIntentId ?? null,
-              has_outcome: !!parsed.outcome,
+          logger.info("payment.webhook_stripe_event", {
+            event_id: parsed.eventId,
+            event_type: parsed.type,
+            payment_intent_id: parsed.paymentIntentId ?? null,
+            has_outcome: !!parsed.outcome,
+          });
+
+          const registered = await registerWebhookEventIfNew(
+            deps,
+            "stripe",
+            parsed.eventId,
+            parsed.type,
+          );
+          if (!registered) {
+            await requestAuditLog.log({
+              actorUserId: "system:webhook",
+              action: "payment.webhook_duplicate_discarded",
+              entityType: "stripe_event",
+              entityId: parsed.eventId,
+              metadata: { stripe_event_type: parsed.type },
+              severity: "info" as const,
+              success: true,
             });
-
-            const registered = await registerWebhookEventIfNew(
-              deps,
-              "stripe",
-              parsed.eventId,
-              parsed.type,
+            return jsonResponse(
+              202,
+              {
+                data: { processed: true, deduplicated: true },
+                message_key: "payment.webhook_processed",
+              },
+              logContext,
             );
-            if (!registered) {
-              await requestAuditLog.log({
-                actorUserId: "system:webhook",
-                action: "payment.webhook_duplicate_discarded",
-                entityType: "stripe_event",
-                entityId: parsed.eventId,
-                metadata: { stripe_event_type: parsed.type },
-                severity: "info" as const,
-                success: true,
-              });
-              return jsonResponse(
-                202,
-                {
-                  data: { processed: true, deduplicated: true },
-                  message_key: "payment.webhook_processed",
-                },
-                logContext,
-              );
-            }
+          }
 
-            if (parsed.type === "charge.refunded" && parsed.paymentIntentId) {
-              const refundResult = await deps.paymentStore.runInTransaction(
-                async (tx) => {
-                  const payment = await tx.lockPaymentByStripePaymentIntentId(
-                    parsed.paymentIntentId!,
-                  );
-                  if (!payment) {
-                    await requestAuditLog.log({
-                      actorUserId: "system:webhook",
-                      action: "payment.webhook_payment_not_found",
-                      entityType: "stripe_payment_intent",
-                      entityId: parsed.paymentIntentId!,
-                      metadata: { stripe_event_type: parsed.type },
-                      severity: "warning" as const,
-                      success: false,
-                      errorCode: "PAYMENT_NOT_FOUND",
-                    });
-                    return { processed: false };
-                  }
-                  const now = deps.clock.now();
-                  await tx.updatePaymentStatus({
-                    paymentId: payment.id,
-                    status: "refunded",
-                    updatedAt: now,
-                  });
-                  await tx.updateCompensationStatus({
-                    compensationId: payment.compensationId,
-                    status: "refunded",
-                    updatedAt: now,
-                  });
-                  return {
-                    processed: true,
-                    paymentId: payment.id,
-                    compensationId: payment.compensationId,
-                  };
-                },
-              );
-
-              if (refundResult.processed) {
-                await requestAuditLog.log({
-                  actorUserId: "system:webhook",
-                  action: "payment.refunded",
-                  entityType: "payment",
-                  entityId: refundResult.paymentId!,
-                  metadata: {
-                    stripe_event_type: parsed.type,
-                    compensation_id: refundResult.compensationId,
-                  },
-                  severity: "warning" as const,
-                  success: true,
-                });
-                if (deps.jobQueue && deps.areaRepository && deps.users) {
-                  notifyContributionRefunded(
-                    deps,
-                    refundResult.compensationId!,
-                  ).catch(() => {});
-                }
-              }
-
-              return jsonResponse(
-                202,
-                {
-                  data: { processed: refundResult.processed },
-                  message_key: "payment.webhook_processed",
-                },
-                logContext,
-              );
-            }
-
-            if (!parsed.paymentIntentId || !parsed.outcome) {
-              const accountUpdateProcessed =
-                await handleStripeAccountUpdatedWebhook(
-                  deps,
-                  requestAuditLog,
-                  rawPayload,
-                  signature,
-                  parsed.type,
-                );
-              if (accountUpdateProcessed) {
-                return jsonResponse(
-                  202,
-                  {
-                    data: { processed: true },
-                    message_key: "payment.webhook_processed",
-                  },
-                  logContext,
-                );
-              }
-
-              await requestAuditLog.log({
-                actorUserId: "system:webhook",
-                action: "payment.webhook_unhandled_type",
-                entityType: "stripe_event",
-                entityId: parsed.eventId,
-                metadata: {
-                  stripe_event_type: parsed.type,
-                  payment_intent_id: parsed.paymentIntentId ?? null,
-                },
-                severity: "warning" as const,
-                success: false,
-                errorCode: "UNHANDLED_EVENT_TYPE",
-              });
-
-              return jsonResponse(
-                202,
-                {
-                  data: { processed: false },
-                  message_key: "payment.webhook_processed",
-                },
-                logContext,
-              );
-            }
-
-            const result = await deps.paymentStore.runInTransaction(
+          if (parsed.type === "charge.refunded" && parsed.paymentIntentId) {
+            const refundResult = await deps.paymentStore.runInTransaction(
               async (tx) => {
                 const payment = await tx.lockPaymentByStripePaymentIntentId(
                   parsed.paymentIntentId!,
                 );
-
                 if (!payment) {
                   await requestAuditLog.log({
                     actorUserId: "system:webhook",
@@ -427,140 +314,253 @@ export function createPaymentHandlers(deps: PaymentHandlersDeps) {
                   });
                   return { processed: false };
                 }
-
-                const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(
-                  parsed.outcome!,
-                );
                 const now = deps.clock.now();
-
-                if (latestPaymentStatus !== payment.paymentStatus) {
-                  await tx.updatePaymentStatus({
-                    paymentId: payment.id,
-                    status: latestPaymentStatus,
-                    updatedAt: now,
-                    paidAt: latestPaymentStatus === "paid" ? now : undefined,
-                  });
-                }
-
-                const nextCompensationStatus =
-                  resolveCompensationStatusFromPayment({
-                    currentCompensationStatus: payment.compensationStatus,
-                    newPaymentStatus: latestPaymentStatus,
-                  });
-
-                if (
-                  (nextCompensationStatus === "pending" ||
-                    nextCompensationStatus === "paid" ||
-                    nextCompensationStatus === "canceled") &&
-                  payment.compensationStatus !== nextCompensationStatus
-                ) {
-                  await tx.updateCompensationStatus({
-                    compensationId: payment.compensationId,
-                    status: nextCompensationStatus,
-                    updatedAt: now,
-                  });
-                }
-
+                await tx.updatePaymentStatus({
+                  paymentId: payment.id,
+                  status: "refunded",
+                  updatedAt: now,
+                });
+                await tx.updateCompensationStatus({
+                  compensationId: payment.compensationId,
+                  status: "refunded",
+                  updatedAt: now,
+                });
                 return {
                   processed: true,
                   paymentId: payment.id,
                   compensationId: payment.compensationId,
-                  paymentStatus: latestPaymentStatus,
-                  compensationStatus: nextCompensationStatus,
                 };
               },
             );
 
-            if (result.processed) {
+            if (refundResult.processed) {
               await requestAuditLog.log({
                 actorUserId: "system:webhook",
-                action:
-                  result.paymentStatus === "paid"
-                    ? "payment.confirmed"
-                    : result.paymentStatus === "failed"
-                      ? "payment.failed"
-                      : "payment.webhook_processed",
+                action: "payment.refunded",
                 entityType: "payment",
-                entityId: result.paymentId!,
+                entityId: refundResult.paymentId!,
                 metadata: {
-                  stripe_payment_intent_id: parsed.paymentIntentId,
                   stripe_event_type: parsed.type,
-                  payment_status: result.paymentStatus,
-                  compensation_id: result.compensationId,
+                  compensation_id: refundResult.compensationId,
                 },
-                severity:
-                  result.paymentStatus === "failed"
-                    ? ("warning" as const)
-                    : ("info" as const),
-                success: result.paymentStatus !== "failed",
+                severity: "warning" as const,
+                success: true,
               });
-
-              if (
-                result.paymentStatus === "failed" &&
-                deps.jobQueue &&
-                deps.users &&
-                result.compensationId
-              ) {
-                const comp =
-                  await deps.paymentStore.getCompensationForCertificate(
-                    result.compensationId,
-                  );
-                if (comp) {
-                  const supporter = await deps.users.findById(
-                    comp.supporterUserId,
-                  );
-                  if (supporter) {
-                    await deps.jobQueue
-                      .enqueue("notification.payment_failed", {
-                        email: supporter.email,
-                        amount: comp.totalAmount,
-                        currency: comp.currency,
-                        locale: supporter.locale,
-                        frontendUrl: env.frontendUrl,
-                      })
-                      .catch(() => {});
-                  }
-                }
+              if (deps.jobQueue && deps.areaRepository && deps.users) {
+                notifyContributionRefunded(
+                  deps,
+                  refundResult.compensationId!,
+                ).catch(() => {});
               }
-            }
-
-            const certificate =
-              result.processed && result.compensationId
-                ? await ensureCertificateAfterPaidCompensation(
-                    deps,
-                    result.compensationId,
-                    "system:webhook",
-                    requestAuditLog,
-                  )
-                : null;
-
-            if (
-              result.paymentStatus === "paid" &&
-              deps.jobQueue &&
-              deps.areaRepository &&
-              deps.users
-            ) {
-              notifyCompensationMilestone(deps, result.compensationId!).catch(
-                () => {},
-              );
             }
 
             return jsonResponse(
               202,
               {
-                data: {
-                  processed: result.processed,
-                  payment_id: result.paymentId,
-                  compensation_id: result.compensationId,
-                  payment_status: result.paymentStatus,
-                  compensation_status: result.compensationStatus,
-                  certificate,
-                },
+                data: { processed: refundResult.processed },
                 message_key: "payment.webhook_processed",
               },
               logContext,
             );
           }
+
+          if (!parsed.paymentIntentId || !parsed.outcome) {
+            const accountUpdateProcessed =
+              await handleStripeAccountUpdatedWebhook(
+                deps,
+                requestAuditLog,
+                rawPayload,
+                signature,
+                parsed.type,
+              );
+            if (accountUpdateProcessed) {
+              return jsonResponse(
+                202,
+                {
+                  data: { processed: true },
+                  message_key: "payment.webhook_processed",
+                },
+                logContext,
+              );
+            }
+
+            await requestAuditLog.log({
+              actorUserId: "system:webhook",
+              action: "payment.webhook_unhandled_type",
+              entityType: "stripe_event",
+              entityId: parsed.eventId,
+              metadata: {
+                stripe_event_type: parsed.type,
+                payment_intent_id: parsed.paymentIntentId ?? null,
+              },
+              severity: "warning" as const,
+              success: false,
+              errorCode: "UNHANDLED_EVENT_TYPE",
+            });
+
+            return jsonResponse(
+              202,
+              {
+                data: { processed: false },
+                message_key: "payment.webhook_processed",
+              },
+              logContext,
+            );
+          }
+
+          const result = await deps.paymentStore.runInTransaction(
+            async (tx) => {
+              const payment = await tx.lockPaymentByStripePaymentIntentId(
+                parsed.paymentIntentId!,
+              );
+
+              if (!payment) {
+                await requestAuditLog.log({
+                  actorUserId: "system:webhook",
+                  action: "payment.webhook_payment_not_found",
+                  entityType: "stripe_payment_intent",
+                  entityId: parsed.paymentIntentId!,
+                  metadata: { stripe_event_type: parsed.type },
+                  severity: "warning" as const,
+                  success: false,
+                  errorCode: "PAYMENT_NOT_FOUND",
+                });
+                return { processed: false };
+              }
+
+              const latestPaymentStatus = mapGatewayOutcomeToPaymentStatus(
+                parsed.outcome!,
+              );
+              const now = deps.clock.now();
+
+              if (latestPaymentStatus !== payment.paymentStatus) {
+                await tx.updatePaymentStatus({
+                  paymentId: payment.id,
+                  status: latestPaymentStatus,
+                  updatedAt: now,
+                  paidAt: latestPaymentStatus === "paid" ? now : undefined,
+                });
+              }
+
+              const nextCompensationStatus =
+                resolveCompensationStatusFromPayment({
+                  currentCompensationStatus: payment.compensationStatus,
+                  newPaymentStatus: latestPaymentStatus,
+                });
+
+              if (
+                (nextCompensationStatus === "pending" ||
+                  nextCompensationStatus === "paid" ||
+                  nextCompensationStatus === "canceled") &&
+                payment.compensationStatus !== nextCompensationStatus
+              ) {
+                await tx.updateCompensationStatus({
+                  compensationId: payment.compensationId,
+                  status: nextCompensationStatus,
+                  updatedAt: now,
+                });
+              }
+
+              return {
+                processed: true,
+                paymentId: payment.id,
+                compensationId: payment.compensationId,
+                paymentStatus: latestPaymentStatus,
+                compensationStatus: nextCompensationStatus,
+              };
+            },
+          );
+
+          if (result.processed) {
+            await requestAuditLog.log({
+              actorUserId: "system:webhook",
+              action:
+                result.paymentStatus === "paid"
+                  ? "payment.confirmed"
+                  : result.paymentStatus === "failed"
+                    ? "payment.failed"
+                    : "payment.webhook_processed",
+              entityType: "payment",
+              entityId: result.paymentId!,
+              metadata: {
+                stripe_payment_intent_id: parsed.paymentIntentId,
+                stripe_event_type: parsed.type,
+                payment_status: result.paymentStatus,
+                compensation_id: result.compensationId,
+              },
+              severity:
+                result.paymentStatus === "failed"
+                  ? ("warning" as const)
+                  : ("info" as const),
+              success: result.paymentStatus !== "failed",
+            });
+
+            if (
+              result.paymentStatus === "failed" &&
+              deps.jobQueue &&
+              deps.users &&
+              result.compensationId
+            ) {
+              const comp =
+                await deps.paymentStore.getCompensationForCertificate(
+                  result.compensationId,
+                );
+              if (comp) {
+                const supporter = await deps.users.findById(
+                  comp.supporterUserId,
+                );
+                if (supporter) {
+                  await deps.jobQueue
+                    .enqueue("notification.payment_failed", {
+                      email: supporter.email,
+                      amount: comp.totalAmount,
+                      currency: comp.currency,
+                      locale: supporter.locale,
+                      frontendUrl: env.frontendUrl,
+                    })
+                    .catch(() => {});
+                }
+              }
+            }
+          }
+
+          const certificate =
+            result.processed && result.compensationId
+              ? await ensureCertificateAfterPaidCompensation(
+                  deps,
+                  result.compensationId,
+                  "system:webhook",
+                  requestAuditLog,
+                )
+              : null;
+
+          if (
+            result.paymentStatus === "paid" &&
+            deps.jobQueue &&
+            deps.areaRepository &&
+            deps.users
+          ) {
+            notifyCompensationMilestone(deps, result.compensationId!).catch(
+              () => {},
+            );
+          }
+
+          return jsonResponse(
+            202,
+            {
+              data: {
+                processed: result.processed,
+                payment_id: result.paymentId,
+                compensation_id: result.compensationId,
+                payment_status: result.paymentStatus,
+                compensation_status: result.compensationStatus,
+                certificate,
+              },
+              message_key: "payment.webhook_processed",
+            },
+            logContext,
+          );
+        }
 
         return jsonResponse(
           202,

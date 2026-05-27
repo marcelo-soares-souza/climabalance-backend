@@ -167,8 +167,8 @@ describe("createCompensationAtomic", () => {
     ).toBe(true);
     const failure = rejected[0];
     expect(failure?.status).toBe("rejected");
-    expect(
-      String((failure as PromiseRejectedResult).reason),
-    ).toContain("tree_limit_exceeded");
+    expect(String((failure as PromiseRejectedResult).reason)).toContain(
+      "tree_limit_exceeded",
+    );
   });
 });
