@@ -36,5 +36,7 @@
   "email.paymentFailed.subject": "Pago no aprobado",
   "email.paymentFailed.body": "¡Hola!\n\nEl pago de su compensación no fue aprobado.\n\nMonto: {{amount}} {{currency}}\n\nPuede intentarlo nuevamente accediendo a su cuenta y realizando un nuevo pago.\n\nAcceso: {{url}}",
   "email.privacySubjectRequest.subject": "Solicitud de privacidad recibida",
-  "email.privacySubjectRequest.body": "Se ha recibido una solicitud de privacidad.\n\nUsuario: {{userName}} ({{userEmail}})\nTipo de solicitud: {{requestType}}\nDetalles: {{details}}\n\nAcceda al panel de administración para revisar y procesar esta solicitud."
+  "email.privacySubjectRequest.body": "Se ha recibido una solicitud de privacidad.\n\nUsuario: {{userName}} ({{userEmail}})\nTipo de solicitud: {{requestType}}\nDetalles: {{details}}\n\nAcceda al panel de administración para revisar y procesar esta solicitud.",
+  "email.footprintFinalized.subject": "Cálculo de huella de carbono finalizado",
+  "email.footprintFinalized.body": "Se ha finalizado un cálculo de huella de carbono en la plataforma.\n\nUsuario: {{userName}}\n\nAcceda al panel de administración para más detalles."
 }

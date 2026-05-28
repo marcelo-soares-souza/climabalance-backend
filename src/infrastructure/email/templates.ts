@@ -244,6 +244,18 @@ export function buildPrivacySubjectRequestNotification(
   };
 }
 
+export function buildFootprintFinalizedNotification(
+  locale: string,
+  to: string,
+  userName: string,
+): EmailMessage {
+  return {
+    to,
+    subject: t("email.footprintFinalized.subject", locale),
+    text: t("email.footprintFinalized.body", locale, { userName }),
+  };
+}
+
 export function buildPaymentFailed(
   locale: string,
   to: string,

@@ -8,6 +8,7 @@ import type { UnitOfWork } from "../persistence/unit-of-work";
 import type { IdGenerator } from "../../domain/services/id-generator";
 import type { Clock } from "../../domain/services/clock";
 import type { AuditLogRepository } from "../../domain/audit/audit-log-repository";
+import type { JobQueue } from "../../domain/jobs/job-queue";
 import { parseJson } from "../../shared/http/request";
 import { errorResponse, jsonResponse } from "../../shared/http/response";
 import { handleError } from "./error-mapper";
@@ -47,6 +48,7 @@ export interface FootprintHandlersDeps {
   idGenerator: IdGenerator;
   clock: Clock;
   auditLog: Pick<AuditLogRepository, "log">;
+  jobQueue: JobQueue;
 }
 
 export function createFootprintHandlers(deps: FootprintHandlersDeps) {
@@ -184,6 +186,13 @@ export function createFootprintHandlers(deps: FootprintHandlersDeps) {
           severity: "info",
           category: ["data_modification", "compliance"],
         });
+
+        await deps.jobQueue
+          .enqueue("footprint.calculation_finalized", {
+            userId: auth.userId,
+            calculationId: id,
+          })
+          .catch(() => {});
 
         return jsonResponse(
           200,

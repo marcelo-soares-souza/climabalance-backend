@@ -15,6 +15,7 @@ import {
   buildCertificateIssued,
   buildPasswordChanged,
   buildPaymentFailed,
+  buildFootprintFinalizedNotification,
 } from "../../infrastructure/email/templates";
 
 export type JobHandlerDeps = {
@@ -313,6 +314,25 @@ export async function handlePaymentFailed(
       payload.amount,
       payload.currency,
       url,
+    ),
+  );
+}
+
+export async function handleFootprintFinalized(
+  payload: { userId: string; calculationId: string },
+  deps: JobHandlerDeps,
+): Promise<void> {
+  const user = await deps.users.findById(payload.userId);
+  const userName = user?.email ?? "Unknown";
+
+  const admins = await findAdminEmails(deps.users);
+  if (admins.length === 0) return;
+
+  await Promise.all(
+    admins.map((email) =>
+      deps.emailSender.send(
+        buildFootprintFinalizedNotification("pt-BR", email, userName),
+      ),
     ),
   );
 }

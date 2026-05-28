@@ -17,6 +17,7 @@ import {
   handleCertificateIssued,
   handlePasswordChanged,
   handlePaymentFailed,
+  handleFootprintFinalized,
 } from "../../application/jobs/handlers";
 
 const HANDLERS: Record<
@@ -36,6 +37,7 @@ const HANDLERS: Record<
   "notification.certificate_issued": handleCertificateIssued,
   "notification.password_changed": handlePasswordChanged,
   "notification.payment_failed": handlePaymentFailed,
+  "footprint.calculation_finalized": handleFootprintFinalized,
 };
 
 export function startJobWorker(

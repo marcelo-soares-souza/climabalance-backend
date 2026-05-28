@@ -36,5 +36,7 @@
   "email.paymentFailed.subject": "Payment not approved",
   "email.paymentFailed.body": "Hello!\n\nYour compensation payment was not approved.\n\nAmount: {{amount}} {{currency}}\n\nYou can try again by accessing your account and making a new payment.\n\nAccess: {{url}}",
   "email.privacySubjectRequest.subject": "Privacy subject request received",
-  "email.privacySubjectRequest.body": "A privacy subject request has been submitted.\n\nUser: {{userName}} ({{userEmail}})\nRequest type: {{requestType}}\nDetails: {{details}}\n\nAccess the admin panel to review and process this request."
+  "email.privacySubjectRequest.body": "A privacy subject request has been submitted.\n\nUser: {{userName}} ({{userEmail}})\nRequest type: {{requestType}}\nDetails: {{details}}\n\nAccess the admin panel to review and process this request.",
+  "email.footprintFinalized.subject": "Carbon footprint calculation finalized",
+  "email.footprintFinalized.body": "A carbon footprint calculation has been finalized on the platform.\n\nUser: {{userName}}\n\nAccess the admin panel for details."
 }

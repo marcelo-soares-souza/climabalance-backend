@@ -36,5 +36,7 @@
   "email.paymentFailed.subject": "Paiement non approuvé",
   "email.paymentFailed.body": "Bonjour !\n\nLe paiement de votre compensation n'a pas été approuvé.\n\nMontant : {{amount}} {{currency}}\n\nVous pouvez réessayer en vous connectant à votre compte et en effectuant un nouveau paiement.\n\nAccès : {{url}}",
   "email.privacySubjectRequest.subject": "Demande de confidentialité reçue",
-  "email.privacySubjectRequest.body": "Une demande relative à la confidentialité a été soumise.\n\nUtilisateur : {{userName}} ({{userEmail}})\nType de demande : {{requestType}}\nDétails : {{details}}\n\nAccédez au panneau d'administration pour examiner et traiter cette demande."
+  "email.privacySubjectRequest.body": "Une demande relative à la confidentialité a été soumise.\n\nUtilisateur : {{userName}} ({{userEmail}})\nType de demande : {{requestType}}\nDétails : {{details}}\n\nAccédez au panneau d'administration pour examiner et traiter cette demande.",
+  "email.footprintFinalized.subject": "Calcul d'empreinte carbone finalisé",
+  "email.footprintFinalized.body": "Un calcul d'empreinte carbone a été finalisé sur la plateforme.\n\nUtilisateur : {{userName}}\n\nAccédez au panneau d'administration pour plus de détails."
 }
