@@ -20,12 +20,12 @@
   },
   "dependencies": {
     "geotiff": "^3.0.5",
-    "ioredis": "^5.11.0",
-    "nodemailer": "^8.0.9",
+    "ioredis": "^5.11.1",
+    "nodemailer": "^8.0.10",
     "pg": "^8.21.0",
     "proj4": "^2.20.8",
     "sharp": "^0.34.5",
-    "stripe": "^22.1.1",
+    "stripe": "^22.2.0",
     "zod": "^4.4.3"
   },
   "overrides": {
@@ -37,9 +37,9 @@
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "@types/proj4": "^2.19.0",
-    "eslint": "^10.4.0",
+    "eslint": "^10.4.1",
     "globals": "^17.6.0",
-    "typescript-eslint": "^8.60.0",
+    "typescript-eslint": "^8.60.1",
     "prettier": "^3.8.3"
   }
 }
